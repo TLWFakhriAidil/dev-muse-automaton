@@ -1,0 +1,119 @@
+# Railway deployment configuration for direct database connection
+# This file configures the main application with direct MySQL connection using Railway's static IP
+
+version: '1'
+
+services:
+  # Main Application Service
+  app:
+    name: "nodepath-chat-app"
+    build:
+      dockerfile: "Dockerfile"
+    
+    environment:
+      # Direct database connection using Railway's static outbound IP (208.77.246.15)
+      MYSQL_URI: "mysql://admin_aqil:admin_aqil@157.245.206.124:3306/admin_railway?charset=utf8mb4&parseTime=True&loc=Local&collation=utf8mb4_unicode_ci"
+      
+      # OpenRouter API configuration
+      OPENROUTER_DEFAULT_KEY: "$OPENROUTER_DEFAULT_KEY"
+      
+      # Application settings
+      PORT: "8080"
+      APP_ENV: "production"
+      
+      # High-performance settings for 3000+ devices
+      MAX_CONCURRENT_USERS: "3000"
+      WEBSOCKET_ENABLED: "true"
+      
+      # Database connection settings
+      DB_MAX_OPEN_CONNS: "500"
+      DB_MAX_IDLE_CONNS: "100"
+      DB_CONN_MAX_LIFETIME: "5m"
+    
+    # Resource allocation for high performance
+    resources:
+      memory: "1Gi"
+      cpu: "1"
+    
+    # Health check
+    healthcheck:
+      path: "/health"
+      port: 8080
+      interval: 30
+      timeout: 10
+      retries: 3
+      start_period: 30  # Reduced start period for direct connection
+    
+    # Networking
+    networking:
+      public: true
+      private: true
+      ports:
+        - 8080
+
+# Global configuration
+config:
+  # Deployment strategy
+  strategy: "rolling"
+  
+  # Environment variables that apply to all services
+  global_env:
+    TZ: "UTC"
+    LOG_LEVEL: "info"
+  
+  # Secrets (set these in Railway dashboard)
+  secrets:
+    - OPENROUTER_DEFAULT_KEY  # OpenRouter API key
+  
+  # Networking
+  networking:
+    # Enable private networking between services
+    private_networking: true
+    
+    # Custom domains (optional)
+    domains:
+      - service: app
+        domain: "your-app-domain.com"  # Replace with your domain
+
+# Deployment hooks
+hooks:
+  # Pre-deployment validation
+    - name: "test-mysql-connectivity"
+      command: "echo 'Testing MySQL connectivity...'"
+  
+  # Post-deployment verification
+  post_deploy:
+    - name: "verify-database"
+      command: "echo 'Verifying database connection...'"
+
+# Monitoring and alerts
+monitoring:
+  # Health checks
+  health_checks:
+    - service: app
+      endpoint: "/health"
+      interval: 30
+  
+  # Alerts
+  alerts:
+    - name: "app-down"
+      condition: "app health check fails"
+      action: "restart app service"
+    
+    - name: "high-memory"
+      condition: "memory usage > 80%"
+      action: "scale up resources"
+
+# Scaling configuration
+scaling:
+  # Main app can scale based on load
+  app:
+    min_replicas: 1
+    max_replicas: 3
+    
+    # Auto-scaling rules
+    auto_scaling:
+      cpu_threshold: 70
+      memory_threshold: 80
+      scale_up_cooldown: 300
+      scale_down_cooldown: 600

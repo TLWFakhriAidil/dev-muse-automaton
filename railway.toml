@@ -1,0 +1,33 @@
+[build]
+  builder = "DOCKERFILE"
+  # Fallback command if Dockerfile build fails
+  # buildCommand = "chmod +x ./railway-build.sh && ./railway-build.sh"
+
+[deploy]
+  healthcheckTimeout = 300
+  restartPolicyType = "on_failure"
+  restartPolicyMaxRetries = 10
+
+# Phases setup not needed when using Dockerfile
+# [phases.setup]
+#   aptPkgs = ["php", "php-mysql"]
+#   nixPkgs = ["nodejs", "npm"]
+#   nodeVersion = "18"
+
+[[services]]
+  name = "web"
+  internal_port = 8080
+  protocol = "http"
+
+  [services.concurrency]
+    type = "connections"
+    hard_limit = 25
+    soft_limit = 20
+
+  [[services.ports]]
+    port = 80
+    handlers = ["http"]
+
+  [[services.ports]]
+    port = 443
+    handlers = ["tls", "http"]
