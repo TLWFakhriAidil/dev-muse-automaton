@@ -24,6 +24,11 @@ func InitializeSupabase(cfg *config.Config) (*SupabaseClient, error) {
 		return nil, fmt.Errorf("SUPABASE_URL and SUPABASE_SERVICE_KEY environment variables are required")
 	}
 
+	// Check if database password is provided for direct PostgreSQL connections
+	if cfg.SupabaseDBPassword == "" {
+		return nil, fmt.Errorf("SUPABASE_DB_PASSWORD environment variable is required for database connections")
+	}
+
 	// Validate Supabase URL format
 	if err := validateSupabaseURL(cfg.SupabaseURL); err != nil {
 		return nil, fmt.Errorf("invalid SUPABASE_URL: %w", err)
@@ -40,8 +45,8 @@ func InitializeSupabase(cfg *config.Config) (*SupabaseClient, error) {
 
 	// Build PostgreSQL connection string
 	// Supabase uses PostgreSQL, so we extract connection details from the Supabase URL
-	// Connection format uses service key for authentication
-	postgresURI, err := buildPostgresURI(cfg.SupabaseURL, cfg.SupabaseServiceKey)
+	// Connection format uses database password (not service key) for authentication
+	postgresURI, err := buildPostgresURI(cfg.SupabaseURL, cfg.SupabaseDBPassword)
 	if err != nil {
 		return nil, fmt.Errorf("failed to build PostgreSQL connection string: %w", err)
 	}

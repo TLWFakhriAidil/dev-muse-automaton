@@ -16,6 +16,7 @@ type Config struct {
 	SupabaseURL        string // Supabase project URL
 	SupabaseAnonKey    string // Supabase anonymous key
 	SupabaseServiceKey string // Supabase service role key (for backend operations)
+	SupabaseDBPassword string // Supabase database password (for direct PostgreSQL connections)
 
 	// Redis configuration
 	RedisURL          string
@@ -53,6 +54,7 @@ func Load() *Config {
 		SupabaseURL:        getEnv("SUPABASE_URL", ""),
 		SupabaseAnonKey:    getEnv("SUPABASE_ANON_KEY", ""),
 		SupabaseServiceKey: getEnv("SUPABASE_SERVICE_KEY", ""),
+		SupabaseDBPassword: getEnv("SUPABASE_DB_PASSWORD", ""),
 
 		// Redis configuration with clustering support
 		RedisURL:          getEnv("REDIS_URL", ""),
