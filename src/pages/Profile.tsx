@@ -5,7 +5,9 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
-import { User, Mail, Phone, Calendar, Shield, Save, Eye, EyeOff } from 'lucide-react';
+import { User, Mail, Phone, Calendar, Shield, Save } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
+import { useProfile } from '@/hooks/useProfile';
 
 interface User {
   id: string;
@@ -30,54 +32,26 @@ interface ProfileFormData {
 }
 
 const Profile: React.FC = () => {
-  const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true);
+  const { user } = useAuth();
+  const { profile, isLoading, updateProfile } = useProfile();
   const [saving, setSaving] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
-  const [showPasswordFields, setShowPasswordFields] = useState(false);
   const [formData, setFormData] = useState<ProfileFormData>({
     full_name: '',
     gmail: '',
     phone: '',
-    password: '',
-    new_password: '',
   });
   const [alert, setAlert] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
   useEffect(() => {
-    fetchProfile();
-  }, []);
-
-  const fetchProfile = async () => {
-    try {
-      const response = await fetch('/api/profile/', {
-        credentials: 'include',
+    if (profile) {
+      setFormData({
+        full_name: profile.full_name || '',
+        gmail: profile.gmail || '',
+        phone: profile.phone || '',
       });
-
-      if (!response.ok) {
-        throw new Error('Failed to fetch profile');
-      }
-
-      const result = await response.json();
-      if (result.success) {
-        setUser(result.data);
-        setFormData({
-          full_name: result.data.full_name,
-          gmail: result.data.gmail || '',
-          phone: result.data.phone || '',
-          password: '',
-          new_password: '',
-        });
-      } else {
-        throw new Error(result.error || 'Failed to fetch profile');
-      }
-    } catch (error) {
-      console.error('Error fetching profile:', error);
-      setAlert({ type: 'error', message: 'Failed to load profile data' });
-    } finally {
-      setLoading(false);
     }
-  };
+  }, [profile]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -181,7 +155,7 @@ const Profile: React.FC = () => {
     }
   };
 
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="flex items-center justify-center h-96">
         <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-500"></div>
@@ -189,7 +163,7 @@ const Profile: React.FC = () => {
     );
   }
 
-  if (!user) {
+  if (!profile || !user) {
     return (
       <div className="flex items-center justify-center h-96">
         <Alert>
