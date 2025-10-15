@@ -24,8 +24,13 @@ func InitializeSupabase(cfg *config.Config) (*SupabaseClient, error) {
 		return nil, fmt.Errorf("SUPABASE_URL and SUPABASE_SERVICE_KEY environment variables are required")
 	}
 
+	// Validate Supabase URL format
+	if err := validateSupabaseURL(cfg.SupabaseURL); err != nil {
+		return nil, fmt.Errorf("invalid SUPABASE_URL: %w", err)
+	}
+
 	// Log which database is being used
-	logrus.Info("Connecting to Supabase (PostgreSQL) database")
+	logrus.WithField("url", cfg.SupabaseURL).Info("Connecting to Supabase (PostgreSQL) database")
 
 	// Initialize Supabase client
 	client, err := supa.NewClient(cfg.SupabaseURL, cfg.SupabaseServiceKey, &supa.ClientOptions{})
@@ -36,7 +41,10 @@ func InitializeSupabase(cfg *config.Config) (*SupabaseClient, error) {
 	// Build PostgreSQL connection string
 	// Supabase uses PostgreSQL, so we extract connection details from the Supabase URL
 	// Connection format uses service key for authentication
-	postgresURI := buildPostgresURI(cfg.SupabaseURL, cfg.SupabaseServiceKey)
+	postgresURI, err := buildPostgresURI(cfg.SupabaseURL, cfg.SupabaseServiceKey)
+	if err != nil {
+		return nil, fmt.Errorf("failed to build PostgreSQL connection string: %w", err)
+	}
 
 	// Open PostgreSQL connection for standard database/sql operations
 	db, err := sql.Open("postgres", postgresURI)
@@ -64,31 +72,80 @@ func InitializeSupabase(cfg *config.Config) (*SupabaseClient, error) {
 	}, nil
 }
 
+// validateSupabaseURL validates the format of the Supabase URL
+func validateSupabaseURL(supabaseURL string) error {
+	if supabaseURL == "" {
+		return fmt.Errorf("URL cannot be empty")
+	}
+
+	// Check for https:// prefix
+	if len(supabaseURL) < 8 || supabaseURL[:8] != "https://" {
+		return fmt.Errorf("URL must start with 'https://' - got: %s", supabaseURL)
+	}
+
+	// Check for .supabase.co suffix
+	url := supabaseURL
+	if url[len(url)-1] == '/' {
+		url = url[:len(url)-1]
+	}
+	if len(url) < 20 || url[len(url)-12:] != ".supabase.co" {
+		return fmt.Errorf("URL must end with '.supabase.co' - got: %s", supabaseURL)
+	}
+
+	// Extract project reference
+	start := 8 // len("https://")
+	end := len(url) - 12 // len(".supabase.co")
+	projectRef := url[start:end]
+
+	if projectRef == "" || len(projectRef) < 10 {
+		return fmt.Errorf("invalid project reference extracted from URL (too short): %s", projectRef)
+	}
+
+	// Check for common mistakes
+	if projectRef == "your-project-ref" || projectRef == "your-project" || projectRef == "xxxxx" {
+		return fmt.Errorf("please replace the placeholder URL with your actual Supabase project URL from https://app.supabase.com")
+	}
+
+	logrus.WithField("project_ref", projectRef).Info("Supabase URL validation passed")
+	return nil
+}
+
 // buildPostgresURI constructs a PostgreSQL connection URI from Supabase configuration
-func buildPostgresURI(supabaseURL, serviceToken string) string {
+func buildPostgresURI(supabaseURL, serviceToken string) (string, error) {
 	// Supabase provides a REST API URL like: https://xxxxx.supabase.co
 	// We need to convert this to PostgreSQL connection string using the service role token
 	
 	// Extract project reference from Supabase URL
 	// URL format: https://xxxxx.supabase.co or https://xxxxx.supabase.co/
-	projectRef := ""
-	if len(supabaseURL) > 8 { // https://
-		url := supabaseURL
-		if url[len(url)-1] == '/' {
-			url = url[:len(url)-1]
-		}
-		// Extract between https:// and .supabase.co
-		start := 8 // len("https://")
-		if idx := len(url) - len(".supabase.co"); idx > start {
-			projectRef = url[start:idx]
-		}
+	url := supabaseURL
+	if url[len(url)-1] == '/' {
+		url = url[:len(url)-1]
+	}
+	
+	// Extract between https:// and .supabase.co
+	start := 8 // len("https://")
+	end := len(url) - 12 // len(".supabase.co")
+	
+	if end <= start {
+		return "", fmt.Errorf("invalid URL format: cannot extract project reference from %s", supabaseURL)
+	}
+	
+	projectRef := url[start:end]
+	
+	if projectRef == "" {
+		return "", fmt.Errorf("empty project reference extracted from URL: %s", supabaseURL)
 	}
 
 	// Build PostgreSQL connection URI using service role token for auth
 	host := fmt.Sprintf("db.%s.supabase.co", projectRef)
 	uri := fmt.Sprintf("postgres://postgres:%s@%s:5432/postgres?sslmode=require", serviceToken, host)
 	
-	return uri
+	logrus.WithFields(logrus.Fields{
+		"project_ref": projectRef,
+		"host": host,
+	}).Debug("Built PostgreSQL connection URI")
+	
+	return uri, nil
 }
 
 // RunSupabaseMigrations runs all database migrations for Supabase (PostgreSQL)
