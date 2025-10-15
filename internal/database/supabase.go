@@ -78,6 +78,18 @@ func validateSupabaseURL(supabaseURL string) error {
 		return fmt.Errorf("URL cannot be empty")
 	}
 
+	// Check for duplicate https: prefix (common Railway mistake)
+	// Example: "https:https://..." should be "https://..."
+	if len(supabaseURL) > 6 && supabaseURL[:6] == "https:" && supabaseURL[6:13] == "https://" {
+		return fmt.Errorf("duplicate 'https:' prefix detected - got: %s\n\n"+
+			"❌ Your URL: %s\n"+
+			"✅ Should be: %s\n\n"+
+			"Fix: In Railway, edit SUPABASE_URL and remove the duplicate 'https:' prefix",
+			supabaseURL,
+			supabaseURL,
+			supabaseURL[6:])
+	}
+
 	// Check for https:// prefix
 	if len(supabaseURL) < 8 || supabaseURL[:8] != "https://" {
 		return fmt.Errorf("URL must start with 'https://' - got: %s", supabaseURL)
