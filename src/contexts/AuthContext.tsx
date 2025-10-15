@@ -68,8 +68,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   // Login function
   const login = async (email: string, password: string): Promise<{ success: boolean; error?: string }> => {
     try {
+      // Normalize email to lowercase and trim
+      const normalizedEmail = email.trim().toLowerCase();
+      
       const { data, error } = await supabase.auth.signInWithPassword({
-        email,
+        email: normalizedEmail,
         password,
       });
 
@@ -95,13 +98,16 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   // Register function
   const register = async (email: string, password: string, fullName: string): Promise<{ success: boolean; error?: string }> => {
     try {
+      // Normalize email to lowercase and trim whitespace
+      const normalizedEmail = email.trim().toLowerCase();
+      
       const { data, error } = await supabase.auth.signUp({
-        email,
+        email: normalizedEmail,
         password,
         options: {
           emailRedirectTo: `${window.location.origin}/`,
           data: {
-            full_name: fullName,
+            full_name: fullName.trim(),
           },
         },
       });
