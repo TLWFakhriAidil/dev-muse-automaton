@@ -41,27 +41,20 @@ func main() {
 	// Load configuration
 	cfg := config.Load()
 
-	// Initialize database (skip if MYSQL_URI is empty or connection fails)
+	// Initialize Supabase database (required)
 	var db *sql.DB
-	mysqlURI := os.Getenv("MYSQL_URI")
-	if mysqlURI == "" {
-		logrus.Warn("MYSQL_URI is empty, running without database")
-	} else {
-		var err error
-		db, err = database.Initialize(cfg)
-		if err != nil {
-			logrus.WithError(err).Warn("Failed to initialize database, continuing without database")
-			db = nil
-		} else {
-			logrus.Info("Database initialized successfully")
+	var err error
+	db, err = database.Initialize(cfg)
+	if err != nil {
+		logrus.WithError(err).Fatal("Failed to initialize Supabase database - SUPABASE_URL and SUPABASE_SERVICE_KEY are required")
+	}
+	logrus.Info("Supabase database initialized successfully")
 
-			// Run migrations
-			if err := database.RunMigrations(db); err != nil {
-				logrus.WithError(err).Warn("Failed to run migrations, continuing anyway")
-			} else {
-				logrus.Info("Database migrations completed")
-			}
-		}
+	// Run migrations
+	if err := database.RunMigrations(db); err != nil {
+		logrus.WithError(err).Warn("Failed to run migrations, continuing anyway")
+	} else {
+		logrus.Info("Database migrations completed")
 	}
 
 	// Initialize Redis with clustering support
