@@ -149,8 +149,13 @@ func buildPostgresURI(supabaseURL, serviceToken string) (string, error) {
 	}
 
 	// Build PostgreSQL connection URI using service role token for auth
+	// Use connection pooler (port 6543) instead of direct connection (port 5432)
+	// This provides better IPv4 support and connection pooling for Railway deployments
 	host := fmt.Sprintf("db.%s.supabase.co", projectRef)
-	uri := fmt.Sprintf("postgres://postgres:%s@%s:5432/postgres?sslmode=require", serviceToken, host)
+	
+	// Use port 6543 (connection pooler) with transaction mode for better compatibility
+	// Connection pooler supports IPv4 and provides better stability on Railway
+	uri := fmt.Sprintf("postgres://postgres.%s:%s@aws-0-us-east-1.pooler.supabase.com:6543/postgres?sslmode=require", projectRef, serviceToken)
 	
 	logrus.WithFields(logrus.Fields{
 		"project_ref": projectRef,
