@@ -14,336 +14,474 @@ export type Database = {
   }
   public: {
     Tables: {
-      ai_conversations: {
+      ai_whatsapp_nodepath: {
         Row: {
-          conversation_current: string | null
-          conversation_last: string | null
-          created_at: string | null
+          balas: string | null
+          conv_current: string | null
+          conv_last: string | null
+          created_at: string
           current_node_id: string | null
-          device_id: string | null
+          date_order: string | null
+          execution_id: string | null
+          execution_status: string | null
           flow_id: string | null
-          human_status: Database["public"]["Enums"]["human_status"] | null
-          id: string
+          flow_reference: string | null
+          human: number | null
+          id_device: string | null
+          id_prospect: number
+          intro: string | null
+          keywordiklan: string | null
+          last_node_id: string | null
+          marketer: string | null
+          niche: string | null
           prospect_name: string | null
-          prospect_num: string
-          session_locked: boolean | null
-          session_locked_at: string | null
+          prospect_num: string | null
           stage: string | null
-          updated_at: string | null
-          user_id: string
+          update_today: string | null
+          updated_at: string
           waiting_for_reply: boolean | null
         }
         Insert: {
-          conversation_current?: string | null
-          conversation_last?: string | null
-          created_at?: string | null
+          balas?: string | null
+          conv_current?: string | null
+          conv_last?: string | null
+          created_at?: string
           current_node_id?: string | null
-          device_id?: string | null
+          date_order?: string | null
+          execution_id?: string | null
+          execution_status?: string | null
           flow_id?: string | null
-          human_status?: Database["public"]["Enums"]["human_status"] | null
-          id?: string
+          flow_reference?: string | null
+          human?: number | null
+          id_device?: string | null
+          id_prospect?: number
+          intro?: string | null
+          keywordiklan?: string | null
+          last_node_id?: string | null
+          marketer?: string | null
+          niche?: string | null
           prospect_name?: string | null
-          prospect_num: string
-          session_locked?: boolean | null
-          session_locked_at?: string | null
+          prospect_num?: string | null
           stage?: string | null
-          updated_at?: string | null
-          user_id: string
+          update_today?: string | null
+          updated_at?: string
           waiting_for_reply?: boolean | null
         }
         Update: {
-          conversation_current?: string | null
-          conversation_last?: string | null
-          created_at?: string | null
+          balas?: string | null
+          conv_current?: string | null
+          conv_last?: string | null
+          created_at?: string
           current_node_id?: string | null
-          device_id?: string | null
+          date_order?: string | null
+          execution_id?: string | null
+          execution_status?: string | null
           flow_id?: string | null
-          human_status?: Database["public"]["Enums"]["human_status"] | null
-          id?: string
+          flow_reference?: string | null
+          human?: number | null
+          id_device?: string | null
+          id_prospect?: number
+          intro?: string | null
+          keywordiklan?: string | null
+          last_node_id?: string | null
+          marketer?: string | null
+          niche?: string | null
           prospect_name?: string | null
-          prospect_num?: string
-          session_locked?: boolean | null
-          session_locked_at?: string | null
+          prospect_num?: string | null
           stage?: string | null
-          updated_at?: string | null
-          user_id?: string
+          update_today?: string | null
+          updated_at?: string
           waiting_for_reply?: boolean | null
         }
-        Relationships: [
-          {
-            foreignKeyName: "ai_conversations_device_id_fkey"
-            columns: ["device_id"]
-            isOneToOne: false
-            referencedRelation: "device_settings"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "ai_conversations_flow_id_fkey"
-            columns: ["flow_id"]
-            isOneToOne: false
-            referencedRelation: "chatbot_flows"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "ai_conversations_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
-      analytics_summary: {
+      ai_whatsapp_session_nodepath: {
         Row: {
-          active_users: number | null
-          avg_response_time: unknown | null
-          created_at: string | null
-          date_period: string
-          device_id: string | null
-          id: string
-          total_conversations: number | null
-          total_messages: number | null
-          updated_at: string | null
-          user_id: string
+          id_device: string
+          id_prospect: string
+          id_sessionx: number
+          timestamp: string
         }
         Insert: {
-          active_users?: number | null
-          avg_response_time?: unknown | null
-          created_at?: string | null
-          date_period: string
-          device_id?: string | null
-          id?: string
-          total_conversations?: number | null
-          total_messages?: number | null
-          updated_at?: string | null
-          user_id: string
+          id_device: string
+          id_prospect: string
+          id_sessionx?: number
+          timestamp: string
         }
         Update: {
-          active_users?: number | null
-          avg_response_time?: unknown | null
-          created_at?: string | null
-          date_period?: string
-          device_id?: string | null
-          id?: string
-          total_conversations?: number | null
-          total_messages?: number | null
-          updated_at?: string | null
-          user_id?: string
+          id_device?: string
+          id_prospect?: string
+          id_sessionx?: number
+          timestamp?: string
         }
-        Relationships: [
-          {
-            foreignKeyName: "analytics_summary_device_id_fkey"
-            columns: ["device_id"]
-            isOneToOne: false
-            referencedRelation: "device_settings"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "analytics_summary_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
-      chatbot_flows: {
+      chatbot_flows_nodepath: {
         Row: {
-          created_at: string | null
-          description: string | null
-          device_id: string | null
+          created_at: string
           edges: Json | null
-          flow_id: string
-          flow_name: string
-          global_instance: string | null
-          global_open_router_key: string | null
           id: string
-          niche: string | null
+          id_device: string
+          name: string
+          niche: string
           nodes: Json | null
-          status: Database["public"]["Enums"]["flow_status"] | null
-          updated_at: string | null
-          user_id: string
+          updated_at: string
         }
         Insert: {
-          created_at?: string | null
-          description?: string | null
-          device_id?: string | null
+          created_at?: string
           edges?: Json | null
-          flow_id: string
-          flow_name: string
-          global_instance?: string | null
-          global_open_router_key?: string | null
-          id?: string
-          niche?: string | null
+          id: string
+          id_device?: string
+          name: string
+          niche?: string
           nodes?: Json | null
-          status?: Database["public"]["Enums"]["flow_status"] | null
-          updated_at?: string | null
-          user_id: string
+          updated_at?: string
         }
         Update: {
-          created_at?: string | null
-          description?: string | null
-          device_id?: string | null
+          created_at?: string
           edges?: Json | null
-          flow_id?: string
-          flow_name?: string
-          global_instance?: string | null
-          global_open_router_key?: string | null
           id?: string
-          niche?: string | null
+          id_device?: string
+          name?: string
+          niche?: string
           nodes?: Json | null
-          status?: Database["public"]["Enums"]["flow_status"] | null
-          updated_at?: string | null
-          user_id?: string
+          updated_at?: string
         }
-        Relationships: [
-          {
-            foreignKeyName: "chatbot_flows_device_id_fkey"
-            columns: ["device_id"]
-            isOneToOne: false
-            referencedRelation: "device_settings"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "chatbot_flows_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
-      conversation_logs: {
+      device_setting_nodepath: {
         Row: {
-          ai_response_time: unknown | null
-          content: string | null
-          created_at: string | null
+          api_key: string | null
+          api_key_option:
+            | Database["public"]["Enums"]["api_key_option_enum"]
+            | null
+          created_at: string
           device_id: string | null
           id: string
-          message_type: Database["public"]["Enums"]["message_type"] | null
-          phone_number: string
-          user_id: string
+          id_admin: string | null
+          id_device: string | null
+          id_erp: string | null
+          instance: string | null
+          phone_number: string | null
+          provider: Database["public"]["Enums"]["provider_enum"] | null
+          updated_at: string
+          user_id: string | null
+          webhook_id: string | null
         }
         Insert: {
-          ai_response_time?: unknown | null
-          content?: string | null
-          created_at?: string | null
+          api_key?: string | null
+          api_key_option?:
+            | Database["public"]["Enums"]["api_key_option_enum"]
+            | null
+          created_at?: string
           device_id?: string | null
-          id?: string
-          message_type?: Database["public"]["Enums"]["message_type"] | null
-          phone_number: string
-          user_id: string
-        }
-        Update: {
-          ai_response_time?: unknown | null
-          content?: string | null
-          created_at?: string | null
-          device_id?: string | null
-          id?: string
-          message_type?: Database["public"]["Enums"]["message_type"] | null
-          phone_number?: string
-          user_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "conversation_logs_device_id_fkey"
-            columns: ["device_id"]
-            isOneToOne: false
-            referencedRelation: "device_settings"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "conversation_logs_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      device_settings: {
-        Row: {
-          api_key_option: string | null
-          api_provider: Database["public"]["Enums"]["api_provider"] | null
-          created_at: string | null
-          device_id: string
-          device_name: string
           id: string
-          status: Database["public"]["Enums"]["device_status"] | null
-          updated_at: string | null
-          user_id: string
-          waha_url: string | null
-          whacenter_token: string | null
-          whatsapp_provider:
-            | Database["public"]["Enums"]["whatsapp_provider"]
-            | null
-        }
-        Insert: {
-          api_key_option?: string | null
-          api_provider?: Database["public"]["Enums"]["api_provider"] | null
-          created_at?: string | null
-          device_id: string
-          device_name: string
-          id?: string
-          status?: Database["public"]["Enums"]["device_status"] | null
-          updated_at?: string | null
-          user_id: string
-          waha_url?: string | null
-          whacenter_token?: string | null
-          whatsapp_provider?:
-            | Database["public"]["Enums"]["whatsapp_provider"]
-            | null
+          id_admin?: string | null
+          id_device?: string | null
+          id_erp?: string | null
+          instance?: string | null
+          phone_number?: string | null
+          provider?: Database["public"]["Enums"]["provider_enum"] | null
+          updated_at?: string
+          user_id?: string | null
+          webhook_id?: string | null
         }
         Update: {
-          api_key_option?: string | null
-          api_provider?: Database["public"]["Enums"]["api_provider"] | null
-          created_at?: string | null
-          device_id?: string
-          device_name?: string
-          id?: string
-          status?: Database["public"]["Enums"]["device_status"] | null
-          updated_at?: string | null
-          user_id?: string
-          waha_url?: string | null
-          whacenter_token?: string | null
-          whatsapp_provider?:
-            | Database["public"]["Enums"]["whatsapp_provider"]
+          api_key?: string | null
+          api_key_option?:
+            | Database["public"]["Enums"]["api_key_option_enum"]
             | null
+          created_at?: string
+          device_id?: string | null
+          id?: string
+          id_admin?: string | null
+          id_device?: string | null
+          id_erp?: string | null
+          instance?: string | null
+          phone_number?: string | null
+          provider?: Database["public"]["Enums"]["provider_enum"] | null
+          updated_at?: string
+          user_id?: string | null
+          webhook_id?: string | null
         }
-        Relationships: [
-          {
-            foreignKeyName: "device_settings_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
+      }
+      orders_nodepath: {
+        Row: {
+          amount: number
+          bill_id: string | null
+          collection_id: string | null
+          created_at: string
+          id: number
+          method: string | null
+          product: string
+          status: string | null
+          updated_at: string
+          url: string | null
+          user_id: string | null
+        }
+        Insert: {
+          amount: number
+          bill_id?: string | null
+          collection_id?: string | null
+          created_at?: string
+          id?: number
+          method?: string | null
+          product: string
+          status?: string | null
+          updated_at?: string
+          url?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          amount?: number
+          bill_id?: string | null
+          collection_id?: string | null
+          created_at?: string
+          id?: number
+          method?: string | null
+          product?: string
+          status?: string | null
+          updated_at?: string
+          url?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
       }
       profiles: {
         Row: {
-          avatar_url: string | null
-          created_at: string | null
-          email: string | null
-          full_name: string | null
+          created_at: string
+          expired: string | null
+          full_name: string
+          gmail: string | null
           id: string
-          updated_at: string | null
+          last_login: string | null
+          phone: string | null
+          status: string | null
+          updated_at: string
         }
         Insert: {
-          avatar_url?: string | null
-          created_at?: string | null
-          email?: string | null
-          full_name?: string | null
+          created_at?: string
+          expired?: string | null
+          full_name: string
+          gmail?: string | null
           id: string
-          updated_at?: string | null
+          last_login?: string | null
+          phone?: string | null
+          status?: string | null
+          updated_at?: string
         }
         Update: {
-          avatar_url?: string | null
-          created_at?: string | null
-          email?: string | null
-          full_name?: string | null
+          created_at?: string
+          expired?: string | null
+          full_name?: string
+          gmail?: string | null
           id?: string
-          updated_at?: string | null
+          last_login?: string | null
+          phone?: string | null
+          status?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      stagesetvalue_nodepath: {
+        Row: {
+          columnsdata: string | null
+          id_device: string | null
+          inputhardcode: string | null
+          stage: string | null
+          stagesetvalue_id: number
+          type_inputdata: string | null
+        }
+        Insert: {
+          columnsdata?: string | null
+          id_device?: string | null
+          inputhardcode?: string | null
+          stage?: string | null
+          stagesetvalue_id?: number
+          type_inputdata?: string | null
+        }
+        Update: {
+          columnsdata?: string | null
+          id_device?: string | null
+          inputhardcode?: string | null
+          stage?: string | null
+          stagesetvalue_id?: number
+          type_inputdata?: string | null
+        }
+        Relationships: []
+      }
+      user_nodepath: {
+        Row: {
+          created_at: string
+          email: string
+          expired: string | null
+          full_name: string
+          gmail: string | null
+          id: string
+          is_active: boolean | null
+          last_login: string | null
+          password: string
+          phone: string | null
+          status: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          expired?: string | null
+          full_name: string
+          gmail?: string | null
+          id: string
+          is_active?: boolean | null
+          last_login?: string | null
+          password: string
+          phone?: string | null
+          status?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          expired?: string | null
+          full_name?: string
+          gmail?: string | null
+          id?: string
+          is_active?: boolean | null
+          last_login?: string | null
+          password?: string
+          phone?: string | null
+          status?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      user_sessions_nodepath: {
+        Row: {
+          created_at: string
+          expires_at: string
+          id: string
+          token: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          expires_at?: string
+          id: string
+          token: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          expires_at?: string
+          id?: string
+          token?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      wasapbot_nodepath: {
+        Row: {
+          alamat: string | null
+          cara_bayaran: string | null
+          conv_last: string | null
+          conv_start: string | null
+          current_node_id: string | null
+          date_last: string | null
+          date_start: string | null
+          execution_id: string | null
+          execution_status: string | null
+          flow_id: string | null
+          flow_reference: string | null
+          id_device: string | null
+          id_prospect: number
+          last_node_id: string | null
+          nama: string | null
+          niche: string | null
+          no_fon: string | null
+          pakej: string | null
+          peringkat_sekolah: string | null
+          prospect_num: string | null
+          stage: string | null
+          status: string | null
+          tarikh_gaji: string | null
+          temp_stage: string | null
+          waiting_for_reply: boolean | null
+        }
+        Insert: {
+          alamat?: string | null
+          cara_bayaran?: string | null
+          conv_last?: string | null
+          conv_start?: string | null
+          current_node_id?: string | null
+          date_last?: string | null
+          date_start?: string | null
+          execution_id?: string | null
+          execution_status?: string | null
+          flow_id?: string | null
+          flow_reference?: string | null
+          id_device?: string | null
+          id_prospect?: number
+          last_node_id?: string | null
+          nama?: string | null
+          niche?: string | null
+          no_fon?: string | null
+          pakej?: string | null
+          peringkat_sekolah?: string | null
+          prospect_num?: string | null
+          stage?: string | null
+          status?: string | null
+          tarikh_gaji?: string | null
+          temp_stage?: string | null
+          waiting_for_reply?: boolean | null
+        }
+        Update: {
+          alamat?: string | null
+          cara_bayaran?: string | null
+          conv_last?: string | null
+          conv_start?: string | null
+          current_node_id?: string | null
+          date_last?: string | null
+          date_start?: string | null
+          execution_id?: string | null
+          execution_status?: string | null
+          flow_id?: string | null
+          flow_reference?: string | null
+          id_device?: string | null
+          id_prospect?: number
+          last_node_id?: string | null
+          nama?: string | null
+          niche?: string | null
+          no_fon?: string | null
+          pakej?: string | null
+          peringkat_sekolah?: string | null
+          prospect_num?: string | null
+          stage?: string | null
+          status?: string | null
+          tarikh_gaji?: string | null
+          temp_stage?: string | null
+          waiting_for_reply?: boolean | null
+        }
+        Relationships: []
+      }
+      wasapbot_session_nodepath: {
+        Row: {
+          id_device: string
+          id_prospect: string
+          id_sessiony: number
+          session_timestamp: string
+        }
+        Insert: {
+          id_device: string
+          id_prospect: string
+          id_sessiony?: number
+          session_timestamp: string
+        }
+        Update: {
+          id_device?: string
+          id_prospect?: string
+          id_sessiony?: number
+          session_timestamp?: string
         }
         Relationships: []
       }
@@ -355,12 +493,14 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
-      api_provider: "openai" | "anthropic" | "google" | "openrouter"
-      device_status: "active" | "inactive" | "pending"
-      flow_status: "active" | "inactive" | "draft"
-      human_status: "active" | "inactive" | "pending_response"
-      message_type: "text" | "image" | "audio" | "video" | "document"
-      whatsapp_provider: "waha" | "whacenter" | "wablas" | "wasapbot"
+      api_key_option_enum:
+        | "openai/gpt-5-chat"
+        | "openai/gpt-5-mini"
+        | "openai/chatgpt-4o-latest"
+        | "openai/gpt-4.1"
+        | "google/gemini-2.5-pro"
+        | "google/gemini-pro-1.5"
+      provider_enum: "whacenter" | "wablas" | "waha"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -488,12 +628,15 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      api_provider: ["openai", "anthropic", "google", "openrouter"],
-      device_status: ["active", "inactive", "pending"],
-      flow_status: ["active", "inactive", "draft"],
-      human_status: ["active", "inactive", "pending_response"],
-      message_type: ["text", "image", "audio", "video", "document"],
-      whatsapp_provider: ["waha", "whacenter", "wablas", "wasapbot"],
+      api_key_option_enum: [
+        "openai/gpt-5-chat",
+        "openai/gpt-5-mini",
+        "openai/chatgpt-4o-latest",
+        "openai/gpt-4.1",
+        "google/gemini-2.5-pro",
+        "google/gemini-pro-1.5",
+      ],
+      provider_enum: ["whacenter", "wablas", "waha"],
     },
   },
 } as const

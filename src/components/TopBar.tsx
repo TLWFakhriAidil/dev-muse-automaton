@@ -23,7 +23,7 @@ interface TopBarProps {
  * Integrates with the authentication context to provide user management features
  */
 const TopBar: React.FC<TopBarProps> = ({ sidebarOpen, setSidebarOpen }) => {
-  const { user, logout } = useAuth();
+  const { user, profile, logout } = useAuth();
   const navigate = useNavigate();
   const systemStatus = useOptimizedSystemStatus();
 
@@ -85,7 +85,7 @@ const TopBar: React.FC<TopBarProps> = ({ sidebarOpen, setSidebarOpen }) => {
               <Button variant="ghost" className="relative h-8 w-8 rounded-full">
                 <div className="w-8 h-8 bg-gradient-to-r from-blue-600 to-purple-600 rounded-full flex items-center justify-center">
                   <span className="text-sm font-medium text-white">
-                    {user?.full_name ? user.full_name.charAt(0).toUpperCase() : 'U'}
+                    {profile?.full_name ? profile.full_name.charAt(0).toUpperCase() : 'U'}
                   </span>
                 </div>
               </Button>
@@ -94,7 +94,7 @@ const TopBar: React.FC<TopBarProps> = ({ sidebarOpen, setSidebarOpen }) => {
               <DropdownMenuLabel className="font-normal">
                 <div className="flex flex-col space-y-1">
                   <p className="text-sm font-medium leading-none">
-                    {user?.full_name || 'User'}
+                    {profile?.full_name || 'User'}
                   </p>
                   <p className="text-xs leading-none text-muted-foreground">
                     {user?.email || 'user@example.com'}

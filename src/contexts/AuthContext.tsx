@@ -1,22 +1,29 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { supabase } from '@/integrations/supabase/client';
+import { User, Session } from '@supabase/supabase-js';
 
-// Types for authentication
-interface User {
-  id: number;
-  email: string;
+// Profile type for additional user information
+interface Profile {
+  id: string;
   full_name: string;
+  phone: string | null;
+  gmail: string | null;
+  status: string;
+  expired: string | null;
+  last_login: string | null;
   created_at: string;
   updated_at: string;
 }
 
 interface AuthContextType {
   user: User | null;
+  profile: Profile | null;
+  session: Session | null;
   isAuthenticated: boolean;
   isLoading: boolean;
   login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
   register: (email: string, password: string, fullName: string) => Promise<{ success: boolean; error?: string }>;
   logout: () => Promise<void>;
-  checkAuth: () => Promise<void>;
 }
 
 // Create the context
@@ -38,59 +45,47 @@ interface AuthProviderProps {
 
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
+  const [session, setSession] = useState<Session | null>(null);
+  const [profile, setProfile] = useState<Profile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const isAuthenticated = !!user;
 
-  // Check authentication status on app load
-  const checkAuth = async () => {
-    try {
-      setIsLoading(true);
-      const response = await fetch('/api/auth/me', {
-        method: 'GET',
-        credentials: 'include', // Include cookies
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
+  // Fetch user profile from profiles table
+  const fetchProfile = async (userId: string) => {
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', userId)
+      .single();
 
-      if (response.ok) {
-        const result = await response.json();
-        if (result.success && result.data) {
-          setUser(result.data);
-        } else {
-          setUser(null);
-        }
-      } else {
-        setUser(null);
-      }
-    } catch (error) {
-      console.error('Auth check failed:', error);
-      setUser(null);
-    } finally {
-      setIsLoading(false);
+    if (error) {
+      console.error('Error fetching profile:', error);
+      return null;
     }
+    return data;
   };
 
   // Login function
   const login = async (email: string, password: string): Promise<{ success: boolean; error?: string }> => {
     try {
-      const response = await fetch('/api/auth/login', {
-        method: 'POST',
-        credentials: 'include', // Include cookies
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ email, password }),
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
       });
 
-      const result = await response.json();
-
-      if (response.ok && result.success) {
-        setUser(result.data.user);
-        return { success: true };
-      } else {
-        return { success: false, error: result.error || 'Login failed' };
+      if (error) {
+        return { success: false, error: error.message };
       }
+
+      if (data.user) {
+        // Update last login
+        await supabase
+          .from('profiles')
+          .update({ last_login: new Date().toISOString() })
+          .eq('id', data.user.id);
+      }
+
+      return { success: true };
     } catch (error) {
       console.error('Login error:', error);
       return { success: false, error: 'Network error. Please try again.' };
@@ -100,23 +95,22 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   // Register function
   const register = async (email: string, password: string, fullName: string): Promise<{ success: boolean; error?: string }> => {
     try {
-      const response = await fetch('/api/auth/register', {
-        method: 'POST',
-        credentials: 'include', // Include cookies
-        headers: {
-          'Content-Type': 'application/json',
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          emailRedirectTo: `${window.location.origin}/`,
+          data: {
+            full_name: fullName,
+          },
         },
-        body: JSON.stringify({ email, password, full_name: fullName }),
       });
 
-      const result = await response.json();
-
-      if (response.ok && result.success) {
-        setUser(result.data.user);
-        return { success: true };
-      } else {
-        return { success: false, error: result.error || 'Registration failed' };
+      if (error) {
+        return { success: false, error: error.message };
       }
+
+      return { success: true };
     } catch (error) {
       console.error('Registration error:', error);
       return { success: false, error: 'Network error. Please try again.' };
@@ -126,33 +120,57 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   // Logout function
   const logout = async () => {
     try {
-      await fetch('/api/auth/logout', {
-        method: 'POST',
-        credentials: 'include', // Include cookies
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
+      await supabase.auth.signOut();
     } catch (error) {
       console.error('Logout error:', error);
-    } finally {
-      setUser(null);
     }
   };
 
-  // Check auth on component mount
+  // Set up auth state listener and check for existing session
   useEffect(() => {
-    checkAuth();
+    // Set up auth state listener FIRST
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (event, session) => {
+        setSession(session);
+        setUser(session?.user ?? null);
+        
+        // Fetch profile when user logs in
+        if (session?.user) {
+          setTimeout(() => {
+            fetchProfile(session.user.id).then(setProfile);
+          }, 0);
+        } else {
+          setProfile(null);
+        }
+        
+        setIsLoading(false);
+      }
+    );
+
+    // THEN check for existing session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+      setUser(session?.user ?? null);
+      
+      if (session?.user) {
+        fetchProfile(session.user.id).then(setProfile);
+      }
+      
+      setIsLoading(false);
+    });
+
+    return () => subscription.unsubscribe();
   }, []);
 
   const value: AuthContextType = {
     user,
+    profile,
+    session,
     isAuthenticated,
     isLoading,
     login,
     register,
     logout,
-    checkAuth,
   };
 
   return (
