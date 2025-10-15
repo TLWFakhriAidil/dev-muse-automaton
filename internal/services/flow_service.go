@@ -48,7 +48,7 @@ func (s *FlowService) CreateFlow(flow *models.ChatbotFlow) error {
 	flow.UpdatedAt = time.Now()
 
 	query := `
-		INSERT INTO chatbot_flows_nodepath 
+		INSERT INTO chatbot_flows 
 		(id, name, niche, id_device,
 		 nodes, edges, created_at, updated_at)
 		VALUES (?, ?, ?, ?, ?, ?, ?, ?)
@@ -81,7 +81,7 @@ func (s *FlowService) GetFlow(flowID string) (*models.ChatbotFlow, error) {
 	query := `
 		SELECT id, name, niche, id_device,
 		       nodes, edges, created_at, updated_at
-		FROM chatbot_flows_nodepath 
+		FROM chatbot_flows 
 		WHERE id = ?
 		LIMIT 1
 	`
@@ -106,12 +106,12 @@ func (s *FlowService) GetFlow(flowID string) (*models.ChatbotFlow, error) {
 func (s *FlowService) DetermineTableByFlowName(flowName string) string {
 	// Check if flow name is "WasapBot Exama"
 	if flowName == "WasapBot Exama" {
-		logrus.WithField("flow_name", flowName).Info("📊 TABLE SELECTION: Using wasapBot_nodepath for WasapBot Exama flow")
-		return "wasapBot_nodepath"
+		logrus.WithField("flow_name", flowName).Info("📊 TABLE SELECTION: Using wasapBot for WasapBot Exama flow")
+		return "wasapBot"
 	}
-	// Default to ai_whatsapp_nodepath for "Chatbot AI" or any other name
-	logrus.WithField("flow_name", flowName).Info("📊 TABLE SELECTION: Using ai_whatsapp_nodepath for Chatbot AI flow")
-	return "ai_whatsapp_nodepath"
+	// Default to ai_whatsapp for "Chatbot AI" or any other name
+	logrus.WithField("flow_name", flowName).Info("📊 TABLE SELECTION: Using ai_whatsapp for Chatbot AI flow")
+	return "ai_whatsapp"
 }
 
 // GetFlowAndDetermineTable retrieves a flow and determines which table to use for processing
@@ -146,7 +146,7 @@ func (s *FlowService) GetAllFlows() ([]*models.ChatbotFlow, error) {
 	query := `
 		SELECT id, name, niche, id_device,
 		       nodes, edges, created_at, updated_at
-		FROM chatbot_flows_nodepath 
+		FROM chatbot_flows 
 		ORDER BY created_at DESC
 	`
 
@@ -172,7 +172,7 @@ func (s *FlowService) GetAllFlows() ([]*models.ChatbotFlow, error) {
 	return flows, nil
 }
 
-// GetFlowsByUserDevices retrieves flows filtered by user's device IDs from device_setting_nodepath
+// GetFlowsByUserDevices retrieves flows filtered by user's device IDs from device_setting
 // GetFlowsByUserDevicesString gets flows by user devices using string UUID user_id
 func (s *FlowService) GetFlowsByUserDevicesString(userID string) ([]*models.ChatbotFlow, error) {
 	if s.db == nil {
@@ -181,7 +181,7 @@ func (s *FlowService) GetFlowsByUserDevicesString(userID string) ([]*models.Chat
 	}
 
 	// First get all device IDs for this user
-	deviceQuery := `SELECT id_device FROM device_setting_nodepath WHERE user_id = ?`
+	deviceQuery := `SELECT id_device FROM device_setting WHERE user_id = ?`
 	deviceRows, err := s.db.Query(deviceQuery, userID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get user devices: %w", err)
@@ -210,7 +210,7 @@ func (s *FlowService) GetFlowsByUserDevicesString(userID string) ([]*models.Chat
 	query := fmt.Sprintf(`
 		SELECT id, name, niche, id_device,
 		       nodes, edges, created_at, updated_at
-		FROM chatbot_flows_nodepath 
+		FROM chatbot_flows 
 		WHERE id_device IN (%s)
 		ORDER BY created_at DESC
 	`, placeholders)
@@ -255,7 +255,7 @@ func (s *FlowService) GetFlowsByUserDevices(userID int) ([]*models.ChatbotFlow, 
 	}
 
 	// First get all device IDs for this user
-	deviceQuery := `SELECT id_device FROM device_setting_nodepath WHERE user_id = ?`
+	deviceQuery := `SELECT id_device FROM device_setting WHERE user_id = ?`
 	deviceRows, err := s.db.Query(deviceQuery, userID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get user devices: %w", err)
@@ -284,7 +284,7 @@ func (s *FlowService) GetFlowsByUserDevices(userID int) ([]*models.ChatbotFlow, 
 	query := fmt.Sprintf(`
 		SELECT id, name, niche, id_device,
 		       nodes, edges, created_at, updated_at
-		FROM chatbot_flows_nodepath 
+		FROM chatbot_flows 
 		WHERE id_device IN (%s)
 		ORDER BY created_at DESC
 	`, placeholders)
@@ -327,7 +327,7 @@ func (s *FlowService) GetFlowsByDevice(idDevice string) ([]*models.ChatbotFlow, 
 	query := `
 		SELECT id, name, niche, id_device,
 		       nodes, edges, created_at, updated_at
-		FROM chatbot_flows_nodepath 
+		FROM chatbot_flows 
 		WHERE id_device = ?
 		ORDER BY created_at DESC
 	`
@@ -443,7 +443,7 @@ func (s *FlowService) UpdateFlow(flow *models.ChatbotFlow) error {
 	flow.UpdatedAt = time.Now()
 
 	query := `
-		UPDATE chatbot_flows_nodepath 
+		UPDATE chatbot_flows 
 		SET name = ?, niche = ?, id_device = ?,
 		    nodes = ?, edges = ?, updated_at = ?
 		WHERE id = ?
@@ -468,7 +468,7 @@ func (s *FlowService) DeleteFlow(flowID string) error {
 		return nil // Return success in fallback mode
 	}
 
-	query := `DELETE FROM chatbot_flows_nodepath WHERE id = ?`
+	query := `DELETE FROM chatbot_flows WHERE id = ?`
 	_, err := s.db.Exec(query, flowID)
 
 	if err != nil {

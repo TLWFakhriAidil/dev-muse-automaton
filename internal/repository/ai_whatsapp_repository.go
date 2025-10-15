@@ -17,7 +17,7 @@ import (
 type AIWhatsappRepository interface {
 	// Create operations
 	CreateAIWhatsapp(ai *models.AIWhatsapp) error
-	// CreateConversationLog removed - no longer using conversation_log_nodepath table
+	// CreateConversationLog removed - no longer using conversation_log table
 
 	// Read operations
 	GetAIWhatsappByProspectNum(prospectNum string) (*models.AIWhatsapp, error)
@@ -95,7 +95,7 @@ func (r *aiWhatsappRepository) CreateAIWhatsapp(ai *models.AIWhatsapp) error {
 	}
 
 	query := `
-		INSERT INTO ai_whatsapp_nodepath (
+		INSERT INTO ai_whatsapp (
 			id_device, prospect_num, prospect_name, stage, date_order, conv_last, 
 			conv_current, human, niche, intro, 
 			balas, keywordiklan, marketer, update_today, 
@@ -224,8 +224,8 @@ func (r *aiWhatsappRepository) CreateAIWhatsapp(ai *models.AIWhatsapp) error {
 	return nil
 }
 
-// CreateConversationLog - REMOVED: No longer using conversation_log_nodepath table
-// All conversation history is now stored in ai_whatsapp_nodepath.conv_last field
+// CreateConversationLog - REMOVED: No longer using conversation_log table
+// All conversation history is now stored in ai_whatsapp.conv_last field
 // func (r *aiWhatsappRepository) CreateConversationLog(log *models.ConversationLog) error {
 // 	// REMOVED - no longer needed
 // 	return nil
@@ -245,7 +245,7 @@ func (r *aiWhatsappRepository) GetAIWhatsappByProspectNum(prospectNum string) (*
 		       created_at, updated_at,
 		       current_node_id, waiting_for_reply, flow_id, last_node_id, 
 		       flow_reference, execution_status, execution_id
-		FROM ai_whatsapp_nodepath 
+		FROM ai_whatsapp 
 		WHERE prospect_num = ?
 	`
 
@@ -292,7 +292,7 @@ func (r *aiWhatsappRepository) GetAIWhatsappByID(id int) (*models.AIWhatsapp, er
 		       conv_current, human, niche, intro, 
 		       balas, keywordiklan, marketer, update_today, 
 		       created_at, updated_at
-		FROM ai_whatsapp_nodepath 
+		FROM ai_whatsapp 
 		WHERE id_prospect = ?
 	`
 
@@ -337,7 +337,7 @@ func (r *aiWhatsappRepository) GetAIWhatsappByDevice(idDevice string) ([]models.
 		       conv_current, human, niche, intro, 
 		       balas, keywordiklan, marketer, update_today, 
 		       created_at, updated_at
-		FROM ai_whatsapp_nodepath 
+		FROM ai_whatsapp 
 		WHERE id_device = ?
 		ORDER BY updated_at DESC
 	`
@@ -378,7 +378,7 @@ func (r *aiWhatsappRepository) GetAIWhatsappByDevice(idDevice string) ([]models.
 	return conversations, nil
 }
 
-// UpdateProspectName updates the prospect_name field in ai_whatsapp_nodepath
+// UpdateProspectName updates the prospect_name field in ai_whatsapp
 func (r *aiWhatsappRepository) UpdateProspectName(prospectNum, idDevice, prospectName string) error {
 	// Check if database connection is available
 	if r.db == nil {
@@ -393,7 +393,7 @@ func (r *aiWhatsappRepository) UpdateProspectName(prospectNum, idDevice, prospec
 		nameValue = prospectName
 	}
 
-	query := `UPDATE ai_whatsapp_nodepath SET prospect_name = ?, updated_at = ? WHERE prospect_num = ? AND id_device = ?`
+	query := `UPDATE ai_whatsapp SET prospect_name = ?, updated_at = ? WHERE prospect_num = ? AND id_device = ?`
 	now := time.Now()
 
 	result, err := r.db.Exec(query, nameValue, now, prospectNum, idDevice)
@@ -426,12 +426,12 @@ func (r *aiWhatsappRepository) GetAllAIWhatsappData(limit, offset int, deviceFil
 		       a.conv_current, a.human, a.niche, a.intro, 
 		       a.balas, a.keywordiklan, a.marketer, a.update_today, 
 		       a.created_at, a.updated_at
-		FROM ai_whatsapp_nodepath a
-		JOIN device_setting_nodepath d ON a.id_device = d.id_device
+		FROM ai_whatsapp a
+		JOIN device_setting d ON a.id_device = d.id_device
 		WHERE d.user_id = ?
 	`
 
-	countQuery := `SELECT COUNT(*) FROM ai_whatsapp_nodepath a JOIN device_setting_nodepath d ON a.id_device = d.id_device WHERE d.user_id = ?`
+	countQuery := `SELECT COUNT(*) FROM ai_whatsapp a JOIN device_setting d ON a.id_device = d.id_device WHERE d.user_id = ?`
 
 	// Build additional WHERE conditions
 	var conditions []string
@@ -571,7 +571,7 @@ func (r *aiWhatsappRepository) GetAllAIWhatsappData(limit, offset int, deviceFil
 	return conversations, total, nil
 }
 
-// GetAnalyticsData retrieves analytics data from ai_whatsapp_nodepath table with date filtering
+// GetAnalyticsData retrieves analytics data from ai_whatsapp table with date filtering
 func (r *aiWhatsappRepository) GetAnalyticsData(startDate, endDate time.Time, idDevice string, userID string) (map[string]interface{}, error) {
 	logrus.WithFields(logrus.Fields{
 		"startDate": startDate.Format("2006-01-02"),
@@ -582,7 +582,7 @@ func (r *aiWhatsappRepository) GetAnalyticsData(startDate, endDate time.Time, id
 
 	// First, let's get the user's devices
 	var userDevices []string
-	deviceQuery := `SELECT id_device FROM device_setting_nodepath WHERE user_id = ?`
+	deviceQuery := `SELECT id_device FROM device_setting WHERE user_id = ?`
 	rows, err := r.db.Query(deviceQuery, userID)
 	if err == nil {
 		defer rows.Close()
@@ -640,7 +640,7 @@ func (r *aiWhatsappRepository) GetAnalyticsData(startDate, endDate time.Time, id
 			COUNT(DISTINCT id_device) as unique_devices,
 			COUNT(DISTINCT niche) as unique_niches,
 			COUNT(CASE WHEN stage IS NOT NULL AND stage != '' THEN 1 END) as conversations_with_stage
-		FROM ai_whatsapp_nodepath
+		FROM ai_whatsapp
 		WHERE id_device IN (%s) AND DATE(created_at) >= ? AND DATE(created_at) <= ?
 	`, strings.Join(placeholders, ","))
 
@@ -697,7 +697,7 @@ func (r *aiWhatsappRepository) GetAnalyticsData(startDate, endDate time.Time, id
 			COUNT(*) as conversations,
 			COUNT(CASE WHEN human = 0 THEN 1 END) as ai_conversations,
 			COUNT(CASE WHEN human = 1 THEN 1 END) as human_conversations
-		FROM ai_whatsapp_nodepath
+		FROM ai_whatsapp
 		WHERE id_device IN (%s) AND DATE(created_at) >= ? AND DATE(created_at) <= ?
 	`, strings.Join(placeholders, ","))
 
@@ -755,7 +755,7 @@ func (r *aiWhatsappRepository) GetAnalyticsData(startDate, endDate time.Time, id
 				ELSE stage 
 			END as stage_name,
 			COUNT(*) as count
-		FROM ai_whatsapp_nodepath
+		FROM ai_whatsapp
 		WHERE id_device IN (%s) AND DATE(created_at) >= ? AND DATE(created_at) <= ?
 	`, strings.Join(placeholders, ","))
 
@@ -833,7 +833,7 @@ func (r *aiWhatsappRepository) GetAIWhatsappByNiche(niche string) ([]models.AIWh
 		       catatan_staff, balas, data_image, conv_stage, 
 		       bot_balas, keywordiklan, marketer, update_today, 
 		       created_at, updated_at
-		FROM ai_whatsapp_nodepath 
+		FROM ai_whatsapp 
 		WHERE niche = ?
 		ORDER BY updated_at DESC
 	`
@@ -882,7 +882,7 @@ func (r *aiWhatsappRepository) GetActiveAIConversations() ([]models.AIWhatsapp, 
 		       catatan_staff, balas, data_image, conv_stage, 
 		       bot_balas, keywordiklan, marketer, update_today, 
 		       created_at, updated_at
-		FROM ai_whatsapp_nodepath 
+		FROM ai_whatsapp 
 		WHERE human = 0
 		ORDER BY updated_at DESC
 	`
@@ -933,7 +933,7 @@ func (r *aiWhatsappRepository) GetActiveAIConversations() ([]models.AIWhatsapp, 
 func (r *aiWhatsappRepository) GetConversationHistory(prospectNum string, limit int) ([]models.ConversationLog, error) {
 	query := `
 		SELECT id, prospect_num, message, sender, stage, created_at
-		FROM conversation_log_nodepath 
+		FROM conversation_log 
 		WHERE prospect_num = ?
 		ORDER BY created_at DESC
 		LIMIT ?
@@ -969,7 +969,7 @@ func (r *aiWhatsappRepository) GetConversationHistory(prospectNum string, limit 
 func (r *aiWhatsappRepository) GetConversationLogsByStage(stage string) ([]models.ConversationLog, error) {
 	query := `
 		SELECT id, prospect_num, id_device, message, sender, stage, created_at
-		FROM conversation_log_nodepath 
+		FROM conversation_log 
 		WHERE stage = ?
 		ORDER BY created_at DESC
 	`
@@ -1015,7 +1015,7 @@ func (r *aiWhatsappRepository) UpdateAIWhatsapp(ai *models.AIWhatsapp) error {
 	}
 
 	query := `
-		UPDATE ai_whatsapp_nodepath SET 
+		UPDATE ai_whatsapp SET 
 			id_device = ?, stage = ?, date_order = ?, conv_last = ?, conv_current = ?, 
 			human = ?, niche = ?, intro = ?, 
 			balas = ?, keywordiklan = ?, marketer = ?, update_today = ?, 
@@ -1081,7 +1081,7 @@ func (r *aiWhatsappRepository) UpdateAIWhatsapp(ai *models.AIWhatsapp) error {
 // This function preserves conv_last, niche, intro and other important data
 func (r *aiWhatsappRepository) UpdateFlowTrackingFields(prospectNum, idDevice string, flowID, currentNodeID, lastNodeID string, waitingForReply int, executionStatus, executionID string) error {
 	query := `
-		UPDATE ai_whatsapp_nodepath SET 
+		UPDATE ai_whatsapp SET 
 			flow_id = ?, flow_reference = ?, current_node_id = ?, last_node_id = ?, waiting_for_reply = ?,
 			execution_status = ?, execution_id = ?, updated_at = ?
 		WHERE prospect_num = ? AND id_device = ?
@@ -1165,7 +1165,7 @@ func (r *aiWhatsappRepository) UpdateFlowTrackingFields(prospectNum, idDevice st
 // UpdateConversationStage updates the conversation stage for a prospect
 func (r *aiWhatsappRepository) UpdateConversationStage(prospectNum string, stage string) error {
 	query := `
-		UPDATE ai_whatsapp_nodepath 
+		UPDATE ai_whatsapp 
 		SET stage = ?, updated_at = ?
 		WHERE prospect_num = ?
 	`
@@ -1186,7 +1186,7 @@ func (r *aiWhatsappRepository) UpdateWaitingStatus(executionID string, waitingVa
 		return fmt.Errorf("database connection is not available")
 	}
 
-	query := `UPDATE ai_whatsapp_nodepath SET waiting_for_reply = ?, updated_at = ? WHERE execution_id = ?`
+	query := `UPDATE ai_whatsapp SET waiting_for_reply = ?, updated_at = ? WHERE execution_id = ?`
 	now := time.Now()
 
 	result, err := r.db.Exec(query, waitingValue, now, executionID)
@@ -1212,7 +1212,7 @@ func (r *aiWhatsappRepository) UpdateWaitingStatus(executionID string, waitingVa
 // UpdateHumanTakeover updates the human takeover status
 func (r *aiWhatsappRepository) UpdateHumanTakeover(prospectNum string, human int) error {
 	query := `
-		UPDATE ai_whatsapp_nodepath 
+		UPDATE ai_whatsapp 
 		SET human = ?, updated_at = ?
 		WHERE prospect_num = ?
 	`
@@ -1233,7 +1233,7 @@ func (r *aiWhatsappRepository) UpdateHumanTakeover(prospectNum string, human int
 // UpdateConvCurrent updates the current conversation text
 func (r *aiWhatsappRepository) UpdateConvCurrent(prospectNum string, convCurrent string) error {
 	query := `
-		UPDATE ai_whatsapp_nodepath 
+		UPDATE ai_whatsapp 
 		SET conv_current = ?, updated_at = ?
 		WHERE prospect_num = ?
 	`
@@ -1312,7 +1312,7 @@ func (r *aiWhatsappRepository) UpdateConvLast(prospectNum string, convLast inter
 	}
 
 	query := `
-		UPDATE ai_whatsapp_nodepath 
+		UPDATE ai_whatsapp 
 		SET conv_last = ?, updated_at = ?
 		WHERE prospect_num = ?
 	`
@@ -1345,7 +1345,7 @@ func (r *aiWhatsappRepository) GetAIWhatsappByProspectAndDevice(prospectNum, idD
 		       created_at, updated_at,
 		       current_node_id, waiting_for_reply, flow_id, last_node_id, 
 		       flow_reference, execution_status, execution_id
-		FROM ai_whatsapp_nodepath 
+		FROM ai_whatsapp 
 		WHERE prospect_num = ? AND id_device = ?
 	`
 
@@ -1406,7 +1406,7 @@ func (r *aiWhatsappRepository) SaveConversationHistory(prospectNum, idDevice, us
 		var existingConvLast []byte
 		checkQuery := `
 			SELECT id_prospect, conv_last 
-			FROM ai_whatsapp_nodepath 
+			FROM ai_whatsapp 
 			WHERE prospect_num = ? AND id_device = ?
 			FOR UPDATE
 		`
@@ -1477,7 +1477,7 @@ func (r *aiWhatsappRepository) SaveConversationHistory(prospectNum, idDevice, us
 			// IMPORTANT: Only update conv_last, stage, and updated_at
 			// DO NOT update prospect_name, prospect_num, or human - these are set only on creation
 			updateQuery := `
-				UPDATE ai_whatsapp_nodepath 
+				UPDATE ai_whatsapp 
 				SET conv_last = ?, stage = ?, updated_at = ?
 				WHERE prospect_num = ? AND id_device = ?
 			`
@@ -1507,7 +1507,7 @@ func (r *aiWhatsappRepository) SaveConversationHistory(prospectNum, idDevice, us
 			}).Info("Creating new conversation record with initial prospect data")
 
 			insertQuery := `
-				INSERT INTO ai_whatsapp_nodepath (
+				INSERT INTO ai_whatsapp (
 					id_device, prospect_num, stage, conv_last, prospect_name, human, 
 					created_at, updated_at
 				) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
@@ -1528,7 +1528,7 @@ func (r *aiWhatsappRepository) SaveConversationHistory(prospectNum, idDevice, us
 
 // DeleteAIWhatsapp deletes an AI WhatsApp conversation by ID
 func (r *aiWhatsappRepository) DeleteAIWhatsapp(id int) error {
-	query := `DELETE FROM ai_whatsapp_nodepath WHERE id_prospect = ?`
+	query := `DELETE FROM ai_whatsapp WHERE id_prospect = ?`
 
 	_, err := r.db.Exec(query, id)
 	if err != nil {
@@ -1542,7 +1542,7 @@ func (r *aiWhatsappRepository) DeleteAIWhatsapp(id int) error {
 
 // DeleteConversationLogs deletes all conversation logs for a prospect
 func (r *aiWhatsappRepository) DeleteConversationLogs(prospectNum string) error {
-	query := `DELETE FROM conversation_log_nodepath WHERE prospect_num = ?`
+	query := `DELETE FROM conversation_log WHERE prospect_num = ?`
 
 	_, err := r.db.Exec(query, prospectNum)
 	if err != nil {
@@ -1560,7 +1560,7 @@ func (r *aiWhatsappRepository) GetConversationStats(idDevice string) (map[string
 
 	// Total conversations
 	var total int
-	query := `SELECT COUNT(*) FROM ai_whatsapp_nodepath WHERE id_device = ?`
+	query := `SELECT COUNT(*) FROM ai_whatsapp WHERE id_device = ?`
 	row := r.db.QueryRow(query, idDevice)
 	err := row.Scan(&total)
 	if err != nil {
@@ -1570,7 +1570,7 @@ func (r *aiWhatsappRepository) GetConversationStats(idDevice string) (map[string
 
 	// Active AI conversations
 	var activeAI int
-	query = `SELECT COUNT(*) FROM ai_whatsapp_nodepath WHERE id_device = ? AND human = 0`
+	query = `SELECT COUNT(*) FROM ai_whatsapp WHERE id_device = ? AND human = 0`
 	row = r.db.QueryRow(query, idDevice)
 	err = row.Scan(&activeAI)
 	if err != nil {
@@ -1580,7 +1580,7 @@ func (r *aiWhatsappRepository) GetConversationStats(idDevice string) (map[string
 
 	// Human takeover conversations
 	var humanTakeover int
-	query = `SELECT COUNT(*) FROM ai_whatsapp_nodepath WHERE id_device = ? AND human = 1`
+	query = `SELECT COUNT(*) FROM ai_whatsapp WHERE id_device = ? AND human = 1`
 	row = r.db.QueryRow(query, idDevice)
 	err = row.Scan(&humanTakeover)
 	if err != nil {
@@ -1590,7 +1590,7 @@ func (r *aiWhatsappRepository) GetConversationStats(idDevice string) (map[string
 
 	// Today's conversations
 	var today int
-	query = `SELECT COUNT(*) FROM ai_whatsapp_nodepath WHERE id_device = ? AND DATE(created_at) = CURDATE()`
+	query = `SELECT COUNT(*) FROM ai_whatsapp WHERE id_device = ? AND DATE(created_at) = CURDATE()`
 	row = r.db.QueryRow(query, idDevice)
 	err = row.Scan(&today)
 	if err != nil {
@@ -1603,7 +1603,7 @@ func (r *aiWhatsappRepository) GetConversationStats(idDevice string) (map[string
 
 // GetActiveConversationCount returns the total number of active AI conversations
 func (r *aiWhatsappRepository) GetActiveConversationCount() (int, error) {
-	query := `SELECT COUNT(*) FROM ai_whatsapp_nodepath WHERE human = 0`
+	query := `SELECT COUNT(*) FROM ai_whatsapp WHERE human = 0`
 
 	var count int
 	row := r.db.QueryRow(query)
@@ -1624,7 +1624,7 @@ func (r *aiWhatsappRepository) GetConversationsByDateRange(startDate, endDate ti
 		       catatan_staff, balas, data_image, conv_stage, 
 		       bot_balas, keywordiklan, marketer, update_today, 
 		       created_at, updated_at
-		FROM ai_whatsapp_nodepath 
+		FROM ai_whatsapp 
 		WHERE created_at BETWEEN ? AND ?
 		ORDER BY created_at DESC
 	`
@@ -1668,7 +1668,7 @@ func (r *aiWhatsappRepository) GetConversationsByDateRange(startDate, endDate ti
 // UpdateHumanStatus updates the human status for a specific conversation by ID
 func (r *aiWhatsappRepository) UpdateHumanStatus(idProspect string, human int) error {
 	query := `
-		UPDATE ai_whatsapp_nodepath 
+		UPDATE ai_whatsapp 
 		SET human = ?, updated_at = NOW() 
 		WHERE id_prospect = ?
 	`
@@ -1720,7 +1720,7 @@ func (r *aiWhatsappRepository) TryAcquireSession(phoneNumber, deviceID string) (
 	var lockedAt time.Time
 	checkQuery := `
 		SELECT timestamp, STR_TO_DATE(timestamp, '%Y-%m-%d %H:%i:%s') as locked_at
-		FROM ai_whatsapp_session_nodepath 
+		FROM ai_whatsapp_session 
 		WHERE id_prospect = ? AND id_device = ?
 		FOR UPDATE
 	`
@@ -1730,7 +1730,7 @@ func (r *aiWhatsappRepository) TryAcquireSession(phoneNumber, deviceID string) (
 	if err == sql.ErrNoRows {
 		// No existing lock - create one
 		insertQuery := `
-			INSERT INTO ai_whatsapp_session_nodepath (id_prospect, id_device, timestamp)
+			INSERT INTO ai_whatsapp_session (id_prospect, id_device, timestamp)
 			VALUES (?, ?, ?)
 		`
 		_, err = tx.Exec(insertQuery, phoneNumber, deviceID, currentTimestamp)
@@ -1783,7 +1783,7 @@ func (r *aiWhatsappRepository) TryAcquireSession(phoneNumber, deviceID string) (
 	if lockAge > float64(lockTimeout) {
 		// Stale lock - update it and take over
 		updateQuery := `
-			UPDATE ai_whatsapp_session_nodepath 
+			UPDATE ai_whatsapp_session 
 			SET timestamp = ?
 			WHERE id_prospect = ? AND id_device = ?
 		`
@@ -1832,7 +1832,7 @@ func (r *aiWhatsappRepository) ReleaseSession(phoneNumber, deviceID string) erro
 	// Use actual database columns: id_prospect, id_device, timestamp
 	// Delete the lock record to properly clean up after processing
 	query := `
-		DELETE FROM ai_whatsapp_session_nodepath 
+		DELETE FROM ai_whatsapp_session 
 		WHERE id_prospect = ? AND id_device = ?
 	`
 

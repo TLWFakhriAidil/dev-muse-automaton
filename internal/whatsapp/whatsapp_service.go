@@ -278,7 +278,7 @@ func (s *Service) SendMediaMessage(deviceID, phoneNumber, mediaURL string) error
 	return nil
 }
 
-// processIncomingMessage processes incoming messages and handles flow/AI logic using ai_whatsapp_nodepath
+// processIncomingMessage processes incoming messages and handles flow/AI logic using ai_whatsapp
 func (s *Service) processIncomingMessage(phoneNumber, content, deviceID, senderName string) error {
 	// Simple panic recovery to prevent crashes
 	defer func() {
@@ -296,7 +296,7 @@ func (s *Service) processIncomingMessage(phoneNumber, content, deviceID, senderN
 		"phone_number": phoneNumber,
 		"content":      content,
 		"sender_name":  senderName,
-	}).Info("🔍 FLOW: Checking for active execution in ai_whatsapp_nodepath")
+	}).Info("🔍 FLOW: Checking for active execution in ai_whatsapp")
 
 	// Check for personal commands (%, #, cmd)
 	if strings.HasPrefix(content, "%") || strings.HasPrefix(content, "#") || strings.HasPrefix(content, "cmd") {
@@ -378,7 +378,7 @@ func (s *Service) processIncomingMessage(phoneNumber, content, deviceID, senderN
 			logrus.Info("👤 CHATBOT AI: Switch to human mode command detected (/)")
 			targetPhone := strings.TrimPrefix(content, "/")
 			if targetPhone != "" {
-				// Update human flag in ai_whatsapp_nodepath
+				// Update human flag in ai_whatsapp
 				err := s.aiWhatsappService.SetHumanMode(targetPhone, deviceID, true)
 				if err != nil {
 					logrus.WithError(err).Error("Failed to set human mode")
@@ -532,7 +532,7 @@ func (s *Service) processIncomingMessage(phoneNumber, content, deviceID, senderN
 
 	// Type assert based on table name
 	if executionInterface != nil {
-		if tableName == "wasapBot_nodepath" {
+		if tableName == "wasapBot" {
 			wasapBotExecution = executionInterface.(*models.WasapBot)
 			// Convert WasapBot to AIWhatsapp for compatibility with existing flow processing
 			aiExecution = s.convertWasapBotToAIWhatsapp(wasapBotExecution)
@@ -553,13 +553,13 @@ func (s *Service) processIncomingMessage(phoneNumber, content, deviceID, senderN
 		}).Info("🔄 FLOW: Found existing active execution")
 
 		// Update ProspectName based on table type
-		if tableName == "wasapBot_nodepath" {
+		if tableName == "wasapBot" {
 			// Update WasapBot prospect name
 			if wasapBotExecution != nil {
 				wasapBotExecution.Nama = sql.NullString{String: senderName, Valid: senderName != ""}
 				// Update in database would be through wasapBotRepo
 				logrus.WithFields(logrus.Fields{
-					"table": "wasapBot_nodepath",
+					"table": "wasapBot",
 					"name":  senderName,
 				}).Info("📊 TABLE: Updating WasapBot prospect name")
 			}
@@ -571,7 +571,7 @@ func (s *Service) processIncomingMessage(phoneNumber, content, deviceID, senderN
 					logrus.WithError(err).Error("❌ FLOW: Failed to update prospect name for existing execution")
 				}
 				logrus.WithFields(logrus.Fields{
-					"table": "ai_whatsapp_nodepath",
+					"table": "ai_whatsapp",
 					"name":  senderName,
 				}).Info("📊 TABLE: Updating AIWhatsapp prospect name")
 			}
@@ -702,11 +702,11 @@ func (s *Service) processNewFlowExecution(aiExecution *models.AIWhatsapp, conten
 	// Note: Human mode checking would be implemented through a separate table or field
 	// For now, we'll process all messages through the flow
 
-	// Get the flow data from chatbot_flows_nodepath
+	// Get the flow data from chatbot_flows
 	logrus.WithFields(logrus.Fields{
 		"execution_id":   aiExecution.ExecutionID.String,
 		"flow_reference": aiExecution.FlowReference.String,
-	}).Info("📊 FLOW: Retrieving flow data from chatbot_flows_nodepath")
+	}).Info("📊 FLOW: Retrieving flow data from chatbot_flows")
 
 	flow, err := s.flowService.GetFlow(aiExecution.FlowReference.String)
 	if err != nil {
@@ -724,18 +724,18 @@ func (s *Service) processNewFlowExecution(aiExecution *models.AIWhatsapp, conten
 		"flow_name":  flow.Name,
 		"flow_niche": flow.Niche,
 		"device_id":  flow.IdDevice,
-	}).Info("✅ FLOW: Successfully retrieved flow data from chatbot_flows_nodepath")
+	}).Info("✅ FLOW: Successfully retrieved flow data from chatbot_flows")
 
 	// Save user message to conversation history (single save point for user input)
 	logrus.WithFields(logrus.Fields{
 		"execution_id": aiExecution.IDProspect,
 		"message_type": "USER",
 		"content":      content,
-	}).Info("💬 FLOW: Adding user message to ai_whatsapp_nodepath")
+	}).Info("💬 FLOW: Adding user message to ai_whatsapp")
 
 	err = s.aiWhatsappService.SaveConversationHistory(phoneNumber, deviceID, content, "", "", senderName)
 	if err != nil {
-		logrus.WithError(err).Error("❌ FLOW: Failed to add user message to ai_whatsapp_nodepath")
+		logrus.WithError(err).Error("❌ FLOW: Failed to add user message to ai_whatsapp")
 		return err
 	}
 
@@ -796,7 +796,7 @@ func (s *Service) processNewFlowExecution(aiExecution *models.AIWhatsapp, conten
 					"stage":        stage,
 				}).Info("📋 FLOW: Saving AI stage to database")
 
-				// Update the stage in ai_whatsapp_nodepath
+				// Update the stage in ai_whatsapp
 				err = s.aiWhatsappService.UpdateStage(phoneNumber, deviceID, stage)
 				if err != nil {
 					logrus.WithError(err).WithField("stage", stage).Error("❌ FLOW: Failed to update stage")
@@ -2681,7 +2681,7 @@ func (s *Service) handleUserReplyResume(execution *models.AIWhatsapp, userInput 
 					"stage":        stage,
 				}).Info("📋 USER_REPLY: Saving AI stage to database")
 
-				// Update the stage in ai_whatsapp_nodepath
+				// Update the stage in ai_whatsapp
 				err = s.aiWhatsappService.UpdateStage(execution.ProspectNum, execution.IDDevice, stage)
 				if err != nil {
 					logrus.WithError(err).WithField("stage", stage).Error("❌ USER_REPLY: Failed to update stage")
@@ -3165,10 +3165,10 @@ func (s *Service) ProcessFlowContinuation(executionID, flowID, nodeID, phoneNumb
 			}
 		}
 
-		// Add bot response to ai_whatsapp_nodepath conversation
+		// Add bot response to ai_whatsapp conversation
 		err = s.aiWhatsappService.SaveConversationHistory(phoneNumber, deviceID, "", response, "", execution.ProspectName.String)
 		if err != nil {
-			logrus.WithError(err).Error("❌ FLOW: Failed to add bot message to ai_whatsapp_nodepath")
+			logrus.WithError(err).Error("❌ FLOW: Failed to add bot message to ai_whatsapp")
 		}
 
 		logrus.WithFields(logrus.Fields{

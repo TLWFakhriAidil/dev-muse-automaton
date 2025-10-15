@@ -74,24 +74,24 @@ func RunMigrations(db *sql.DB) error {
 		logrus.WithError(err).Warn("Failed to update provider ENUM, continuing...")
 	}
 
-	// Drop deprecated billing columns from orders_nodepath
+	// Drop deprecated billing columns from orders
 	if err := dropDeprecatedBillingColumns(db); err != nil {
 		logrus.WithError(err).Warn("Failed to drop deprecated billing columns, continuing...")
 	}
 
-	// Convert user_id column from INT to CHAR(36) in orders_nodepath
+	// Convert user_id column from INT to CHAR(36) in orders
 	if err := convertUserIDToChar36(db); err != nil {
-		logrus.WithError(err).Warn("Failed to convert user_id column in orders_nodepath, continuing...")
+		logrus.WithError(err).Warn("Failed to convert user_id column in orders, continuing...")
 	}
 
-	// Convert user_id column from INT to CHAR(36) in device_setting_nodepath
+	// Convert user_id column from INT to CHAR(36) in device_setting
 	if err := convertDeviceUserIDToChar36(db); err != nil {
-		logrus.WithError(err).Warn("Failed to convert user_id column in device_setting_nodepath, continuing...")
+		logrus.WithError(err).Warn("Failed to convert user_id column in device_setting, continuing...")
 	}
 
 	// Make device_id nullable for manual device creation
 	if err := makeDeviceIDNullable(db); err != nil {
-		logrus.WithError(err).Warn("Failed to make device_id nullable in device_setting_nodepath, continuing...")
+		logrus.WithError(err).Warn("Failed to make device_id nullable in device_setting, continuing...")
 	}
 
 	logrus.Info("Database migrations completed successfully")
@@ -100,7 +100,7 @@ func RunMigrations(db *sql.DB) error {
 
 // Migration SQL statements
 const createFlowsTable = `
-CREATE TABLE IF NOT EXISTS chatbot_flows_nodepath (
+CREATE TABLE IF NOT EXISTS chatbot_flows (
     id VARCHAR(255) PRIMARY KEY,
     name VARCHAR(255) NOT NULL,
     description TEXT COLLATE utf8mb4_unicode_ci,
@@ -116,7 +116,7 @@ CREATE TABLE IF NOT EXISTS chatbot_flows_nodepath (
 // Test chat executions table schema removed
 
 const createDeviceSettingsTable = `
-CREATE TABLE IF NOT EXISTS device_setting_nodepath (
+CREATE TABLE IF NOT EXISTS device_setting (
     id VARCHAR(255) PRIMARY KEY,
     device_id VARCHAR(255), -- Changed to allow NULL for manual creation
     api_key_option ENUM('openai/gpt-5-chat', 'openai/gpt-5-mini', 'openai/chatgpt-4o-latest', 'openai/gpt-4.1', 'google/gemini-2.5-pro', 'google/gemini-pro-1.5') DEFAULT 'openai/gpt-4.1',
@@ -161,7 +161,7 @@ CREATE TABLE IF NOT EXISTS user_sessions (
 
 // AI WhatsApp conversation table for managing AI-powered WhatsApp conversations
 const createAIWhatsappTable = `
-CREATE TABLE IF NOT EXISTS ai_whatsapp_nodepath (
+CREATE TABLE IF NOT EXISTS ai_whatsapp (
     id_prospect INT(11) NOT NULL AUTO_INCREMENT PRIMARY KEY,
     flow_reference VARCHAR(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT 'Reference to chatbot flow being executed',
     execution_id VARCHAR(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT 'Unique execution identifier',
@@ -196,7 +196,7 @@ CREATE TABLE IF NOT EXISTS ai_whatsapp_nodepath (
 
 // WasapBot table for WasapBot Exama flow process
 const createWasapBotTable = `
-CREATE TABLE IF NOT EXISTS wasapBot_nodepath (
+CREATE TABLE IF NOT EXISTS wasapBot (
   id_prospect       INT(11) NOT NULL AUTO_INCREMENT,
   flow_reference    VARCHAR(255) COLLATE latin1_swedish_ci DEFAULT NULL,
   execution_id      VARCHAR(255) COLLATE latin1_swedish_ci DEFAULT NULL,
@@ -240,7 +240,7 @@ CREATE TABLE IF NOT EXISTS wasapBot_nodepath (
 
 // Conversation log table for storing all AI conversation history
 const createConversationLogTable = `
-CREATE TABLE IF NOT EXISTS conversation_log_nodepath (
+CREATE TABLE IF NOT EXISTS conversation_log (
     id VARCHAR(255) PRIMARY KEY,
     prospect_num VARCHAR(20) NOT NULL,
     sender ENUM('user', 'bot', 'staff') NOT NULL,
@@ -258,7 +258,7 @@ CREATE TABLE IF NOT EXISTS conversation_log_nodepath (
 
 // Orders table for Billplz payment integration
 const createOrdersTable = `
-CREATE TABLE IF NOT EXISTS orders_nodepath (
+CREATE TABLE IF NOT EXISTS orders (
     id INT(11) NOT NULL AUTO_INCREMENT PRIMARY KEY,
     amount DECIMAL(10,2) NOT NULL COMMENT 'Amount in RM',
     collection_id VARCHAR(255) COLLATE utf8mb4_unicode_ci,
@@ -277,7 +277,7 @@ CREATE TABLE IF NOT EXISTS orders_nodepath (
 `
 
 const createAIWhatsappSessionTable = `
-CREATE TABLE IF NOT EXISTS ai_whatsapp_session_nodepath (
+CREATE TABLE IF NOT EXISTS ai_whatsapp_session (
     id_sessionX INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
     phone_number VARCHAR(255) NOT NULL,
     device_id VARCHAR(255) NOT NULL,
@@ -293,7 +293,7 @@ CREATE TABLE IF NOT EXISTS ai_whatsapp_session_nodepath (
 `
 
 const createWasapBotSessionTable = `
-CREATE TABLE IF NOT EXISTS wasapBot_session_nodepath (
+CREATE TABLE IF NOT EXISTS wasapBot_session (
     id_sessionY INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
     id_prospect VARCHAR(255) NOT NULL,
     id_device VARCHAR(255) NOT NULL,
@@ -320,7 +320,7 @@ func addMissingColumnsToFlowsTable(db *sql.DB) error {
 			SELECT COUNT(*) 
 			FROM INFORMATION_SCHEMA.COLUMNS 
 			WHERE TABLE_SCHEMA = DATABASE() 
-			AND TABLE_NAME = 'chatbot_flows_nodepath' 
+			AND TABLE_NAME = 'chatbot_flows' 
 			AND COLUMN_NAME = ?
 		`, col.name).Scan(&count)
 
@@ -330,7 +330,7 @@ func addMissingColumnsToFlowsTable(db *sql.DB) error {
 
 		if count == 0 {
 			// Column doesn't exist, add it
-			query := fmt.Sprintf("ALTER TABLE chatbot_flows_nodepath ADD COLUMN %s %s", col.name, col.definition)
+			query := fmt.Sprintf("ALTER TABLE chatbot_flows ADD COLUMN %s %s", col.name, col.definition)
 			if _, err := db.Exec(query); err != nil {
 				return fmt.Errorf("failed to add column %s: %w", col.name, err)
 			}
@@ -345,7 +345,7 @@ func addMissingColumnsToFlowsTable(db *sql.DB) error {
 // updateProviderRvsbWasapToWaha updates provider values from 'rvsb_wasap' to 'waha'
 func updateProviderRvsbWasapToWaha(db *sql.DB) error {
 	// Update existing records that have 'rvsb_wasap' provider to 'waha'
-	result, err := db.Exec("UPDATE device_setting_nodepath SET provider = 'waha' WHERE provider = 'rvsb_wasap'")
+	result, err := db.Exec("UPDATE device_setting SET provider = 'waha' WHERE provider = 'rvsb_wasap'")
 	if err != nil {
 		return fmt.Errorf("failed to update provider values: %w", err)
 	}
@@ -366,7 +366,7 @@ func updateProviderRvsbWasapToWaha(db *sql.DB) error {
 
 // updateProviderEnum updates the provider ENUM to include 'waha' and remove 'rvsb_wasap'
 func updateProviderEnum(db *sql.DB) error {
-	logrus.Info("🔧 Checking provider ENUM constraint in device_setting_nodepath table")
+	logrus.Info("🔧 Checking provider ENUM constraint in device_setting table")
 
 	// Check if table exists first
 	var tableExists int
@@ -374,16 +374,16 @@ func updateProviderEnum(db *sql.DB) error {
 		SELECT COUNT(*) 
 		FROM INFORMATION_SCHEMA.TABLES 
 		WHERE TABLE_SCHEMA = DATABASE() 
-		AND TABLE_NAME = 'device_setting_nodepath'
+		AND TABLE_NAME = 'device_setting'
 	`).Scan(&tableExists)
 
 	if err != nil {
-		logrus.WithError(err).Warn("Failed to check if device_setting_nodepath table exists, skipping provider ENUM update")
+		logrus.WithError(err).Warn("Failed to check if device_setting table exists, skipping provider ENUM update")
 		return nil
 	}
 
 	if tableExists == 0 {
-		logrus.Info("device_setting_nodepath table doesn't exist yet, skipping provider ENUM update")
+		logrus.Info("device_setting table doesn't exist yet, skipping provider ENUM update")
 		return nil
 	}
 
@@ -393,7 +393,7 @@ func updateProviderEnum(db *sql.DB) error {
 		SELECT COLUMN_TYPE 
 		FROM INFORMATION_SCHEMA.COLUMNS 
 		WHERE TABLE_SCHEMA = DATABASE() 
-		AND TABLE_NAME = 'device_setting_nodepath' 
+		AND TABLE_NAME = 'device_setting' 
 		AND COLUMN_NAME = 'provider'
 	`).Scan(&columnType)
 
@@ -411,7 +411,7 @@ func updateProviderEnum(db *sql.DB) error {
 
 	// Update the ENUM to replace 'rvsb_wasap' with 'waha'
 	logrus.Info("🔧 Updating provider ENUM to include 'waha' and remove 'rvsb_wasap'")
-	_, err = db.Exec("ALTER TABLE device_setting_nodepath MODIFY COLUMN provider ENUM('whacenter', 'wablas', 'waha') DEFAULT 'wablas'")
+	_, err = db.Exec("ALTER TABLE device_setting MODIFY COLUMN provider ENUM('whacenter', 'wablas', 'waha') DEFAULT 'wablas'")
 	if err != nil {
 		logrus.WithError(err).Error("❌ Failed to update provider ENUM - this will cause WAHA provider issues")
 		return fmt.Errorf("failed to update provider ENUM: %w", err)
@@ -424,7 +424,7 @@ func updateProviderEnum(db *sql.DB) error {
 		SELECT COLUMN_TYPE 
 		FROM INFORMATION_SCHEMA.COLUMNS 
 		WHERE TABLE_SCHEMA = DATABASE() 
-		AND TABLE_NAME = 'device_setting_nodepath' 
+		AND TABLE_NAME = 'device_setting' 
 		AND COLUMN_NAME = 'provider'
 	`).Scan(&columnType)
 
@@ -467,7 +467,7 @@ func removeDeprecatedColumnsFromFlowsTable(db *sql.DB) error {
 			SELECT COUNT(*) 
 			FROM INFORMATION_SCHEMA.COLUMNS 
 			WHERE TABLE_SCHEMA = DATABASE() 
-			AND TABLE_NAME = 'chatbot_flows_nodepath' 
+			AND TABLE_NAME = 'chatbot_flows' 
 			AND COLUMN_NAME = ?
 		`, col).Scan(&count)
 
@@ -477,7 +477,7 @@ func removeDeprecatedColumnsFromFlowsTable(db *sql.DB) error {
 
 		if count > 0 {
 			// Column exists, drop it
-			query := fmt.Sprintf("ALTER TABLE chatbot_flows_nodepath DROP COLUMN %s", col)
+			query := fmt.Sprintf("ALTER TABLE chatbot_flows DROP COLUMN %s", col)
 			if _, err := db.Exec(query); err != nil {
 				return fmt.Errorf("failed to drop column %s: %w", col, err)
 			}
@@ -508,7 +508,7 @@ func addMissingColumnsToDeviceSettingsTable(db *sql.DB) error {
 			SELECT COUNT(*) 
 			FROM INFORMATION_SCHEMA.COLUMNS 
 			WHERE TABLE_SCHEMA = DATABASE() 
-			AND TABLE_NAME = 'device_setting_nodepath' 
+			AND TABLE_NAME = 'device_setting' 
 			AND COLUMN_NAME = ?
 		`, col.name).Scan(&count)
 
@@ -518,20 +518,20 @@ func addMissingColumnsToDeviceSettingsTable(db *sql.DB) error {
 
 		if count == 0 {
 			// Column doesn't exist, add it
-			query := fmt.Sprintf("ALTER TABLE device_setting_nodepath ADD COLUMN %s %s", col.name, col.definition)
+			query := fmt.Sprintf("ALTER TABLE device_setting ADD COLUMN %s %s", col.name, col.definition)
 			if _, err := db.Exec(query); err != nil {
 				return fmt.Errorf("failed to add column %s: %w", col.name, err)
 			}
-			logrus.WithField("column", col.name).Info("Added missing column to device_setting_nodepath")
+			logrus.WithField("column", col.name).Info("Added missing column to device_setting")
 		} else {
-			logrus.WithField("column", col.name).Debug("Column already exists in device_setting_nodepath")
+			logrus.WithField("column", col.name).Debug("Column already exists in device_setting")
 		}
 	}
 
 	return nil
 }
 
-// dropDeprecatedBillingColumns drops deprecated billing columns from orders_nodepath table
+// dropDeprecatedBillingColumns drops deprecated billing columns from orders table
 func dropDeprecatedBillingColumns(db *sql.DB) error {
 	columns := []string{
 		"customer_email",
@@ -550,7 +550,7 @@ func dropDeprecatedBillingColumns(db *sql.DB) error {
 			SELECT COUNT(*) 
 			FROM INFORMATION_SCHEMA.COLUMNS 
 			WHERE TABLE_SCHEMA = DATABASE() 
-			AND TABLE_NAME = 'orders_nodepath' 
+			AND TABLE_NAME = 'orders' 
 			AND COLUMN_NAME = ?
 		`, col).Scan(&count)
 
@@ -560,19 +560,19 @@ func dropDeprecatedBillingColumns(db *sql.DB) error {
 
 		if count > 0 {
 			// Column exists, drop it
-			query := fmt.Sprintf("ALTER TABLE orders_nodepath DROP COLUMN %s", col)
+			query := fmt.Sprintf("ALTER TABLE orders DROP COLUMN %s", col)
 			if _, err := db.Exec(query); err != nil {
 				return fmt.Errorf("failed to drop column %s: %w", col, err)
 			}
-			logrus.WithField("column", col).Info("Dropped deprecated billing column from orders_nodepath")
+			logrus.WithField("column", col).Info("Dropped deprecated billing column from orders")
 		} else {
-			logrus.WithField("column", col).Debug("Deprecated billing column does not exist in orders_nodepath")
+			logrus.WithField("column", col).Debug("Deprecated billing column does not exist in orders")
 		}
 	}
 	return nil
 }
 
-// convertUserIDToChar36 converts user_id column from INT to CHAR(36) in orders_nodepath table
+// convertUserIDToChar36 converts user_id column from INT to CHAR(36) in orders table
 func convertUserIDToChar36(db *sql.DB) error {
 	// Check current data type of user_id column
 	var dataType string
@@ -580,7 +580,7 @@ func convertUserIDToChar36(db *sql.DB) error {
 		SELECT DATA_TYPE 
 		FROM INFORMATION_SCHEMA.COLUMNS 
 		WHERE TABLE_SCHEMA = DATABASE() 
-		AND TABLE_NAME = 'orders_nodepath' 
+		AND TABLE_NAME = 'orders' 
 		AND COLUMN_NAME = 'user_id'
 	`).Scan(&dataType)
 
@@ -590,27 +590,27 @@ func convertUserIDToChar36(db *sql.DB) error {
 
 	// If already CHAR, skip
 	if dataType == "char" {
-		logrus.Info("user_id column is already CHAR(36) in orders_nodepath")
+		logrus.Info("user_id column is already CHAR(36) in orders")
 		return nil
 	}
 
 	// Convert INT to CHAR(36) - first set existing data to NULL or empty since INT can't convert to UUID
-	_, err = db.Exec("UPDATE orders_nodepath SET user_id = NULL WHERE user_id IS NOT NULL")
+	_, err = db.Exec("UPDATE orders SET user_id = NULL WHERE user_id IS NOT NULL")
 	if err != nil {
 		logrus.WithError(err).Warn("Failed to clear user_id values before conversion")
 	}
 
 	// Alter column type
-	_, err = db.Exec("ALTER TABLE orders_nodepath MODIFY COLUMN user_id CHAR(36)")
+	_, err = db.Exec("ALTER TABLE orders MODIFY COLUMN user_id CHAR(36)")
 	if err != nil {
 		return fmt.Errorf("failed to convert user_id to CHAR(36): %w", err)
 	}
 
-	logrus.Info("Successfully converted user_id column from INT to CHAR(36) in orders_nodepath")
+	logrus.Info("Successfully converted user_id column from INT to CHAR(36) in orders")
 	return nil
 }
 
-// convertDeviceUserIDToChar36 converts user_id column from INT to CHAR(36) in device_setting_nodepath table
+// convertDeviceUserIDToChar36 converts user_id column from INT to CHAR(36) in device_setting table
 func convertDeviceUserIDToChar36(db *sql.DB) error {
 	// Check current data type of user_id column
 	var dataType string
@@ -618,7 +618,7 @@ func convertDeviceUserIDToChar36(db *sql.DB) error {
 		SELECT DATA_TYPE 
 		FROM INFORMATION_SCHEMA.COLUMNS 
 		WHERE TABLE_SCHEMA = DATABASE() 
-		AND TABLE_NAME = 'device_setting_nodepath' 
+		AND TABLE_NAME = 'device_setting' 
 		AND COLUMN_NAME = 'user_id'
 	`).Scan(&dataType)
 
@@ -628,7 +628,7 @@ func convertDeviceUserIDToChar36(db *sql.DB) error {
 
 	// If already CHAR, skip
 	if dataType == "char" {
-		logrus.Info("user_id column is already CHAR(36) in device_setting_nodepath")
+		logrus.Info("user_id column is already CHAR(36) in device_setting")
 		return nil
 	}
 
@@ -639,31 +639,31 @@ func convertDeviceUserIDToChar36(db *sql.DB) error {
 
 	// Convert INT to CHAR(36) - WARNING: This sets existing data to NULL since INT can't convert to UUID
 	// Users will need to run fix script or manually re-link devices
-	_, err = db.Exec("UPDATE device_setting_nodepath SET user_id = NULL WHERE user_id IS NOT NULL")
+	_, err = db.Exec("UPDATE device_setting SET user_id = NULL WHERE user_id IS NOT NULL")
 	if err != nil {
-		logrus.WithError(err).Warn("Failed to clear user_id values before conversion in device_setting_nodepath")
+		logrus.WithError(err).Warn("Failed to clear user_id values before conversion in device_setting")
 	}
 
 	// Alter column type
-	_, err = db.Exec("ALTER TABLE device_setting_nodepath MODIFY COLUMN user_id CHAR(36)")
+	_, err = db.Exec("ALTER TABLE device_setting MODIFY COLUMN user_id CHAR(36)")
 	if err != nil {
-		return fmt.Errorf("failed to convert user_id to CHAR(36) in device_setting_nodepath: %w", err)
+		return fmt.Errorf("failed to convert user_id to CHAR(36) in device_setting: %w", err)
 	}
 
 	// Add index if it doesn't exist
-	_, err = db.Exec("ALTER TABLE device_setting_nodepath ADD INDEX IF NOT EXISTS idx_user_id (user_id)")
+	_, err = db.Exec("ALTER TABLE device_setting ADD INDEX IF NOT EXISTS idx_user_id (user_id)")
 	if err != nil {
 		logrus.WithError(err).Warn("Failed to add index to user_id column")
 	}
 
-	logrus.Info("✅ Converted user_id column from INT to CHAR(36) in device_setting_nodepath")
+	logrus.Info("✅ Converted user_id column from INT to CHAR(36) in device_setting")
 	logrus.Warn("⚠️  ACTION REQUIRED: Run scripts/fix_device_user_links.sql to restore device-user links")
 	return nil
 }
 
 // makeDeviceIDNullable makes device_id column nullable to allow manual device creation
 func makeDeviceIDNullable(db *sql.DB) error {
-	logrus.Info("🔧 Checking device_id column nullability in device_setting_nodepath table")
+	logrus.Info("🔧 Checking device_id column nullability in device_setting table")
 
 	// Check if table exists first
 	var tableExists int
@@ -671,16 +671,16 @@ func makeDeviceIDNullable(db *sql.DB) error {
 		SELECT COUNT(*) 
 		FROM INFORMATION_SCHEMA.TABLES 
 		WHERE TABLE_SCHEMA = DATABASE() 
-		AND TABLE_NAME = 'device_setting_nodepath'
+		AND TABLE_NAME = 'device_setting'
 	`).Scan(&tableExists)
 
 	if err != nil {
-		logrus.WithError(err).Warn("Failed to check if device_setting_nodepath table exists, skipping migration")
+		logrus.WithError(err).Warn("Failed to check if device_setting table exists, skipping migration")
 		return nil // Don't fail the entire migration for this
 	}
 
 	if tableExists == 0 {
-		logrus.Info("device_setting_nodepath table doesn't exist yet, skipping device_id nullable migration")
+		logrus.Info("device_setting table doesn't exist yet, skipping device_id nullable migration")
 		return nil
 	}
 
@@ -690,7 +690,7 @@ func makeDeviceIDNullable(db *sql.DB) error {
 		SELECT IS_NULLABLE 
 		FROM INFORMATION_SCHEMA.COLUMNS 
 		WHERE TABLE_SCHEMA = DATABASE() 
-		AND TABLE_NAME = 'device_setting_nodepath' 
+		AND TABLE_NAME = 'device_setting' 
 		AND COLUMN_NAME = 'device_id'
 	`).Scan(&isNullable)
 
@@ -700,7 +700,7 @@ func makeDeviceIDNullable(db *sql.DB) error {
 	} else {
 		// If already nullable, skip
 		if isNullable == "YES" {
-			logrus.Info("✅ device_id column is already nullable in device_setting_nodepath")
+			logrus.Info("✅ device_id column is already nullable in device_setting")
 			return nil
 		}
 		logrus.WithField("is_nullable", isNullable).Info("device_id column current nullability status")
@@ -708,20 +708,20 @@ func makeDeviceIDNullable(db *sql.DB) error {
 
 	// Make column nullable - this is the critical fix
 	logrus.Info("🔧 Altering device_id column to allow NULL values")
-	_, err = db.Exec("ALTER TABLE device_setting_nodepath MODIFY COLUMN device_id VARCHAR(255) NULL")
+	_, err = db.Exec("ALTER TABLE device_setting MODIFY COLUMN device_id VARCHAR(255) NULL")
 	if err != nil {
 		logrus.WithError(err).Error("❌ Failed to make device_id nullable - this will cause WAHA provider issues")
 		return fmt.Errorf("failed to make device_id nullable: %w", err)
 	}
 
-	logrus.Info("✅ Successfully made device_id column nullable in device_setting_nodepath for manual device creation")
+	logrus.Info("✅ Successfully made device_id column nullable in device_setting for manual device creation")
 
 	// Verify the change was applied
 	err = db.QueryRow(`
 		SELECT IS_NULLABLE 
 		FROM INFORMATION_SCHEMA.COLUMNS 
 		WHERE TABLE_SCHEMA = DATABASE() 
-		AND TABLE_NAME = 'device_setting_nodepath' 
+		AND TABLE_NAME = 'device_setting' 
 		AND COLUMN_NAME = 'device_id'
 	`).Scan(&isNullable)
 

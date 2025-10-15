@@ -49,7 +49,7 @@ func (s *Service) processWasapBotExamaFlow(phoneNumber, content, deviceID, sende
 
 	err := db.QueryRow(`
 		SELECT id_prospect, stage, current_node_id, waiting_for_reply
-		FROM wasapBot_nodepath 
+		FROM wasapBot 
 		WHERE prospect_num = ? AND id_device = ? 
 		ORDER BY id_prospect DESC LIMIT 1
 	`, phoneNumber, deviceID).Scan(&idProspect, &stage, &currentNodeID, &waitingForReply)
@@ -58,7 +58,7 @@ func (s *Service) processWasapBotExamaFlow(phoneNumber, content, deviceID, sende
 
 	// Handle QUIT command
 	if waText == "QUITEXAMA" && exists {
-		db.Exec(`UPDATE wasapBot_nodepath SET stage = NULL, current_node_id = 'end' WHERE id_prospect = ?`, idProspect)
+		db.Exec(`UPDATE wasapBot SET stage = NULL, current_node_id = 'end' WHERE id_prospect = ?`, idProspect)
 		s.SendMessageFromDevice(deviceID, phoneNumber, "Terima kasih. Sesi tamat.")
 		return nil
 	}
@@ -108,7 +108,7 @@ func (s *Service) processWasapBotExamaFlow(phoneNumber, content, deviceID, sende
 		var nama, alamat, noFon, pakej, caraBayaran, tarikhGaji sql.NullString
 		err := db.QueryRow(`
 			SELECT nama, alamat, no_fon, pakej, cara_bayaran, tarikh_gaji 
-			FROM wasapBot_nodepath 
+			FROM wasapBot 
 			WHERE id_prospect = ?`, idProspect).Scan(&nama, &alamat, &noFon, &pakej, &caraBayaran, &tarikhGaji)
 
 		if err != nil {
@@ -601,7 +601,7 @@ func (s *Service) processWasapBotExamaFlow(phoneNumber, content, deviceID, sende
 	// Helper function to get last user input from database
 	getLastUserInput := func(prospectID int64) string {
 		var lastInput sql.NullString
-		err := db.QueryRow(`SELECT conv_last FROM wasapBot_nodepath WHERE id_prospect = ?`, prospectID).Scan(&lastInput)
+		err := db.QueryRow(`SELECT conv_last FROM wasapBot WHERE id_prospect = ?`, prospectID).Scan(&lastInput)
 		if err != nil || !lastInput.Valid {
 			return ""
 		}
@@ -628,17 +628,17 @@ func (s *Service) processWasapBotExamaFlow(phoneNumber, content, deviceID, sende
 		// Always save user input to conv_last
 		updates["conv_last"] = userInput
 
-		// Query stageSetValue_nodepath for dynamic configuration
+		// Query stageSetValue for dynamic configuration
 		query := `
 			SELECT type_inputData, inputHardCode, columnsData 
-			FROM stageSetValue_nodepath 
+			FROM stageSetValue 
 			WHERE id_device = ? AND stage = ?
 		`
 
 		logrus.WithFields(logrus.Fields{
 			"id_device": deviceID,
 			"stage":     stageValue,
-			"query":     "SELECT FROM stageSetValue_nodepath WHERE id_device=? AND stage=?",
+			"query":     "SELECT FROM stageSetValue WHERE id_device=? AND stage=?",
 		}).Debug("🔍 WASAPBOT: Querying stage configuration for specific device and stage")
 
 		rows, err := db.Query(query, deviceID, stageValue)
@@ -646,7 +646,7 @@ func (s *Service) processWasapBotExamaFlow(phoneNumber, content, deviceID, sende
 			logrus.WithError(err).WithFields(logrus.Fields{
 				"device": deviceID,
 				"stage":  stageValue,
-			}).Warn("Failed to query stage configuration from stageSetValue_nodepath")
+			}).Warn("Failed to query stage configuration from stageSetValue")
 			// Fall back to basic user input storage
 			return updates
 		}
@@ -675,7 +675,7 @@ func (s *Service) processWasapBotExamaFlow(phoneNumber, content, deviceID, sende
 					"column":          columnsData,
 					"hardcoded_value": valueToStore,
 					"type":            "Set",
-				}).Info("📝 WASAPBOT: Using hardcoded value from stageSetValue_nodepath")
+				}).Info("📝 WASAPBOT: Using hardcoded value from stageSetValue")
 			} else if typeInputData == "User Input" {
 				// Use the user's actual input
 				valueToStore = userInput
@@ -691,12 +691,12 @@ func (s *Service) processWasapBotExamaFlow(phoneNumber, content, deviceID, sende
 					"stage":  stageValue,
 					"type":   typeInputData,
 					"column": columnsData,
-				}).Warn("Unknown type_inputData in stageSetValue_nodepath, skipping")
+				}).Warn("Unknown type_inputData in stageSetValue, skipping")
 				continue
 			}
 
 			// Map columnsData to actual database column names
-			// This mapping ensures columnsData values match wasapBot_nodepath columns
+			// This mapping ensures columnsData values match wasapBot columns
 			columnMap := map[string]string{
 				"nama":         "nama",
 				"alamat":       "alamat",
@@ -721,7 +721,7 @@ func (s *Service) processWasapBotExamaFlow(phoneNumber, content, deviceID, sende
 					"column":  dbColumn,
 					"value":   valueToStore,
 					"mapping": columnsData + " -> " + dbColumn,
-				}).Info("💾 WASAPBOT: Dynamic data saved to wasapBot_nodepath column")
+				}).Info("💾 WASAPBOT: Dynamic data saved to wasapBot column")
 			} else {
 				logrus.WithFields(logrus.Fields{
 					"stage":  stageValue,
@@ -735,7 +735,7 @@ func (s *Service) processWasapBotExamaFlow(phoneNumber, content, deviceID, sende
 			logrus.WithFields(logrus.Fields{
 				"stage":  stageValue,
 				"device": deviceID,
-			}).Info("📋 WASAPBOT: No stage configuration found in stageSetValue_nodepath, using fallback")
+			}).Info("📋 WASAPBOT: No stage configuration found in stageSetValue, using fallback")
 
 			// Fallback: Check for special completion stages
 			upperStage := strings.ToUpper(strings.TrimSpace(stageValue))
@@ -792,7 +792,7 @@ func (s *Service) processWasapBotExamaFlow(phoneNumber, content, deviceID, sende
 
 		// Create WasapBot record - don't set stage yet
 		_, err = db.Exec(`
-			INSERT INTO wasapBot_nodepath 
+			INSERT INTO wasapBot 
 			(prospect_num, id_device, nama, current_node_id, conv_start, conv_last, 
 			 date_start, date_last, niche, status, flow_reference, flow_id, waiting_for_reply)
 			VALUES (?, ?, ?, ?, ?, ?, NOW(), NOW(), 'EXAM-A', 'Prospek', ?, ?, 0)
@@ -823,7 +823,7 @@ func (s *Service) processWasapBotExamaFlow(phoneNumber, content, deviceID, sende
 			}).Debug("Processing initial node")
 
 			// Update current node in database before processing
-			db.Exec(`UPDATE wasapBot_nodepath SET current_node_id = ? WHERE id_prospect = ?`, currentNode, idProspect)
+			db.Exec(`UPDATE wasapBot SET current_node_id = ? WHERE id_prospect = ?`, currentNode, idProspect)
 
 			// Handle different node types dynamically
 			switch nodeType {
@@ -831,21 +831,21 @@ func (s *Service) processWasapBotExamaFlow(phoneNumber, content, deviceID, sende
 				// Update stage in database
 				if stageVal != "" {
 					// First update the stage in database
-					db.Exec(`UPDATE wasapBot_nodepath SET stage = ? WHERE id_prospect = ?`, stageVal, idProspect)
+					db.Exec(`UPDATE wasapBot SET stage = ? WHERE id_prospect = ?`, stageVal, idProspect)
 					logrus.WithField("stage", stageVal).Info("🎯 WASAPBOT: Stage updated from node")
 
-					// For WasapBot Exama flow, check stageSetValue_nodepath for dynamic data configuration
+					// For WasapBot Exama flow, check stageSetValue for dynamic data configuration
 					if flowName == "WasapBot Exama" {
 						logrus.WithFields(logrus.Fields{
 							"stage":    stageVal,
 							"deviceID": deviceID,
 							"flowName": flowName,
-						}).Info("🔍 WASAPBOT: Checking stageSetValue_nodepath for stage configuration")
+						}).Info("🔍 WASAPBOT: Checking stageSetValue for stage configuration")
 
-						// Query stageSetValue_nodepath to check if configuration exists
+						// Query stageSetValue to check if configuration exists
 						checkQuery := `
 							SELECT COUNT(*) 
-							FROM stageSetValue_nodepath 
+							FROM stageSetValue 
 							WHERE id_device = ? AND stage = ?
 						`
 						var configCount int
@@ -857,7 +857,7 @@ func (s *Service) processWasapBotExamaFlow(phoneNumber, content, deviceID, sende
 								"stage":       stageVal,
 								"deviceID":    deviceID,
 								"configCount": configCount,
-							}).Info("✅ WASAPBOT: Found stage configuration in stageSetValue_nodepath")
+							}).Info("✅ WASAPBOT: Found stage configuration in stageSetValue")
 
 							// If user has provided input previously, use it for dynamic data storage
 							// Otherwise, we'll wait for user input
@@ -865,7 +865,7 @@ func (s *Service) processWasapBotExamaFlow(phoneNumber, content, deviceID, sende
 								logrus.WithField("lastInput", lastUserInput).Info("📝 WASAPBOT: Processing stage data with last user input")
 								stageUpdates := saveDataByStage(stageVal, lastUserInput)
 								for k, v := range stageUpdates {
-									updateQuery := fmt.Sprintf("UPDATE wasapBot_nodepath SET %s = ? WHERE id_prospect = ?", k)
+									updateQuery := fmt.Sprintf("UPDATE wasapBot SET %s = ? WHERE id_prospect = ?", k)
 									db.Exec(updateQuery, v, idProspect)
 								}
 							}
@@ -873,7 +873,7 @@ func (s *Service) processWasapBotExamaFlow(phoneNumber, content, deviceID, sende
 							logrus.WithFields(logrus.Fields{
 								"stage":    stageVal,
 								"deviceID": deviceID,
-							}).Info("⚠️ WASAPBOT: No stage configuration found in stageSetValue_nodepath")
+							}).Info("⚠️ WASAPBOT: No stage configuration found in stageSetValue")
 						}
 					}
 				}
@@ -902,7 +902,7 @@ func (s *Service) processWasapBotExamaFlow(phoneNumber, content, deviceID, sende
 			case "user_reply", "user-reply", "input", "user-input", "question":
 				// Stop processing - wait for user input
 				// CRITICAL FIX: Update waiting_for_reply IMMEDIATELY and SYNCHRONOUSLY
-				result, err := db.Exec(`UPDATE wasapBot_nodepath SET waiting_for_reply = 1 WHERE id_prospect = ?`, idProspect)
+				result, err := db.Exec(`UPDATE wasapBot SET waiting_for_reply = 1 WHERE id_prospect = ?`, idProspect)
 				if err != nil {
 					logrus.WithError(err).Error("❌ WASAPBOT: Failed to set waiting_for_reply=1")
 				} else {
@@ -929,12 +929,12 @@ func (s *Service) processWasapBotExamaFlow(phoneNumber, content, deviceID, sende
 
 			case "condition":
 				// Condition at start - wait for user input to evaluate
-				db.Exec(`UPDATE wasapBot_nodepath SET waiting_for_reply = 1 WHERE id_prospect = ?`, idProspect)
+				db.Exec(`UPDATE wasapBot SET waiting_for_reply = 1 WHERE id_prospect = ?`, idProspect)
 				logrus.Info("🎯 WASAPBOT: Condition node at start - waiting for user input")
 				return nil // Exit function, waiting for user
 
 			case "end":
-				db.Exec(`UPDATE wasapBot_nodepath SET current_node_id = 'end' WHERE id_prospect = ?`, idProspect)
+				db.Exec(`UPDATE wasapBot SET current_node_id = 'end' WHERE id_prospect = ?`, idProspect)
 				logrus.Info("🎯 WASAPBOT: Flow ended")
 				return nil
 
@@ -946,7 +946,7 @@ func (s *Service) processWasapBotExamaFlow(phoneNumber, content, deviceID, sende
 			// Get next node
 			nextNodes := getNextNodes(currentNode)
 			if len(nextNodes) == 0 || nextNodes[0] == "end" {
-				db.Exec(`UPDATE wasapBot_nodepath SET current_node_id = 'end' WHERE id_prospect = ?`, idProspect)
+				db.Exec(`UPDATE wasapBot SET current_node_id = 'end' WHERE id_prospect = ?`, idProspect)
 				logrus.Info("🎯 WASAPBOT: No more nodes - flow ended")
 				return nil
 			}
@@ -1053,17 +1053,17 @@ func (s *Service) processWasapBotExamaFlow(phoneNumber, content, deviceID, sende
 							"info":      "Processing with NEW stage from node, not old stage from DB",
 						}).Info("🔍 WASAPBOT: Processing stage data for WasapBot Exama with CURRENT NODE stage")
 
-						// Check if stage configuration exists in stageSetValue_nodepath
+						// Check if stage configuration exists in stageSetValue
 						checkQuery := `
 							SELECT COUNT(*) 
-							FROM stageSetValue_nodepath 
+							FROM stageSetValue 
 							WHERE id_device = ? AND stage = ?
 						`
 						logrus.WithFields(logrus.Fields{
 							"query":     "WHERE id_device = ? AND stage = ?",
 							"id_device": deviceID,
 							"stage":     stageVal,
-						}).Debug("🔎 WASAPBOT: Checking stageSetValue_nodepath with device AND stage")
+						}).Debug("🔎 WASAPBOT: Checking stageSetValue with device AND stage")
 
 						var configCount int
 						err := db.QueryRow(checkQuery, deviceID, stageVal).Scan(&configCount)
@@ -1075,7 +1075,7 @@ func (s *Service) processWasapBotExamaFlow(phoneNumber, content, deviceID, sende
 								"id_device":   deviceID,
 								"configCount": configCount,
 								"query_used":  fmt.Sprintf("WHERE id_device='%s' AND stage='%s'", deviceID, stageVal),
-							}).Info("✅ WASAPBOT: Found stage configuration in stageSetValue_nodepath for this device and stage")
+							}).Info("✅ WASAPBOT: Found stage configuration in stageSetValue for this device and stage")
 
 							// Process dynamic data storage with user input
 							stageUpdates := saveDataByStage(stageVal, content)
@@ -1091,7 +1091,7 @@ func (s *Service) processWasapBotExamaFlow(phoneNumber, content, deviceID, sende
 								"stage":      stageVal,
 								"id_device":  deviceID,
 								"query_used": fmt.Sprintf("WHERE id_device='%s' AND stage='%s'", deviceID, stageVal),
-							}).Info("⚠️ WASAPBOT: No stage configuration found in stageSetValue_nodepath for this device and stage combination")
+							}).Info("⚠️ WASAPBOT: No stage configuration found in stageSetValue for this device and stage combination")
 							// Just save the stage, no dynamic data processing
 						}
 					}
@@ -1121,7 +1121,7 @@ func (s *Service) processWasapBotExamaFlow(phoneNumber, content, deviceID, sende
 					// Stop and wait for input
 					// CRITICAL FIX: Update waiting_for_reply IMMEDIATELY and SYNCHRONOUSLY
 					// Don't just add to updates map - apply immediately so next message sees it
-					_, execErr := db.Exec(`UPDATE wasapBot_nodepath SET waiting_for_reply = 1 WHERE phone_number = ? AND id_device = ?`, phoneNumber, deviceID)
+					_, execErr := db.Exec(`UPDATE wasapBot SET waiting_for_reply = 1 WHERE phone_number = ? AND id_device = ?`, phoneNumber, deviceID)
 					if execErr != nil {
 						logrus.WithError(execErr).Error("❌ WASAPBOT: Failed to set waiting_for_reply=1")
 					} else {
@@ -1213,7 +1213,7 @@ func (s *Service) processWasapBotExamaFlow(phoneNumber, content, deviceID, sende
 		setClauses = append(setClauses, "date_last = NOW()")
 		args = append(args, idProspect)
 
-		query := fmt.Sprintf("UPDATE wasapBot_nodepath SET %s WHERE id_prospect = ?", strings.Join(setClauses, ", "))
+		query := fmt.Sprintf("UPDATE wasapBot SET %s WHERE id_prospect = ?", strings.Join(setClauses, ", "))
 		_, err = db.Exec(query, args...)
 
 		if err != nil {

@@ -5,7 +5,7 @@ import (
 	"time"
 )
 
-// StageSetValue represents the stageSetValue_nodepath table
+// StageSetValue represents the stageSetValue table
 type StageSetValue struct {
 	StageSetValueID int            `json:"stageSetValue_id" db:"stageSetValue_id"`
 	IDDevice        string         `json:"id_device" db:"id_device"`

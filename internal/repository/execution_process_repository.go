@@ -28,7 +28,7 @@ func NewExecutionProcessRepository(db *sql.DB) ExecutionProcessRepository {
 // CreateExecution creates a new execution record and returns its ID
 func (r *executionProcessRepository) CreateExecution(idDevice, idProspect string) (int, error) {
 	query := `
-		INSERT INTO execution_process_nodepath (id_device, id_prospect, times)
+		INSERT INTO execution_process (id_device, id_prospect, times)
 		VALUES (?, ?, ?)
 	`
 
@@ -57,7 +57,7 @@ func (r *executionProcessRepository) CreateExecution(idDevice, idProspect string
 func (r *executionProcessRepository) GetOldestExecution(idDevice, idProspect string) (*models.ExecutionProcess, error) {
 	query := `
 		SELECT id_chatInput, id_device, id_prospect, times
-		FROM execution_process_nodepath
+		FROM execution_process
 		WHERE id_device = ? AND id_prospect = ?
 		ORDER BY id_chatInput ASC
 		LIMIT 1
@@ -86,7 +86,7 @@ func (r *executionProcessRepository) GetOldestExecution(idDevice, idProspect str
 // DeleteExecutions deletes all execution records for a device and prospect
 func (r *executionProcessRepository) DeleteExecutions(idDevice, idProspect string) error {
 	query := `
-		DELETE FROM execution_process_nodepath
+		DELETE FROM execution_process
 		WHERE id_device = ? AND id_prospect = ?
 	`
 

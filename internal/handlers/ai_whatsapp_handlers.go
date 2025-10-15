@@ -1235,7 +1235,7 @@ func (h *AIWhatsappHandlers) sendWhatsappResponse(prospectNum, deviceID, provide
 	}
 }
 
-// GetAnalytics retrieves analytics data from ai_whatsapp_nodepath with date filtering
+// GetAnalytics retrieves analytics data from ai_whatsapp with date filtering
 func (h *AIWhatsappHandlers) GetAnalytics(c *fiber.Ctx) error {
 	var req AnalyticsRequest
 

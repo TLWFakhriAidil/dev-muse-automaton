@@ -204,7 +204,7 @@ type WebSocketMessage struct {
 // Test chat message struct removed
 
 // AIWhatsapp represents an AI WhatsApp conversation record with flow execution capabilities
-// Updated to match the new ai_whatsapp_nodepath schema - removed deprecated columns:
+// Updated to match the new ai_whatsapp schema - removed deprecated columns:
 // jam, conv_stage, variables, catatan_staff, data_image, current_node, bot_balas
 type AIWhatsapp struct {
 	IDProspect      int            `json:"id_prospect" db:"id_prospect"`

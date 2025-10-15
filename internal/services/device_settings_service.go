@@ -33,7 +33,7 @@ func (s *DeviceSettingsService) GetAll() ([]*models.DeviceSettings, error) {
 	query := `
 		SELECT id, device_id, api_key_option, webhook_id, provider, phone_number, api_key, 
 		       id_device, id_erp, id_admin, instance, created_at, updated_at, user_id
-		FROM device_setting_nodepath
+		FROM device_setting
 		ORDER BY created_at DESC
 	`
 
@@ -84,7 +84,7 @@ func (s *DeviceSettingsService) GetByUserID(userID int) ([]*models.DeviceSetting
 	query := `
 		SELECT id, device_id, api_key_option, webhook_id, provider, phone_number, api_key, 
 		       id_device, id_erp, id_admin, instance, created_at, updated_at, user_id
-		FROM device_setting_nodepath
+		FROM device_setting
 		WHERE user_id = ?
 		ORDER BY created_at DESC
 	`
@@ -136,7 +136,7 @@ func (s *DeviceSettingsService) GetByUserIDString(userID string) ([]*models.Devi
 	query := `
 		SELECT id, device_id, api_key_option, webhook_id, provider, phone_number, api_key, 
 		       id_device, id_erp, id_admin, instance, created_at, updated_at, user_id
-		FROM device_setting_nodepath
+		FROM device_setting
 		WHERE user_id = ?
 		ORDER BY created_at DESC
 	`
@@ -189,7 +189,7 @@ func (s *DeviceSettingsService) GetByID(id string) (*models.DeviceSettings, erro
 	query := `
 		SELECT id, device_id, api_key_option, webhook_id, provider, phone_number, api_key, 
 		       id_device, id_erp, id_admin, instance, created_at, updated_at, user_id
-		FROM device_setting_nodepath
+		FROM device_setting
 		WHERE id = ?
 	`
 
@@ -231,7 +231,7 @@ func (s *DeviceSettingsService) GetByIDDevice(idDevice string) (*models.DeviceSe
 	query := `
 		SELECT id, device_id, api_key_option, webhook_id, provider, phone_number, api_key, 
 		       id_device, id_erp, id_admin, instance, created_at, updated_at, user_id
-		FROM device_setting_nodepath
+		FROM device_setting
 		WHERE id_device = ?
 		ORDER BY created_at DESC
 		LIMIT 1
@@ -280,7 +280,7 @@ func (s *DeviceSettingsService) Upsert(req *models.CreateDeviceSettingsRequest) 
 		var existingID string
 		checkQuery := `
 			SELECT id 
-			FROM device_setting_nodepath 
+			FROM device_setting 
 			WHERE id_device = ?
 			FOR UPDATE
 		`
@@ -333,7 +333,7 @@ func (s *DeviceSettingsService) Upsert(req *models.CreateDeviceSettingsRequest) 
 			}
 
 			updateQuery := `
-				UPDATE device_setting_nodepath 
+				UPDATE device_setting 
 				SET device_id = ?, api_key_option = ?, webhook_id = ?, provider = ?, phone_number = ?, api_key = ?, 
 				    id_device = ?, id_erp = ?, id_admin = ?, instance = ?, updated_at = ?, user_id = ?
 				WHERE id = ?
@@ -405,7 +405,7 @@ func (s *DeviceSettingsService) Upsert(req *models.CreateDeviceSettingsRequest) 
 			}
 
 			insertQuery := `
-				INSERT INTO device_setting_nodepath 
+				INSERT INTO device_setting 
 				(id, device_id, api_key_option, webhook_id, provider, phone_number, api_key, id_device, id_erp, id_admin, instance, created_at, updated_at, user_id)
 				VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 			`
@@ -496,7 +496,7 @@ func (s *DeviceSettingsService) Create(req *models.CreateDeviceSettingsRequest) 
 	}
 
 	query := `
-		INSERT INTO device_setting_nodepath 
+		INSERT INTO device_setting 
 		(id, device_id, api_key_option, webhook_id, provider, phone_number, api_key, id_device, id_erp, id_admin, instance, created_at, updated_at, user_id)
 		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 	`
@@ -582,7 +582,7 @@ func (s *DeviceSettingsService) Update(id string, req *models.UpdateDeviceSettin
 	existing.UpdatedAt = time.Now()
 
 	query := `
-		UPDATE device_setting_nodepath 
+		UPDATE device_setting 
 		SET device_id = ?, api_key_option = ?, webhook_id = ?, provider = ?, phone_number = ?, api_key = ?, 
 		    id_device = ?, id_erp = ?, id_admin = ?, instance = ?, updated_at = ?, user_id = ?
 		WHERE id = ?
@@ -627,7 +627,7 @@ func (s *DeviceSettingsService) Delete(id string) error {
 		return err
 	}
 
-	query := `DELETE FROM device_setting_nodepath WHERE id = ?`
+	query := `DELETE FROM device_setting WHERE id = ?`
 	_, err = s.db.Exec(query, id)
 	if err != nil {
 		return fmt.Errorf("failed to delete device setting: %w", err)
