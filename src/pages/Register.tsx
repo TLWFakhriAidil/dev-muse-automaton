@@ -6,6 +6,22 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Bot, Eye, EyeOff, Loader2, User } from 'lucide-react';
+import { z } from 'zod';
+
+// Email validation schema - accepts valid email formats including hyphens and numbers
+const emailSchema = z.string()
+  .trim()
+  .email({ message: "Please enter a valid email address" })
+  .max(255, { message: "Email must be less than 255 characters" });
+
+const fullNameSchema = z.string()
+  .trim()
+  .min(1, { message: "Full name is required" })
+  .max(100, { message: "Full name must be less than 100 characters" });
+
+const passwordSchema = z.string()
+  .min(6, { message: "Password must be at least 6 characters long" })
+  .max(128, { message: "Password must be less than 128 characters" });
 
 const Register: React.FC = () => {
   const [fullName, setFullName] = useState('');
@@ -24,21 +40,46 @@ const Register: React.FC = () => {
     e.preventDefault();
     setError('');
 
-    // Validation
-    if (password !== confirmPassword) {
-      setError('Passwords do not match');
-      return;
+    // Validate full name
+    try {
+      fullNameSchema.parse(fullName);
+    } catch (err) {
+      if (err instanceof z.ZodError) {
+        setError(err.errors[0].message);
+        return;
+      }
     }
 
-    if (password.length < 6) {
-      setError('Password must be at least 6 characters long');
+    // Validate email
+    try {
+      emailSchema.parse(email);
+    } catch (err) {
+      if (err instanceof z.ZodError) {
+        setError(err.errors[0].message);
+        return;
+      }
+    }
+
+    // Validate password
+    try {
+      passwordSchema.parse(password);
+    } catch (err) {
+      if (err instanceof z.ZodError) {
+        setError(err.errors[0].message);
+        return;
+      }
+    }
+
+    // Check password match
+    if (password !== confirmPassword) {
+      setError('Passwords do not match');
       return;
     }
 
     setIsLoading(true);
 
     try {
-      const result = await register(email, password, fullName);
+      const result = await register(email.trim(), password, fullName.trim());
       
       if (result.success) {
         // Redirect to dashboard after successful registration
@@ -105,7 +146,7 @@ const Register: React.FC = () => {
               </Label>
               <Input
                 id="email"
-                type="email"
+                type="text"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="Enter your email"
