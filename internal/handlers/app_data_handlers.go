@@ -51,15 +51,15 @@ func (adh *AppDataHandlers) GetAppData(c *fiber.Ctx) error {
 	userIDStr := userID.(string)
 
 	// OPTIMIZED QUERY: Get user data and device count in a single LEFT JOIN query
-	// This eliminates the need for separate queries to user_nodepath and device_setting_nodepath
+	// This eliminates the need for separate queries to user and device_setting
 	query := `
 		SELECT 
 			u.id, u.email, u.full_name, u.gmail, u.phone, u.status, u.expired, 
 			u.is_active, u.created_at, u.updated_at, u.last_login,
 			COUNT(CASE WHEN d.id_device IS NOT NULL AND d.id_device != '' THEN 1 END) as device_count,
 			GROUP_CONCAT(CASE WHEN d.id_device IS NOT NULL AND d.id_device != '' THEN d.id_device END) as device_ids_concat
-		FROM user_nodepath u
-		LEFT JOIN device_setting_nodepath d ON u.id = d.user_id
+		FROM user u
+		LEFT JOIN device_setting d ON u.id = d.user_id
 		WHERE u.id = ?
 		GROUP BY u.id, u.email, u.full_name, u.gmail, u.phone, u.status, u.expired, 
 		         u.is_active, u.created_at, u.updated_at, u.last_login
@@ -139,8 +139,8 @@ func (adh *AppDataHandlers) GetAppDataStatus(c *fiber.Ctx) error {
 		SELECT 
 			u.status, u.expired, u.is_active,
 			COUNT(CASE WHEN d.id_device IS NOT NULL AND d.id_device != '' THEN 1 END) as device_count
-		FROM user_nodepath u
-		LEFT JOIN device_setting_nodepath d ON u.id = d.user_id
+		FROM user u
+		LEFT JOIN device_setting d ON u.id = d.user_id
 		WHERE u.id = ?
 		GROUP BY u.status, u.expired, u.is_active
 	`

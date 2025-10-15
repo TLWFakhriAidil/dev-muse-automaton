@@ -57,7 +57,7 @@ func (r *deviceSettingsRepository) CreateDeviceSettings(settings *models.DeviceS
 	settings.UpdatedAt = time.Now()
 
 	query := `
-		INSERT INTO device_setting_nodepath (
+		INSERT INTO device_setting (
 			device_id, api_key_option, webhook_id, provider, 
 			api_key, id_device, created_at, updated_at
 		) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
@@ -87,7 +87,7 @@ func (r *deviceSettingsRepository) GetDeviceSettingsByID(deviceID string) (*mode
 	query := `
 		SELECT device_id, api_key_option, webhook_id, provider, 
 		       api_key, id_device, created_at, updated_at
-		FROM device_setting_nodepath 
+		FROM device_setting 
 		WHERE device_id = ?
 	`
 
@@ -120,7 +120,7 @@ func (r *deviceSettingsRepository) GetDeviceSettingsByDevice(idDevice string) (*
 	query := `
 		SELECT device_id, api_key_option, webhook_id, provider, 
 		       api_key, id_device, created_at, updated_at
-		FROM device_setting_nodepath 
+		FROM device_setting 
 		WHERE id_device = ?
 	`
 
@@ -153,7 +153,7 @@ func (r *deviceSettingsRepository) GetAllDeviceSettings() ([]models.DeviceSettin
 	query := `
 		SELECT device_id, api_key_option, webhook_id, provider, 
 		       api_key, id_device, created_at, updated_at
-		FROM device_setting_nodepath 
+		FROM device_setting 
 		ORDER BY created_at DESC
 	`
 
@@ -188,7 +188,7 @@ func (r *deviceSettingsRepository) GetDeviceSettingsByProvider(provider string) 
 	query := `
 		SELECT device_id, api_key_option, webhook_id, provider, 
 		       api_key, id_device, created_at, updated_at
-		FROM device_setting_nodepath 
+		FROM device_setting 
 		WHERE provider = ?
 		ORDER BY created_at DESC
 	`
@@ -221,7 +221,7 @@ func (r *deviceSettingsRepository) GetDeviceSettingsByProvider(provider string) 
 
 // GetAPIKeyByDevice retrieves API key for a specific device
 func (r *deviceSettingsRepository) GetAPIKeyByDevice(idDevice string) (string, error) {
-	query := `SELECT api_key FROM device_setting_nodepath WHERE id_device = ?`
+	query := `SELECT api_key FROM device_setting WHERE id_device = ?`
 
 	var apiKey string
 	row := r.db.QueryRow(query, idDevice)
@@ -240,7 +240,7 @@ func (r *deviceSettingsRepository) GetAPIKeyByDevice(idDevice string) (string, e
 
 // GetProviderByDevice retrieves provider for a specific device
 func (r *deviceSettingsRepository) GetProviderByDevice(idDevice string) (string, error) {
-	query := `SELECT provider FROM device_setting_nodepath WHERE id_device = ?`
+	query := `SELECT provider FROM device_setting WHERE id_device = ?`
 
 	var provider string
 	row := r.db.QueryRow(query, idDevice)
@@ -259,7 +259,7 @@ func (r *deviceSettingsRepository) GetProviderByDevice(idDevice string) (string,
 
 // GetAPIKeyOptionByDevice retrieves API key option for a specific device
 func (r *deviceSettingsRepository) GetAPIKeyOptionByDevice(idDevice string) (string, error) {
-	query := `SELECT api_key_option FROM device_setting_nodepath WHERE id_device = ?`
+	query := `SELECT api_key_option FROM device_setting WHERE id_device = ?`
 
 	var apiKeyOption string
 	row := r.db.QueryRow(query, idDevice)
@@ -281,7 +281,7 @@ func (r *deviceSettingsRepository) UpdateDeviceSettings(settings *models.DeviceS
 	settings.UpdatedAt = time.Now()
 
 	query := `
-		UPDATE device_setting_nodepath SET 
+		UPDATE device_setting SET 
 			api_key_option = ?, webhook_id = ?, provider = ?, 
 			api_key = ?, id_device = ?, updated_at = ?
 		WHERE device_id = ?
@@ -304,7 +304,7 @@ func (r *deviceSettingsRepository) UpdateDeviceSettings(settings *models.DeviceS
 // UpdateAPIKey updates the API key for a specific device
 func (r *deviceSettingsRepository) UpdateAPIKey(deviceID string, apiKey string) error {
 	query := `
-		UPDATE device_setting_nodepath 
+		UPDATE device_setting 
 		SET api_key = ?, updated_at = ?
 		WHERE device_id = ?
 	`
@@ -322,7 +322,7 @@ func (r *deviceSettingsRepository) UpdateAPIKey(deviceID string, apiKey string) 
 // UpdateProvider updates the provider for a specific device
 func (r *deviceSettingsRepository) UpdateProvider(deviceID string, provider string) error {
 	query := `
-		UPDATE device_setting_nodepath 
+		UPDATE device_setting 
 		SET provider = ?, updated_at = ?
 		WHERE device_id = ?
 	`
@@ -340,7 +340,7 @@ func (r *deviceSettingsRepository) UpdateProvider(deviceID string, provider stri
 // UpdateAPIKeyOption updates the API key option for a specific device
 func (r *deviceSettingsRepository) UpdateAPIKeyOption(deviceID string, apiKeyOption string) error {
 	query := `
-		UPDATE device_setting_nodepath 
+		UPDATE device_setting 
 		SET api_key_option = ?, updated_at = ?
 		WHERE device_id = ?
 	`
@@ -358,7 +358,7 @@ func (r *deviceSettingsRepository) UpdateAPIKeyOption(deviceID string, apiKeyOpt
 // UpdateWebhookID updates the webhook ID for a specific device
 func (r *deviceSettingsRepository) UpdateWebhookID(deviceID string, webhookID string) error {
 	query := `
-		UPDATE device_setting_nodepath 
+		UPDATE device_setting 
 		SET webhook_id = ?, updated_at = ?
 		WHERE device_id = ?
 	`
@@ -375,7 +375,7 @@ func (r *deviceSettingsRepository) UpdateWebhookID(deviceID string, webhookID st
 
 // DeleteDeviceSettings deletes device settings by device_id
 func (r *deviceSettingsRepository) DeleteDeviceSettings(deviceID string) error {
-	query := `DELETE FROM device_setting_nodepath WHERE device_id = ?`
+	query := `DELETE FROM device_setting WHERE device_id = ?`
 
 	_, err := r.db.Exec(query, deviceID)
 	if err != nil {
@@ -389,7 +389,7 @@ func (r *deviceSettingsRepository) DeleteDeviceSettings(deviceID string) error {
 
 // DeviceExists checks if a device exists in the settings
 func (r *deviceSettingsRepository) DeviceExists(idDevice string) (bool, error) {
-	query := `SELECT COUNT(*) FROM device_setting_nodepath WHERE id_device = ?`
+	query := `SELECT COUNT(*) FROM device_setting WHERE id_device = ?`
 
 	var count int
 	row := r.db.QueryRow(query, idDevice)
@@ -404,7 +404,7 @@ func (r *deviceSettingsRepository) DeviceExists(idDevice string) (bool, error) {
 
 // GetDeviceCount returns the total number of configured devices
 func (r *deviceSettingsRepository) GetDeviceCount() (int, error) {
-	query := `SELECT COUNT(*) FROM device_setting_nodepath`
+	query := `SELECT COUNT(*) FROM device_setting`
 
 	var count int
 	row := r.db.QueryRow(query)

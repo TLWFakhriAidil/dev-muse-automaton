@@ -12,5 +12,5 @@ type ExecutionProcess struct {
 
 // TableName returns the table name for ExecutionProcess
 func (ExecutionProcess) TableName() string {
-	return "execution_process_nodepath"
+	return "execution_process"
 }

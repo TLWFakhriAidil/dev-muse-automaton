@@ -39,7 +39,7 @@ func (r *orderRepository) CreateOrder(order *models.Order) (int, error) {
 	order.UpdatedAt = time.Now()
 
 	query := `
-		INSERT INTO orders_nodepath (
+		INSERT INTO orders (
 			amount, collection_id, status, bill_id, url, product, method, user_id,
 			created_at, updated_at
 		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -74,7 +74,7 @@ func (r *orderRepository) GetOrderByID(id int) (*models.Order, error) {
 	query := `
 		SELECT id, amount, collection_id, status, bill_id, url, product, method, user_id,
 		       created_at, updated_at
-		FROM orders_nodepath
+		FROM orders
 		WHERE id = ?
 	`
 
@@ -99,7 +99,7 @@ func (r *orderRepository) GetOrderByBillID(billID string) (*models.Order, error)
 	query := `
 		SELECT id, amount, collection_id, status, bill_id, url, product, method, user_id,
 		       created_at, updated_at
-		FROM orders_nodepath
+		FROM orders
 		WHERE bill_id = ?
 	`
 
@@ -121,7 +121,7 @@ func (r *orderRepository) GetOrderByBillID(billID string) (*models.Order, error)
 
 // UpdateOrderStatus updates the payment status of an order
 func (r *orderRepository) UpdateOrderStatus(billID string, status string) error {
-	query := `UPDATE orders_nodepath SET status = ?, updated_at = ? WHERE bill_id = ?`
+	query := `UPDATE orders SET status = ?, updated_at = ? WHERE bill_id = ?`
 
 	result, err := r.db.Exec(query, status, time.Now(), billID)
 	if err != nil {
@@ -147,7 +147,7 @@ func (r *orderRepository) UpdateOrderStatus(billID string, status string) error 
 
 // UpdateOrderBillInfo updates the Billplz bill ID and URL for an order
 func (r *orderRepository) UpdateOrderBillInfo(orderID int, billID string, url string) error {
-	query := `UPDATE orders_nodepath SET bill_id = ?, url = ?, updated_at = ? WHERE id = ?`
+	query := `UPDATE orders SET bill_id = ?, url = ?, updated_at = ? WHERE id = ?`
 
 	result, err := r.db.Exec(query, billID, url, time.Now(), orderID)
 	if err != nil {
@@ -175,7 +175,7 @@ func (r *orderRepository) UpdateOrderBillInfo(orderID int, billID string, url st
 func (r *orderRepository) GetOrdersByUserID(userID string, limit int, offset int) ([]models.Order, int, error) {
 	// Get total count
 	var totalCount int
-	countQuery := `SELECT COUNT(*) FROM orders_nodepath WHERE user_id = ?`
+	countQuery := `SELECT COUNT(*) FROM orders WHERE user_id = ?`
 	err := r.db.QueryRow(countQuery, userID).Scan(&totalCount)
 	if err != nil {
 		return nil, 0, fmt.Errorf("failed to get order count: %w", err)
@@ -185,7 +185,7 @@ func (r *orderRepository) GetOrdersByUserID(userID string, limit int, offset int
 	query := `
 		SELECT id, amount, collection_id, status, bill_id, url, product, method, user_id,
 		       created_at, updated_at
-		FROM orders_nodepath
+		FROM orders
 		WHERE user_id = ?
 		ORDER BY created_at DESC
 		LIMIT ? OFFSET ?
@@ -217,7 +217,7 @@ func (r *orderRepository) GetOrdersByUserID(userID string, limit int, offset int
 func (r *orderRepository) GetAllOrders(limit int, offset int) ([]models.Order, int, error) {
 	// Get total count
 	var totalCount int
-	countQuery := `SELECT COUNT(*) FROM orders_nodepath`
+	countQuery := `SELECT COUNT(*) FROM orders`
 	err := r.db.QueryRow(countQuery).Scan(&totalCount)
 	if err != nil {
 		return nil, 0, fmt.Errorf("failed to get order count: %w", err)
@@ -227,7 +227,7 @@ func (r *orderRepository) GetAllOrders(limit int, offset int) ([]models.Order, i
 	query := `
 		SELECT id, amount, collection_id, status, bill_id, url, product, method, user_id,
 		       created_at, updated_at
-		FROM orders_nodepath
+		FROM orders
 		ORDER BY created_at DESC
 		LIMIT ? OFFSET ?
 	`

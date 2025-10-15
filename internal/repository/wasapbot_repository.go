@@ -12,7 +12,7 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-// WasapBotRepository interface for wasapBot_nodepath operations
+// WasapBotRepository interface for wasapBot operations
 type WasapBotRepository interface {
 	GetByProspectAndDevice(prospectNum, deviceID string) (*models.WasapBot, error)
 	GetActiveExecution(prospectNum, deviceID string) (*models.WasapBot, error)
@@ -54,7 +54,7 @@ func (r *wasapBotRepository) GetByProspectAndDevice(prospectNum, deviceID string
 		       pakej, no_fon, cara_bayaran, tarikh_gaji, stage, temp_stage,
 		       conv_start, conv_last, date_start, date_last, status, staff_cls,
 		       umur, kerja, sijil, user_input, alasan, nota
-		FROM wasapBot_nodepath
+		FROM wasapBot
 		WHERE prospect_num = ? AND id_device = ?
 		LIMIT 1
 	`
@@ -89,7 +89,7 @@ func (r *wasapBotRepository) GetActiveExecution(prospectNum, deviceID string) (*
 		       pakej, no_fon, cara_bayaran, tarikh_gaji, stage, temp_stage,
 		       conv_start, conv_last, date_start, date_last, status, staff_cls,
 		       umur, kerja, sijil, user_input, alasan, nota
-		FROM wasapBot_nodepath
+		FROM wasapBot
 		WHERE prospect_num = ? AND id_device = ? AND execution_status = 'active'
 		LIMIT 1
 	`
@@ -124,7 +124,7 @@ func (r *wasapBotRepository) GetByExecutionID(executionID string) (*models.Wasap
 		       pakej, no_fon, cara_bayaran, tarikh_gaji, stage, temp_stage,
 		       conv_start, conv_last, date_start, date_last, status, staff_cls,
 		       umur, kerja, sijil, user_input, alasan, nota
-		FROM wasapBot_nodepath
+		FROM wasapBot
 		WHERE execution_id = ?
 		LIMIT 1
 	`
@@ -153,7 +153,7 @@ func (r *wasapBotRepository) GetByExecutionID(executionID string) (*models.Wasap
 // Create creates a new wasapBot record
 func (r *wasapBotRepository) Create(wasapBot *models.WasapBot) error {
 	query := `
-		INSERT INTO wasapBot_nodepath (
+		INSERT INTO wasapBot (
 			flow_reference, execution_id, execution_status, flow_id,
 			current_node_id, last_node_id, waiting_for_reply, id_device,
 			prospect_num, niche, peringkat_sekolah, alamat, nama,
@@ -192,7 +192,7 @@ func (r *wasapBotRepository) Create(wasapBot *models.WasapBot) error {
 // Update updates an existing wasapBot record
 func (r *wasapBotRepository) Update(wasapBot *models.WasapBot) error {
 	query := `
-		UPDATE wasapBot_nodepath SET
+		UPDATE wasapBot SET
 			flow_reference = ?, execution_id = ?, execution_status = ?, flow_id = ?,
 			current_node_id = ?, last_node_id = ?, waiting_for_reply = ?, id_device = ?,
 			prospect_num = ?, niche = ?, peringkat_sekolah = ?, alamat = ?,
@@ -226,7 +226,7 @@ func (r *wasapBotRepository) Update(wasapBot *models.WasapBot) error {
 
 // UpdateExecutionStatus updates the execution status
 func (r *wasapBotRepository) UpdateExecutionStatus(executionID, status string) error {
-	query := `UPDATE wasapBot_nodepath SET execution_status = ? WHERE execution_id = ?`
+	query := `UPDATE wasapBot SET execution_status = ? WHERE execution_id = ?`
 	_, err := r.db.Exec(query, status, executionID)
 	if err != nil {
 		return fmt.Errorf("failed to update execution status: %w", err)
@@ -236,7 +236,7 @@ func (r *wasapBotRepository) UpdateExecutionStatus(executionID, status string) e
 
 // UpdateCurrentNode updates the current node ID
 func (r *wasapBotRepository) UpdateCurrentNode(executionID, nodeID string) error {
-	query := `UPDATE wasapBot_nodepath SET current_node_id = ? WHERE execution_id = ?`
+	query := `UPDATE wasapBot SET current_node_id = ? WHERE execution_id = ?`
 	_, err := r.db.Exec(query, nodeID, executionID)
 	if err != nil {
 		return fmt.Errorf("failed to update current node: %w", err)
@@ -252,7 +252,7 @@ func (r *wasapBotRepository) SaveConversationHistory(prospectNum, deviceID, user
 		var existingConvLast sql.NullString
 		checkQuery := `
 			SELECT id_prospect, conv_last 
-			FROM wasapBot_nodepath 
+			FROM wasapBot 
 			WHERE prospect_num = ? AND id_device = ?
 			FOR UPDATE
 		`
@@ -294,7 +294,7 @@ func (r *wasapBotRepository) SaveConversationHistory(prospectNum, deviceID, user
 		if existingID != nil {
 			// Update existing record
 			updateQuery := `
-				UPDATE wasapBot_nodepath 
+				UPDATE wasapBot 
 				SET conv_last = ?, stage = ?, nama = ?, date_last = ?
 				WHERE prospect_num = ? AND id_device = ?
 			`
@@ -308,7 +308,7 @@ func (r *wasapBotRepository) SaveConversationHistory(prospectNum, deviceID, user
 		} else {
 			// Create new record
 			insertQuery := `
-				INSERT INTO wasapBot_nodepath (
+				INSERT INTO wasapBot (
 					prospect_num, id_device, stage, conv_last, nama, 
 					date_start, date_last, status, waiting_for_reply
 				) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -331,7 +331,7 @@ func (r *wasapBotRepository) SaveConversationHistory(prospectNum, deviceID, user
 // UpdateWaitingStatus updates the waiting status for an execution
 func (r *wasapBotRepository) UpdateWaitingStatus(executionID string, waitingValue int) error {
 	query := `
-		UPDATE wasapBot_nodepath 
+		UPDATE wasapBot 
 		SET waiting_for_reply = ?, date_last = NOW()
 		WHERE execution_id = ?
 	`
@@ -355,7 +355,7 @@ func (r *wasapBotRepository) TryAcquireSession(prospectNum, deviceID string) (bo
 		return false, fmt.Errorf("database connection is not available")
 	}
 
-	const query = `INSERT INTO wasapBot_session_nodepath (id_prospect, id_device, ` + "`timestamp`" + `) VALUES (?, ?, ?)`
+	const query = `INSERT INTO wasapBot_session (id_prospect, id_device, ` + "`timestamp`" + `) VALUES (?, ?, ?)`
 	_, err := r.db.Exec(query, prospectNum, deviceID, time.Now().Format(time.RFC3339Nano))
 	if err != nil {
 		if mysqlErr, ok := err.(*mysql.MySQLError); ok {
@@ -375,7 +375,7 @@ func (r *wasapBotRepository) ReleaseSession(prospectNum, deviceID string) error 
 		return fmt.Errorf("database connection is not available")
 	}
 
-	const query = `DELETE FROM wasapBot_session_nodepath WHERE id_prospect = ? AND id_device = ?`
+	const query = `DELETE FROM wasapBot_session WHERE id_prospect = ? AND id_device = ?`
 	if _, err := r.db.Exec(query, prospectNum, deviceID); err != nil {
 		return fmt.Errorf("failed to release WasapBot session lock: %w", err)
 	}
@@ -400,11 +400,11 @@ func (r *wasapBotRepository) GetAllWasapBotData(limit, offset int, deviceFilter,
 	query := `
 		SELECT id_prospect, prospect_num, nama, stage, date_last, id_device,
 		       niche, status, alamat, pakej, cara_bayaran, tarikh_gaji, current_node_id, no_fon
-		FROM wasapBot_nodepath
+		FROM wasapBot
 		WHERE 1=1
 	`
 
-	countQuery := `SELECT COUNT(*) FROM wasapBot_nodepath WHERE 1=1`
+	countQuery := `SELECT COUNT(*) FROM wasapBot WHERE 1=1`
 	args := []interface{}{}
 	countArgs := []interface{}{}
 
@@ -579,42 +579,42 @@ func (r *wasapBotRepository) GetWasapBotStats(deviceFilter string, userID string
 
 	// Total prospects
 	var totalProspects int
-	err := r.db.QueryRow("SELECT COUNT(DISTINCT prospect_num) FROM wasapBot_nodepath WHERE "+baseWhere, args...).Scan(&totalProspects)
+	err := r.db.QueryRow("SELECT COUNT(DISTINCT prospect_num) FROM wasapBot WHERE "+baseWhere, args...).Scan(&totalProspects)
 	if err == nil {
 		stats["totalProspects"] = totalProspects
 	}
 
 	// Active executions
 	var activeExecutions int
-	err = r.db.QueryRow("SELECT COUNT(*) FROM wasapBot_nodepath WHERE "+baseWhere+" AND execution_status = 'active'", args...).Scan(&activeExecutions)
+	err = r.db.QueryRow("SELECT COUNT(*) FROM wasapBot WHERE "+baseWhere+" AND execution_status = 'active'", args...).Scan(&activeExecutions)
 	if err == nil {
 		stats["activeExecutions"] = activeExecutions
 	}
 
 	// Completed executions
 	var completedExecutions int
-	err = r.db.QueryRow("SELECT COUNT(*) FROM wasapBot_nodepath WHERE "+baseWhere+" AND status = 'Customer'", args...).Scan(&completedExecutions)
+	err = r.db.QueryRow("SELECT COUNT(*) FROM wasapBot WHERE "+baseWhere+" AND status = 'Customer'", args...).Scan(&completedExecutions)
 	if err == nil {
 		stats["completedExecutions"] = completedExecutions
 	}
 
 	// Unique schools
 	var uniqueSchools int
-	err = r.db.QueryRow("SELECT COUNT(DISTINCT peringkat_sekolah) FROM wasapBot_nodepath WHERE "+baseWhere+" AND peringkat_sekolah IS NOT NULL AND peringkat_sekolah != ''", args...).Scan(&uniqueSchools)
+	err = r.db.QueryRow("SELECT COUNT(DISTINCT peringkat_sekolah) FROM wasapBot WHERE "+baseWhere+" AND peringkat_sekolah IS NOT NULL AND peringkat_sekolah != ''", args...).Scan(&uniqueSchools)
 	if err == nil {
 		stats["uniqueSchools"] = uniqueSchools
 	}
 
 	// Unique packages
 	var uniquePackages int
-	err = r.db.QueryRow("SELECT COUNT(DISTINCT pakej) FROM wasapBot_nodepath WHERE "+baseWhere+" AND pakej IS NOT NULL AND pakej != ''", args...).Scan(&uniquePackages)
+	err = r.db.QueryRow("SELECT COUNT(DISTINCT pakej) FROM wasapBot WHERE "+baseWhere+" AND pakej IS NOT NULL AND pakej != ''", args...).Scan(&uniquePackages)
 	if err == nil {
 		stats["uniquePackages"] = uniquePackages
 	}
 
 	// Total with phone
 	var totalWithPhone int
-	err = r.db.QueryRow("SELECT COUNT(*) FROM wasapBot_nodepath WHERE "+baseWhere+" AND no_fon IS NOT NULL AND no_fon != ''", args...).Scan(&totalWithPhone)
+	err = r.db.QueryRow("SELECT COUNT(*) FROM wasapBot WHERE "+baseWhere+" AND no_fon IS NOT NULL AND no_fon != ''", args...).Scan(&totalWithPhone)
 	if err == nil {
 		stats["totalWithPhone"] = totalWithPhone
 	}
@@ -624,7 +624,7 @@ func (r *wasapBotRepository) GetWasapBotStats(deviceFilter string, userID string
 
 // Delete deletes a WasapBot record by ID
 func (r *wasapBotRepository) Delete(idProspect int) error {
-	query := `DELETE FROM wasapBot_nodepath WHERE id_prospect = ?`
+	query := `DELETE FROM wasapBot WHERE id_prospect = ?`
 
 	result, err := r.db.Exec(query, idProspect)
 	if err != nil {
@@ -664,11 +664,11 @@ func (r *wasapBotRepository) GetAllWasapBotDataWithDates(limit, offset int, devi
 	query := `
 		SELECT id_prospect, prospect_num, nama, stage, date_last, date_start, id_device,
 		       niche, status, alamat, pakej, cara_bayaran, tarikh_gaji, current_node_id, no_fon
-		FROM wasapBot_nodepath
+		FROM wasapBot
 		WHERE 1=1
 	`
 
-	countQuery := `SELECT COUNT(*) FROM wasapBot_nodepath WHERE 1=1`
+	countQuery := `SELECT COUNT(*) FROM wasapBot WHERE 1=1`
 	args := []interface{}{}
 	countArgs := []interface{}{}
 
@@ -873,7 +873,7 @@ func (r *wasapBotRepository) GetWasapBotStatsWithDates(deviceFilter, dateFrom, d
 
 	// Total prospects
 	var totalProspects int
-	query := "SELECT COUNT(DISTINCT prospect_num) FROM wasapBot_nodepath WHERE " + baseWhere
+	query := "SELECT COUNT(DISTINCT prospect_num) FROM wasapBot WHERE " + baseWhere
 	err := r.db.QueryRow(query, args...).Scan(&totalProspects)
 	if err == nil {
 		stats["totalProspects"] = totalProspects
@@ -881,7 +881,7 @@ func (r *wasapBotRepository) GetWasapBotStatsWithDates(deviceFilter, dateFrom, d
 
 	// Active executions (current_node_id is NOT 'end')
 	var activeExecutions int
-	query = "SELECT COUNT(*) FROM wasapBot_nodepath WHERE " + baseWhere + " AND (current_node_id IS NULL OR current_node_id != 'end')"
+	query = "SELECT COUNT(*) FROM wasapBot WHERE " + baseWhere + " AND (current_node_id IS NULL OR current_node_id != 'end')"
 	err = r.db.QueryRow(query, args...).Scan(&activeExecutions)
 	if err == nil {
 		stats["activeExecutions"] = activeExecutions
@@ -891,7 +891,7 @@ func (r *wasapBotRepository) GetWasapBotStatsWithDates(deviceFilter, dateFrom, d
 
 	// Completed executions (current_node_id is 'end')
 	var completedExecutions int
-	query = "SELECT COUNT(*) FROM wasapBot_nodepath WHERE " + baseWhere + " AND current_node_id = 'end'"
+	query = "SELECT COUNT(*) FROM wasapBot WHERE " + baseWhere + " AND current_node_id = 'end'"
 	err = r.db.QueryRow(query, args...).Scan(&completedExecutions)
 	if err == nil {
 		stats["completedExecutions"] = completedExecutions
@@ -901,7 +901,7 @@ func (r *wasapBotRepository) GetWasapBotStatsWithDates(deviceFilter, dateFrom, d
 
 	// Unique schools
 	var uniqueSchools int
-	query = "SELECT COUNT(DISTINCT peringkat_sekolah) FROM wasapBot_nodepath WHERE " + baseWhere + " AND peringkat_sekolah IS NOT NULL AND peringkat_sekolah != ''"
+	query = "SELECT COUNT(DISTINCT peringkat_sekolah) FROM wasapBot WHERE " + baseWhere + " AND peringkat_sekolah IS NOT NULL AND peringkat_sekolah != ''"
 	err = r.db.QueryRow(query, args...).Scan(&uniqueSchools)
 	if err == nil {
 		stats["uniqueSchools"] = uniqueSchools
@@ -909,7 +909,7 @@ func (r *wasapBotRepository) GetWasapBotStatsWithDates(deviceFilter, dateFrom, d
 
 	// Unique packages
 	var uniquePackages int
-	query = "SELECT COUNT(DISTINCT pakej) FROM wasapBot_nodepath WHERE " + baseWhere + " AND pakej IS NOT NULL AND pakej != ''"
+	query = "SELECT COUNT(DISTINCT pakej) FROM wasapBot WHERE " + baseWhere + " AND pakej IS NOT NULL AND pakej != ''"
 	err = r.db.QueryRow(query, args...).Scan(&uniquePackages)
 	if err == nil {
 		stats["uniquePackages"] = uniquePackages
@@ -917,7 +917,7 @@ func (r *wasapBotRepository) GetWasapBotStatsWithDates(deviceFilter, dateFrom, d
 
 	// Total with phone
 	var totalWithPhone int
-	query = "SELECT COUNT(*) FROM wasapBot_nodepath WHERE " + baseWhere + " AND no_fon IS NOT NULL AND no_fon != ''"
+	query = "SELECT COUNT(*) FROM wasapBot WHERE " + baseWhere + " AND no_fon IS NOT NULL AND no_fon != ''"
 	err = r.db.QueryRow(query, args...).Scan(&totalWithPhone)
 	if err == nil {
 		stats["totalWithPhone"] = totalWithPhone
@@ -931,7 +931,7 @@ func (r *wasapBotRepository) GetWasapBotStatsWithDates(deviceFilter, dateFrom, d
 				ELSE stage 
 			END as stage_name, 
 			COUNT(*) as count 
-		FROM wasapBot_nodepath 
+		FROM wasapBot 
 		WHERE ` + baseWhere + ` 
 		GROUP BY stage_name
 	`
@@ -982,7 +982,7 @@ func (r *wasapBotRepository) GetWasapBotStatsWithDates(deviceFilter, dateFrom, d
 		SELECT 
 			DATE_FORMAT(DATE(date_start), '%Y-%m-%d') as date,
 			COUNT(DISTINCT prospect_num) as prospects
-		FROM wasapBot_nodepath 
+		FROM wasapBot 
 		WHERE ` + dailyBaseWhere + `
 		  AND date_start IS NOT NULL 
 		  AND date_start != ''

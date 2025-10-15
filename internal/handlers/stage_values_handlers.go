@@ -38,7 +38,7 @@ func (h *Handlers) GetAllStageValues(c *fiber.Ctx) error {
 
 	// First, get all devices for this user
 	deviceQuery := `
-		SELECT id_device FROM device_setting_nodepath WHERE user_id = ?
+		SELECT id_device FROM device_setting WHERE user_id = ?
 	`
 	deviceRows, err := h.db.Query(deviceQuery, userIDStr)
 	if err != nil {
@@ -66,7 +66,7 @@ func (h *Handlers) GetAllStageValues(c *fiber.Ctx) error {
 	// Build query for stage values
 	query := `
 		SELECT stageSetValue_id, id_device, stage, type_inputData, columnsData, inputHardCode
-		FROM stageSetValue_nodepath
+		FROM stageSetValue
 		WHERE id_device IN (`
 
 	// Add placeholders for IN clause
@@ -148,7 +148,7 @@ func (h *Handlers) CreateStageValue(c *fiber.Ctx) error {
 	// If no device ID provided, get first device for user
 	if req.IDDevice == "" {
 		var firstDevice string
-		err := h.db.QueryRow("SELECT id_device FROM device_setting_nodepath WHERE user_id = ? LIMIT 1", userIDStr).Scan(&firstDevice)
+		err := h.db.QueryRow("SELECT id_device FROM device_setting WHERE user_id = ? LIMIT 1", userIDStr).Scan(&firstDevice)
 		if err != nil {
 			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 				"error": "No device found for user",
@@ -166,7 +166,7 @@ func (h *Handlers) CreateStageValue(c *fiber.Ctx) error {
 
 	// Verify user owns the device
 	var count int
-	err := h.db.QueryRow("SELECT COUNT(*) FROM device_setting_nodepath WHERE id_device = ? AND user_id = ?", req.IDDevice, userIDStr).Scan(&count)
+	err := h.db.QueryRow("SELECT COUNT(*) FROM device_setting WHERE id_device = ? AND user_id = ?", req.IDDevice, userIDStr).Scan(&count)
 	if err != nil || count == 0 {
 		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{
 			"error": "You don't have permission to modify this device",
@@ -183,7 +183,7 @@ func (h *Handlers) CreateStageValue(c *fiber.Ctx) error {
 
 	// Create the table if it doesn't exist
 	createTableQuery := `
-		CREATE TABLE IF NOT EXISTS stageSetValue_nodepath (
+		CREATE TABLE IF NOT EXISTS stageSetValue (
 			stageSetValue_id INT AUTO_INCREMENT PRIMARY KEY,
 			id_device VARCHAR(255),
 			stage VARCHAR(255),
@@ -202,7 +202,7 @@ func (h *Handlers) CreateStageValue(c *fiber.Ctx) error {
 
 	// Try to alter existing table if stage column is INT
 	alterTableQuery := `
-		ALTER TABLE stageSetValue_nodepath 
+		ALTER TABLE stageSetValue 
 		MODIFY COLUMN stage VARCHAR(255)
 	`
 	_, err = h.db.Exec(alterTableQuery)
@@ -213,7 +213,7 @@ func (h *Handlers) CreateStageValue(c *fiber.Ctx) error {
 
 	// Insert the new stage value
 	insertQuery := `
-		INSERT INTO stageSetValue_nodepath (id_device, stage, type_inputData, columnsData, inputHardCode)
+		INSERT INTO stageSetValue (id_device, stage, type_inputData, columnsData, inputHardCode)
 		VALUES (?, ?, ?, ?, ?)
 	`
 
@@ -280,7 +280,7 @@ func (h *Handlers) UpdateStageValue(c *fiber.Ctx) error {
 
 	// First check if the stage value exists and get its device ID
 	var deviceID string
-	err = h.db.QueryRow("SELECT id_device FROM stageSetValue_nodepath WHERE stageSetValue_id = ?", id).Scan(&deviceID)
+	err = h.db.QueryRow("SELECT id_device FROM stageSetValue WHERE stageSetValue_id = ?", id).Scan(&deviceID)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return c.Status(fiber.StatusNotFound).JSON(fiber.Map{
@@ -294,7 +294,7 @@ func (h *Handlers) UpdateStageValue(c *fiber.Ctx) error {
 
 	// Verify user owns the device
 	var count int
-	err = h.db.QueryRow("SELECT COUNT(*) FROM device_setting_nodepath WHERE id_device = ? AND user_id = ?", deviceID, userIDStr).Scan(&count)
+	err = h.db.QueryRow("SELECT COUNT(*) FROM device_setting WHERE id_device = ? AND user_id = ?", deviceID, userIDStr).Scan(&count)
 	if err != nil || count == 0 {
 		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{
 			"error": "You don't have permission to modify this stage value",
@@ -303,7 +303,7 @@ func (h *Handlers) UpdateStageValue(c *fiber.Ctx) error {
 
 	// Update the stage value
 	updateQuery := `
-		UPDATE stageSetValue_nodepath 
+		UPDATE stageSetValue 
 		SET stage = ?, type_inputData = ?, columnsData = ?, inputHardCode = ?
 		WHERE stageSetValue_id = ?
 	`
@@ -361,7 +361,7 @@ func (h *Handlers) DeleteStageValue(c *fiber.Ctx) error {
 
 	// First check if the stage value exists and get its device ID
 	var deviceID string
-	err = h.db.QueryRow("SELECT id_device FROM stageSetValue_nodepath WHERE stageSetValue_id = ?", id).Scan(&deviceID)
+	err = h.db.QueryRow("SELECT id_device FROM stageSetValue WHERE stageSetValue_id = ?", id).Scan(&deviceID)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return c.Status(fiber.StatusNotFound).JSON(fiber.Map{
@@ -375,14 +375,14 @@ func (h *Handlers) DeleteStageValue(c *fiber.Ctx) error {
 
 	// Verify user owns the device
 	var count int
-	err = h.db.QueryRow("SELECT COUNT(*) FROM device_setting_nodepath WHERE id_device = ? AND user_id = ?", deviceID, userIDStr).Scan(&count)
+	err = h.db.QueryRow("SELECT COUNT(*) FROM device_setting WHERE id_device = ? AND user_id = ?", deviceID, userIDStr).Scan(&count)
 	if err != nil || count == 0 {
 		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{
 			"error": "You don't have permission to delete this stage value",
 		})
 	}
 
-	deleteQuery := `DELETE FROM stageSetValue_nodepath WHERE stageSetValue_id = ?`
+	deleteQuery := `DELETE FROM stageSetValue WHERE stageSetValue_id = ?`
 	result, err := h.db.Exec(deleteQuery, id)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to delete stage value")

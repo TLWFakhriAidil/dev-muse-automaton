@@ -215,7 +215,7 @@ func (h *HealthService) checkDatabaseHealth(ctx context.Context) *ComponentHealt
 
 	// Test a simple query on a known table
 	var count int
-	if err := h.db.QueryRowContext(ctxWithTimeout, "SELECT COUNT(*) FROM device_setting_nodepath").Scan(&count); err != nil {
+	if err := h.db.QueryRowContext(ctxWithTimeout, "SELECT COUNT(*) FROM device_setting").Scan(&count); err != nil {
 		health.Status = HealthStatusDegraded
 		health.Message = fmt.Sprintf("Failed to query device settings table: %v", err)
 	} else {

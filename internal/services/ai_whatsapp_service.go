@@ -511,8 +511,8 @@ func (s *aiWhatsappService) ProcessAIConversation(prospectNum, idDevice, current
 		}
 	}
 
-	// REMOVED - no longer logging to conversation_log_nodepath table
-	// All conversation history is saved via SaveConversationHistory to ai_whatsapp_nodepath.conv_last
+	// REMOVED - no longer logging to conversation_log table
+	// All conversation history is saved via SaveConversationHistory to ai_whatsapp.conv_last
 	// var staffID string
 	// if aiConv != nil {
 	// 	staffID = aiConv.IDDevice
@@ -562,10 +562,10 @@ func (s *aiWhatsappService) UpdateConversationStage(prospectNum, stage string) e
 }
 
 // LogConversation logs a conversation message
-// LogConversation - REMOVED: No longer using conversation_log_nodepath table
+// LogConversation - REMOVED: No longer using conversation_log table
 func (s *aiWhatsappService) LogConversation(prospectNum string, idDevice string, message, sender, stage string) error {
-	// REMOVED - no longer saving to conversation_log_nodepath
-	// Use SaveConversationHistory instead which saves to ai_whatsapp_nodepath.conv_last
+	// REMOVED - no longer saving to conversation_log
+	// Use SaveConversationHistory instead which saves to ai_whatsapp.conv_last
 	logrus.WithFields(logrus.Fields{
 		"prospect_num": prospectNum,
 		"device_id":    idDevice,
@@ -1198,7 +1198,7 @@ func (s *aiWhatsappService) CreateAIWhatsappRecord(prospectNum, idDevice, userMe
 
 		// Create AI WhatsApp record within transaction
 		query := `
-			INSERT INTO ai_whatsapp_nodepath (
+			INSERT INTO ai_whatsapp (
 				id_prospect, id_device, prospect_num, prospect_name, stage, date_order, conv_last, 
 				conv_current, human, niche, intro, 
 				balas, keywordiklan, marketer, update_today, 
@@ -1247,10 +1247,10 @@ func (s *aiWhatsappService) CreateAIWhatsappRecord(prospectNum, idDevice, userMe
 			return fmt.Errorf("failed to create AI WhatsApp record: %w", err)
 		}
 
-		// DISABLED: No longer saving to conversation_log_nodepath table
+		// DISABLED: No longer saving to conversation_log table
 		// Create initial conversation log within transaction
 		// convLogQuery := `
-		// 	INSERT INTO conversation_log_nodepath (
+		// 	INSERT INTO conversation_log (
 		// 		prospect_num, message, sender, stage, created_at
 		// 	) VALUES (?, ?, ?, ?, ?)
 		// `
@@ -1290,7 +1290,7 @@ func (s *aiWhatsappService) UpdateProspectName(prospectNum, idDevice, prospectNa
 
 // Flow execution methods
 
-// StartFlowExecution starts a new flow execution in ai_whatsapp_nodepath
+// StartFlowExecution starts a new flow execution in ai_whatsapp
 func (s *aiWhatsappService) StartFlowExecution(prospectNum, idDevice, flowReference string, variables map[string]interface{}) (*models.AIWhatsapp, error) {
 	logrus.WithFields(logrus.Fields{
 		"prospect_num":   prospectNum,
@@ -1378,7 +1378,7 @@ func (s *aiWhatsappService) StartFlowExecution(prospectNum, idDevice, flowRefere
 		// First update intro and niche if they are empty (preserve existing values)
 		if (!aiConv.Intro.Valid || aiConv.Intro.String == "") && flowIntro != "" {
 			// Update intro field separately to preserve other data
-			query := `UPDATE ai_whatsapp_nodepath SET intro = ?, updated_at = ? WHERE prospect_num = ? AND id_device = ?`
+			query := `UPDATE ai_whatsapp SET intro = ?, updated_at = ? WHERE prospect_num = ? AND id_device = ?`
 			_, err := s.aiRepo.GetDB().Exec(query, flowIntro, now, prospectNum, idDevice)
 			if err != nil {
 				logrus.WithError(err).Warn("Failed to update intro field")
@@ -1386,7 +1386,7 @@ func (s *aiWhatsappService) StartFlowExecution(prospectNum, idDevice, flowRefere
 		}
 		if aiConv.Niche == "" && flowNiche != "" {
 			// Update niche field separately to preserve other data
-			query := `UPDATE ai_whatsapp_nodepath SET niche = ?, updated_at = ? WHERE prospect_num = ? AND id_device = ?`
+			query := `UPDATE ai_whatsapp SET niche = ?, updated_at = ? WHERE prospect_num = ? AND id_device = ?`
 			_, err := s.aiRepo.GetDB().Exec(query, flowNiche, now, prospectNum, idDevice)
 			if err != nil {
 				logrus.WithError(err).Warn("Failed to update niche field")
@@ -1430,7 +1430,7 @@ func (s *aiWhatsappService) StartFlowExecution(prospectNum, idDevice, flowRefere
 	return aiConv, nil
 }
 
-// GetActiveFlowExecution retrieves active flow execution from ai_whatsapp_nodepath
+// GetActiveFlowExecution retrieves active flow execution from ai_whatsapp
 func (s *aiWhatsappService) GetActiveFlowExecution(prospectNum, idDevice string) (*models.AIWhatsapp, error) {
 	aiConv, err := s.aiRepo.GetAIWhatsappByProspectAndDevice(prospectNum, idDevice)
 	if err != nil {
@@ -1455,7 +1455,7 @@ func (s *aiWhatsappService) GetActiveFlowExecution(prospectNum, idDevice string)
 	return aiConv, nil
 }
 
-// GetFlowExecutionByProspectAndDevice retrieves any flow execution (regardless of status) from ai_whatsapp_nodepath
+// GetFlowExecutionByProspectAndDevice retrieves any flow execution (regardless of status) from ai_whatsapp
 // This is used for delayed message processing where execution might be completed but delayed messages are still pending
 func (s *aiWhatsappService) GetFlowExecutionByProspectAndDevice(prospectNum, idDevice string) (*models.AIWhatsapp, error) {
 	aiConv, err := s.aiRepo.GetAIWhatsappByProspectAndDevice(prospectNum, idDevice)
@@ -1472,7 +1472,7 @@ func (s *aiWhatsappService) GetFlowExecutionByProspectAndDevice(prospectNum, idD
 	return aiConv, nil
 }
 
-// UpdateFlowExecution updates flow execution state in ai_whatsapp_nodepath
+// UpdateFlowExecution updates flow execution state in ai_whatsapp
 // Uses UpdateFlowTrackingFields to preserve conversation history and other important data
 func (s *aiWhatsappService) UpdateFlowExecution(prospectNum, idDevice, currentNode string, variables map[string]interface{}, status string) error {
 	logrus.WithFields(logrus.Fields{
@@ -1545,7 +1545,7 @@ func (s *aiWhatsappService) UpdateFlowExecution(prospectNum, idDevice, currentNo
 	return nil
 }
 
-// CompleteFlowExecution marks flow execution as completed in ai_whatsapp_nodepath
+// CompleteFlowExecution marks flow execution as completed in ai_whatsapp
 func (s *aiWhatsappService) CompleteFlowExecution(prospectNum, idDevice string) error {
 	logrus.WithFields(logrus.Fields{
 		"prospect_num": prospectNum,
@@ -1555,7 +1555,7 @@ func (s *aiWhatsappService) CompleteFlowExecution(prospectNum, idDevice string) 
 	return s.UpdateFlowExecution(prospectNum, idDevice, "", nil, "completed")
 }
 
-// GetFlowExecutionVariables retrieves flow execution variables from ai_whatsapp_nodepath
+// GetFlowExecutionVariables retrieves flow execution variables from ai_whatsapp
 func (s *aiWhatsappService) GetFlowExecutionVariables(prospectNum, idDevice string) (map[string]interface{}, error) {
 	aiConv, err := s.aiRepo.GetAIWhatsappByProspectAndDevice(prospectNum, idDevice)
 	if err != nil {
@@ -1622,7 +1622,7 @@ func (s *aiWhatsappService) GetRepository() repository.AIWhatsappRepository {
 	return s.aiRepo
 }
 
-// UpdateStage updates the stage field in ai_whatsapp_nodepath
+// UpdateStage updates the stage field in ai_whatsapp
 func (s *aiWhatsappService) UpdateStage(phoneNumber, deviceID, stage string) error {
 	// Get active execution
 	execution, err := s.GetActiveFlowExecution(phoneNumber, deviceID)
@@ -1632,7 +1632,7 @@ func (s *aiWhatsappService) UpdateStage(phoneNumber, deviceID, stage string) err
 
 	if execution == nil {
 		// No active execution, try to update by phone number and device ID
-		query := `UPDATE ai_whatsapp_nodepath SET stage = ? WHERE prospect_num = ? AND id_device = ? ORDER BY id DESC LIMIT 1`
+		query := `UPDATE ai_whatsapp SET stage = ? WHERE prospect_num = ? AND id_device = ? ORDER BY id DESC LIMIT 1`
 		result, err := s.aiRepo.GetDB().Exec(query, stage, phoneNumber, deviceID)
 		if err != nil {
 			return fmt.Errorf("failed to update stage: %w", err)
@@ -1644,13 +1644,13 @@ func (s *aiWhatsappService) UpdateStage(phoneNumber, deviceID, stage string) err
 				"phone_number": phoneNumber,
 				"device_id":    deviceID,
 				"stage":        stage,
-			}).Info("✅ Updated stage in ai_whatsapp_nodepath")
+			}).Info("✅ Updated stage in ai_whatsapp")
 		}
 		return nil
 	}
 
 	// Update stage for active execution
-	query := `UPDATE ai_whatsapp_nodepath SET stage = ? WHERE execution_id = ?`
+	query := `UPDATE ai_whatsapp SET stage = ? WHERE execution_id = ?`
 	_, err = s.aiRepo.GetDB().Exec(query, stage, execution.ExecutionID.String)
 	if err != nil {
 		return fmt.Errorf("failed to update stage for execution: %w", err)

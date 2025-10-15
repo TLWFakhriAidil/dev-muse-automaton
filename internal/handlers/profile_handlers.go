@@ -44,7 +44,7 @@ func (ph *ProfileHandlers) GetProfile(c *fiber.Ctx) error {
 	var user models.User
 	err := ph.db.QueryRow(`
 		SELECT id, email, full_name, gmail, phone, status, expired, is_active, created_at, updated_at, last_login 
-		FROM user_nodepath 
+		FROM user 
 		WHERE id = ?
 	`, userID).Scan(
 		&user.ID, &user.Email, &user.FullName, &user.Gmail, &user.Phone,
@@ -120,7 +120,7 @@ func (ph *ProfileHandlers) UpdateProfile(c *fiber.Ctx) error {
 	if req.Password != nil && req.NewPassword != nil {
 		// Verify current password first
 		var currentHashedPassword string
-		err := ph.db.QueryRow("SELECT password FROM user_nodepath WHERE id = ?", userID).Scan(&currentHashedPassword)
+		err := ph.db.QueryRow("SELECT password FROM user WHERE id = ?", userID).Scan(&currentHashedPassword)
 		if err != nil {
 			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 				"success": false,
@@ -163,7 +163,7 @@ func (ph *ProfileHandlers) UpdateProfile(c *fiber.Ctx) error {
 	args = append(args, userID) // for WHERE clause
 
 	// Execute update
-	query := "UPDATE user_nodepath SET " + joinStrings(updateFields, ", ") + " WHERE id = ?"
+	query := "UPDATE user SET " + joinStrings(updateFields, ", ") + " WHERE id = ?"
 	_, err := ph.db.Exec(query, args...)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to update user profile")
@@ -177,7 +177,7 @@ func (ph *ProfileHandlers) UpdateProfile(c *fiber.Ctx) error {
 	var user models.User
 	err = ph.db.QueryRow(`
 		SELECT id, email, full_name, gmail, phone, status, expired, is_active, created_at, updated_at, last_login 
-		FROM user_nodepath 
+		FROM user 
 		WHERE id = ?
 	`, userID).Scan(
 		&user.ID, &user.Email, &user.FullName, &user.Gmail, &user.Phone,
@@ -223,7 +223,7 @@ func (ph *ProfileHandlers) GetUserStatus(c *fiber.Ctx) error {
 	var expired *string
 	err := ph.db.QueryRow(`
 		SELECT status, expired 
-		FROM user_nodepath 
+		FROM user 
 		WHERE id = ?
 	`, userID).Scan(&status, &expired)
 

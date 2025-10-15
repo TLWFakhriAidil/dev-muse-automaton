@@ -4,7 +4,7 @@ import (
 	"database/sql"
 )
 
-// WasapBot represents the wasapBot_nodepath table structure
+// WasapBot represents the wasapBot table structure
 type WasapBot struct {
 	IDProspect       int            `json:"id_prospect"`
 	FlowReference    sql.NullString `json:"flow_reference"`

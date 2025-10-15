@@ -25,7 +25,7 @@ func (r *StageSetValueRepository) GetAll() ([]*models.StageSetValue, error) {
 	query := `
 		SELECT stageSetValue_id, id_device, stage, type_inputData, 
 		       columnsData, inputHardCode, created_at, updated_at
-		FROM stageSetValue_nodepath
+		FROM stageSetValue
 		ORDER BY stageSetValue_id DESC
 	`
 
@@ -66,7 +66,7 @@ func (r *StageSetValueRepository) GetByDeviceID(deviceID string) ([]*models.Stag
 	query := `
 		SELECT stageSetValue_id, id_device, stage, type_inputData, 
 		       columnsData, inputHardCode, created_at, updated_at
-		FROM stageSetValue_nodepath
+		FROM stageSetValue
 		WHERE id_device = ?
 		ORDER BY stage ASC
 	`
@@ -108,7 +108,7 @@ func (r *StageSetValueRepository) GetByStage(deviceID string, stage int) (*model
 	query := `
 		SELECT stageSetValue_id, id_device, stage, type_inputData, 
 		       columnsData, inputHardCode, created_at, updated_at
-		FROM stageSetValue_nodepath
+		FROM stageSetValue
 		WHERE id_device = ? AND stage = ?
 	`
 
@@ -141,7 +141,7 @@ func (r *StageSetValueRepository) Create(value *models.StageSetValue) error {
 	}
 
 	query := `
-		INSERT INTO stageSetValue_nodepath 
+		INSERT INTO stageSetValue 
 		(id_device, stage, type_inputData, columnsData, inputHardCode, created_at, updated_at)
 		VALUES (?, ?, ?, ?, ?, NOW(), NOW())
 	`
@@ -174,7 +174,7 @@ func (r *StageSetValueRepository) Update(value *models.StageSetValue) error {
 	}
 
 	query := `
-		UPDATE stageSetValue_nodepath 
+		UPDATE stageSetValue 
 		SET stage = ?, type_inputData = ?, columnsData = ?, 
 		    inputHardCode = ?, updated_at = NOW()
 		WHERE stageSetValue_id = ?
@@ -201,7 +201,7 @@ func (r *StageSetValueRepository) Delete(id int) error {
 		return fmt.Errorf("database not available")
 	}
 
-	query := `DELETE FROM stageSetValue_nodepath WHERE stageSetValue_id = ?`
+	query := `DELETE FROM stageSetValue WHERE stageSetValue_id = ?`
 
 	_, err := r.db.Exec(query, id)
 	if err != nil {
