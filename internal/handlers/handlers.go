@@ -3,10 +3,6 @@ package handlers
 import (
 	"context"
 	"database/sql"
-	"fmt"
-	"os"
-	"strconv"
-	"strings"
 
 	"nodepath-chat/internal/config"
 	"nodepath-chat/internal/models"
@@ -17,74 +13,6 @@ import (
 	"github.com/gofiber/fiber/v2"
 	"github.com/sirupsen/logrus"
 )
-
-// DatabaseConfig represents database configuration
-type DatabaseConfig struct {
-	Host     string `json:"host"`
-	Port     int    `json:"port"`
-	User     string `json:"user"`
-	Password string `json:"password"`
-	Database string `json:"database"`
-}
-
-// parseMySQLURI parses a MySQL URI and returns database configuration
-func parseMySQLURI(uri string) (*DatabaseConfig, error) {
-	// Remove mysql:// prefix
-	if !strings.HasPrefix(uri, "mysql://") {
-		return nil, fmt.Errorf("invalid MySQL URI format: missing mysql:// prefix")
-	}
-	uri = strings.TrimPrefix(uri, "mysql://")
-
-	// Split by @ to separate credentials from host/database
-	parts := strings.Split(uri, "@")
-	if len(parts) != 2 {
-		return nil, fmt.Errorf("invalid MySQL URI format: missing @ separator")
-	}
-
-	// Parse credentials (user:password)
-	credentials := parts[0]
-	credParts := strings.Split(credentials, ":")
-	if len(credParts) != 2 {
-		return nil, fmt.Errorf("invalid MySQL URI format: invalid credentials")
-	}
-	user := credParts[0]
-	password := credParts[1]
-
-	// Parse host:port/database
-	hostDatabase := parts[1]
-
-	// Split by / to separate host:port from database
-	hostDbParts := strings.Split(hostDatabase, "/")
-	if len(hostDbParts) != 2 {
-		return nil, fmt.Errorf("invalid MySQL URI format: missing database")
-	}
-
-	hostPort := hostDbParts[0]
-	database := hostDbParts[1]
-
-	// Parse host and port
-	hostPortParts := strings.Split(hostPort, ":")
-	if len(hostPortParts) != 2 {
-		return nil, fmt.Errorf("invalid MySQL URI format: missing port")
-	}
-
-	host := hostPortParts[0]
-	portStr := hostPortParts[1]
-
-	// Convert port to integer
-	port, err := strconv.Atoi(portStr)
-	if err != nil {
-		return nil, fmt.Errorf("invalid port number: %v", err)
-	}
-
-	return &DatabaseConfig{
-		Host:     host,
-		Port:     port,
-		User:     user,
-		Password: password,
-		Database: database,
-	}, nil
-}
 
 // Handlers contains all HTTP handlers
 type Handlers struct {
@@ -242,9 +170,7 @@ func (h *Handlers) SetupRoutes(api fiber.Router) {
 	health.Get("/metrics", h.HandleHealthMetrics)
 	health.Delete("/cache", h.HandleClearHealthCache)
 
-	// Config routes
-	config := api.Group("/config")
-	config.Get("/database", h.GetDatabaseConfig)
+	// Config routes (removed database config endpoint - no longer needed with Supabase)
 
 	// Device settings routes (protected with authentication middleware)
 	deviceSettings := api.Group("/device-settings")
@@ -549,28 +475,4 @@ func (h *Handlers) HandleClearHealthCache(c *fiber.Ctx) error {
 	})
 }
 
-// GetDatabaseConfig returns database configuration for frontend
-func (h *Handlers) GetDatabaseConfig(c *fiber.Ctx) error {
-	// Get MYSQL_URI from Railway environment variables
-	mysqlURI := os.Getenv("MYSQL_URI")
-	logrus.WithField("mysql_uri", mysqlURI).Info("Database config endpoint called")
 
-	if mysqlURI == "" {
-		logrus.Error("MYSQL_URI environment variable not set")
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-			"error": "MYSQL_URI environment variable not set",
-		})
-	}
-
-	// Parse the MySQL URI
-	config, err := parseMySQLURI(mysqlURI)
-	if err != nil {
-		logrus.WithError(err).Error("Failed to parse MYSQL_URI")
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-			"error": "Failed to parse MYSQL_URI: " + err.Error(),
-		})
-	}
-
-	logrus.WithField("config", config).Info("Database config parsed successfully")
-	return c.JSON(config)
-}

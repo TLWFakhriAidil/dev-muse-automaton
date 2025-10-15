@@ -3,43 +3,26 @@ package database
 import (
 	"database/sql"
 	"fmt"
-	"time"
 
 	"nodepath-chat/internal/config"
 
-	_ "github.com/go-sql-driver/mysql"
 	"github.com/sirupsen/logrus"
 )
 
-// Initialize creates and returns a database connection using MYSQL_URI exclusively
+// Initialize creates and returns a Supabase (PostgreSQL) database connection
 func Initialize(cfg *config.Config) (*sql.DB, error) {
-	dsn := cfg.GetDSN()
-	if dsn == "" {
-		return nil, fmt.Errorf("MYSQL_URI environment variable is required")
+	// Supabase is the only supported database
+	if cfg.SupabaseURL == "" || cfg.SupabaseServiceKey == "" {
+		return nil, fmt.Errorf("SUPABASE_URL and SUPABASE_SERVICE_KEY environment variables are required")
 	}
 
-	// Log which database URL is being used
-	logrus.Info("Connecting to MySQL database using MYSQL_URI")
-
-	db, err := sql.Open("mysql", dsn)
+	logrus.Info("🚀 Initializing Supabase (PostgreSQL) database connection")
+	supabaseClient, err := InitializeSupabase(cfg)
 	if err != nil {
-		return nil, fmt.Errorf("failed to open database connection: %w", err)
+		return nil, fmt.Errorf("failed to initialize Supabase: %w", err)
 	}
-
-	// Configure connection pool for high concurrency (3000+ users)
-	// Optimized settings for handling 3000+ concurrent users with real-time messaging
-	db.SetMaxOpenConns(500)                 // Increased significantly for 3000+ concurrent users
-	db.SetMaxIdleConns(100)                 // Higher idle connections to reduce connection overhead
-	db.SetConnMaxLifetime(60 * time.Minute) // Longer lifetime to reduce connection churn
-	db.SetConnMaxIdleTime(15 * time.Minute) // Balanced idle time for resource efficiency
-
-	// Test the connection
-	if err := db.Ping(); err != nil {
-		return nil, fmt.Errorf("failed to ping database: %w", err)
-	}
-
-	logrus.Info("Database connection established successfully")
-	return db, nil
+	
+	return supabaseClient.DB, nil
 }
 
 // RunMigrations runs all database migrations

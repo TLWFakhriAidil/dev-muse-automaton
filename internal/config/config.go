@@ -12,8 +12,10 @@ type Config struct {
 	Port   int
 	AppEnv string
 
-	// Database configuration
-	MySQLURI string // Primary MySQL connection URI
+	// Database configuration - Supabase (PostgreSQL) ONLY
+	SupabaseURL        string // Supabase project URL
+	SupabaseAnonKey    string // Supabase anonymous key
+	SupabaseServiceKey string // Supabase service role key (for backend operations)
 
 	// Redis configuration
 	RedisURL          string
@@ -47,8 +49,10 @@ func Load() *Config {
 		Port:   getEnvAsInt("PORT", 8080),
 		AppEnv: getEnv("APP_ENV", "development"),
 
-		// Database configuration
-		MySQLURI: getEnv("MYSQL_URI", ""), // Primary MySQL connection
+		// Supabase configuration (REQUIRED)
+		SupabaseURL:        getEnv("SUPABASE_URL", ""),
+		SupabaseAnonKey:    getEnv("SUPABASE_ANON_KEY", ""),
+		SupabaseServiceKey: getEnv("SUPABASE_SERVICE_KEY", ""),
 
 		// Redis configuration with clustering support
 		RedisURL:          getEnv("REDIS_URL", ""),
@@ -76,43 +80,6 @@ func Load() *Config {
 	}
 
 	return cfg
-}
-
-// GetDSN returns the MySQL DSN connection string
-// Format: mysql://user:password@host:port/database
-func (c *Config) GetDSN() string {
-	if c.MySQLURI == "" {
-		return "" // Return empty if no database URL provided
-	}
-
-	// Convert mysql:// to proper DSN format if needed
-	if strings.HasPrefix(c.MySQLURI, "mysql://") {
-		// Remove mysql:// prefix and add tcp() wrapper
-		dsn := strings.TrimPrefix(c.MySQLURI, "mysql://")
-		// Parse user:password@host:port/database format
-		parts := strings.Split(dsn, "/")
-		if len(parts) >= 2 {
-			userHostPart := parts[0]
-			databasePart := parts[1]
-			// Split user:password@host:port
-			atIndex := strings.LastIndex(userHostPart, "@")
-			if atIndex > 0 {
-				userPass := userHostPart[:atIndex]
-				hostPort := userHostPart[atIndex+1:]
-				// Reconstruct with tcp() wrapper for go-sql-driver/mysql
-				dsn = userPass + "@tcp(" + hostPort + ")/" + databasePart
-				if !strings.Contains(dsn, "?") {
-					dsn += "?charset=utf8mb4&parseTime=True&loc=Local&collation=utf8mb4_unicode_ci"
-				} else {
-					dsn += "&charset=utf8mb4&parseTime=True&loc=Local&collation=utf8mb4_unicode_ci"
-				}
-				return dsn
-			}
-		}
-	}
-
-	// Return as-is if already in proper format
-	return c.MySQLURI
 }
 
 // IsProduction returns true if the app is running in production
