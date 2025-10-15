@@ -9,26 +9,10 @@ import { User, Mail, Phone, Calendar, Shield, Save } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useProfile } from '@/hooks/useProfile';
 
-interface User {
-  id: string;
-  email: string;
-  full_name: string;
-  gmail?: string;
-  phone?: string;
-  status: string;
-  expired?: string;
-  is_active: boolean;
-  created_at: string;
-  updated_at: string;
-  last_login?: string;
-}
-
 interface ProfileFormData {
   full_name: string;
   gmail?: string;
   phone?: string;
-  password?: string;
-  new_password?: string;
 }
 
 const Profile: React.FC = () => {
@@ -66,45 +50,14 @@ const Profile: React.FC = () => {
     setAlert(null);
 
     try {
-      // Prepare payload - only send fields that have values
-      const payload: any = {
+      const result = await updateProfile({
         full_name: formData.full_name,
-      };
-
-      if (formData.gmail) {
-        payload.gmail = formData.gmail;
-      }
-
-      if (formData.phone) {
-        payload.phone = formData.phone;
-      }
-
-      // Handle password change
-      if (formData.password && formData.new_password) {
-        payload.password = formData.password;
-        payload.new_password = formData.new_password;
-      }
-
-      const response = await fetch('/api/profile/', {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        credentials: 'include',
-        body: JSON.stringify(payload),
+        gmail: formData.gmail || null,
+        phone: formData.phone || null,
       });
 
-      const result = await response.json();
-
       if (result.success) {
-        setUser(result.data);
         setIsEditing(false);
-        setShowPasswordFields(false);
-        setFormData(prev => ({
-          ...prev,
-          password: '',
-          new_password: '',
-        }));
         setAlert({ type: 'success', message: 'Profile updated successfully!' });
       } else {
         throw new Error(result.error || 'Failed to update profile');
@@ -118,17 +71,14 @@ const Profile: React.FC = () => {
   };
 
   const handleCancel = () => {
-    if (user) {
+    if (profile) {
       setFormData({
-        full_name: user.full_name,
-        gmail: user.gmail || '',
-        phone: user.phone || '',
-        password: '',
-        new_password: '',
+        full_name: profile.full_name || '',
+        gmail: profile.gmail || '',
+        phone: profile.phone || '',
       });
     }
     setIsEditing(false);
-    setShowPasswordFields(false);
     setAlert(null);
   };
 
@@ -274,27 +224,27 @@ const Profile: React.FC = () => {
             <CardContent className="space-y-4">
               <div className="flex items-center justify-between">
                 <span className="text-sm font-medium">Status:</span>
-                <Badge className={getStatusColor(user.status)}>
-                  {user.status}
+                <Badge className={getStatusColor(profile.status)}>
+                  {profile.status}
                 </Badge>
               </div>
 
-              {user.expired && (
+              {profile.expired && (
                 <div className="flex items-center justify-between">
                   <span className="text-sm font-medium">Expires:</span>
-                  <span className="text-sm text-gray-600">{formatDate(user.expired)}</span>
+                  <span className="text-sm text-gray-600">{formatDate(profile.expired)}</span>
                 </div>
               )}
 
               <div className="flex items-center justify-between">
                 <span className="text-sm font-medium">Member Since:</span>
-                <span className="text-sm text-gray-600">{formatDate(user.created_at)}</span>
+                <span className="text-sm text-gray-600">{formatDate(profile.created_at)}</span>
               </div>
 
-              {user.last_login && (
+              {profile.last_login && (
                 <div className="flex items-center justify-between">
                   <span className="text-sm font-medium">Last Login:</span>
-                  <span className="text-sm text-gray-600">{formatDate(user.last_login)}</span>
+                  <span className="text-sm text-gray-600">{formatDate(profile.last_login)}</span>
                 </div>
               )}
 
@@ -305,70 +255,6 @@ const Profile: React.FC = () => {
             </CardContent>
           </Card>
         </div>
-
-        {/* Password Change Section */}
-        {isEditing && (
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Shield className="h-5 w-5" />
-                Change Password
-              </CardTitle>
-              <CardDescription>
-                Update your account password (optional)
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => setShowPasswordFields(!showPasswordFields)}
-                  className="flex items-center gap-2"
-                >
-                  {showPasswordFields ? (
-                    <>
-                      <EyeOff className="h-4 w-4" />
-                      Hide Password Fields
-                    </>
-                  ) : (
-                    <>
-                      <Eye className="h-4 w-4" />
-                      Change Password
-                    </>
-                  )}
-                </Button>
-
-                {showPasswordFields && (
-                  <div className="grid gap-4 md:grid-cols-2">
-                    <div className="space-y-2">
-                      <Label htmlFor="password">Current Password</Label>
-                      <Input
-                        id="password"
-                        name="password"
-                        type="password"
-                        value={formData.password}
-                        onChange={handleInputChange}
-                        placeholder="Enter current password"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="new_password">New Password</Label>
-                      <Input
-                        id="new_password"
-                        name="new_password"
-                        type="password"
-                        value={formData.new_password}
-                        onChange={handleInputChange}
-                        placeholder="Enter new password"
-                      />
-                    </div>
-                  </div>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-        )}
 
         {/* Action Buttons */}
         {isEditing && (
