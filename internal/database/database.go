@@ -3,32 +3,64 @@ package database
 import (
 	"database/sql"
 	"fmt"
+	"net"
 	"strings"
 
 	"nodepath-chat/internal/config"
-
 	_ "github.com/lib/pq" // PostgreSQL driver for Supabase
 	"github.com/sirupsen/logrus"
 )
 
+// resolveIPv4 resolves a hostname to its IPv4 address to avoid IPv6 issues
+func resolveIPv4(hostname string) (string, error) {
+	ips, err := net.LookupIP(hostname)
+	if err != nil {
+		return "", err
+	}
+	
+	// Find the first IPv4 address
+	for _, ip := range ips {
+		if ipv4 := ip.To4(); ipv4 != nil {
+			logrus.WithFields(logrus.Fields{
+				"hostname": hostname,
+				"ipv4":     ipv4.String(),
+			}).Debug("Resolved hostname to IPv4")
+			return ipv4.String(), nil
+		}
+	}
+	
+	return "", fmt.Errorf("no IPv4 address found for hostname: %s", hostname)
+}
+
 // Initialize creates and returns a Supabase PostgreSQL database connection
 func Initialize(cfg *config.Config) (*sql.DB, error) {
-	// Supabase is the primary database for this system
-	if cfg.SupabaseURL == "" {
-		return nil, fmt.Errorf("SUPABASE_URL environment variable is required")
+	if cfg.SupabaseURL == "" || cfg.SupabaseDBPassword == "" {
+		return nil, fmt.Errorf("SUPABASE_URL and SUPABASE_SERVICE_KEY are required")
 	}
 
 	logrus.Info("🚀 Initializing Supabase PostgreSQL database connection")
 	
 	// Build PostgreSQL connection string from Supabase URL
 	// Supabase URL format: https://project-ref.supabase.co
-	// We need to construct the PostgreSQL connection string with IPv4 forcing
 	projectRef := extractProjectRef(cfg.SupabaseURL)
 	logrus.WithField("project_ref", projectRef).Debug("Extracted project reference")
 	
-	// Force IPv4 connection to avoid IPv6 network unreachable errors
-	connStr := fmt.Sprintf("host=db.%s.supabase.co port=5432 user=postgres dbname=postgres sslmode=require connect_timeout=30",
-		projectRef)
+	// Resolve hostname to IPv4 to avoid IPv6 connection issues in Railway
+	hostname := fmt.Sprintf("db.%s.supabase.co", projectRef)
+	ipv4Address, err := resolveIPv4(hostname)
+	
+	var connStr string
+	if err != nil {
+		// Fallback to hostname if IPv4 resolution fails
+		logrus.WithError(err).Warn("Failed to resolve IPv4, using hostname")
+		connStr = fmt.Sprintf("host=%s port=5432 user=postgres dbname=postgres sslmode=require connect_timeout=30",
+			hostname)
+	} else {
+		// Use IPv4 address directly to force IPv4 connection
+		logrus.WithField("ipv4", ipv4Address).Info("Using IPv4 address for Railway compatibility")
+		connStr = fmt.Sprintf("host=%s port=5432 user=postgres dbname=postgres sslmode=require connect_timeout=30",
+			ipv4Address)
+	}
 	
 	if cfg.SupabaseDBPassword != "" {
 		connStr += fmt.Sprintf(" password=%s", cfg.SupabaseDBPassword)

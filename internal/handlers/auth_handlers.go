@@ -22,26 +22,26 @@ type AuthHandlers struct {
 
 // autoMigrate creates or updates the user and user_sessions tables
 func (ah *AuthHandlers) autoMigrate() error {
-	// Create user table if not exists
+	// Create users table if not exists
 	createUserTable := `
-		CREATE TABLE IF NOT EXISTS user (
+		CREATE TABLE IF NOT EXISTS users (
 			id CHAR(36) PRIMARY KEY,
 			email VARCHAR(255) UNIQUE NOT NULL,
 			full_name VARCHAR(255) NOT NULL,
 			password VARCHAR(255) NOT NULL,
 			gmail VARCHAR(255) DEFAULT NULL,
 			phone VARCHAR(20) DEFAULT NULL,
-			is_active TINYINT(1) DEFAULT 1,
-			created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-			updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-			last_login TIMESTAMP NULL,
+			is_active BOOLEAN DEFAULT true,
+			created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+			updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+			last_login TIMESTAMP WITH TIME ZONE DEFAULT NULL,
 			status VARCHAR(255) DEFAULT 'Trial',
-			expired VARCHAR(255) NULL
+			expired VARCHAR(255) DEFAULT NULL
 		)
 	`
 
 	if _, err := ah.db.Exec(createUserTable); err != nil {
-		logrus.WithError(err).Error("Failed to create user table")
+		logrus.WithError(err).Error("Failed to create users table")
 		return err
 	}
 
@@ -64,15 +64,15 @@ func (ah *AuthHandlers) autoMigrate() error {
 		return err
 	}
 
-	// Check and add missing columns to user
+	// Check and add missing columns to users
 	columns := []struct {
 		name       string
 		definition string
 	}{
-		{"status", "ALTER TABLE user ADD COLUMN status VARCHAR(255) DEFAULT 'Trial'"},
-		{"expired", "ALTER TABLE user ADD COLUMN expired VARCHAR(255) NULL"},
-		{"gmail", "ALTER TABLE user ADD COLUMN gmail VARCHAR(255) DEFAULT NULL"},
-		{"phone", "ALTER TABLE user ADD COLUMN phone VARCHAR(20) DEFAULT NULL"},
+		{"status", "ALTER TABLE users ADD COLUMN status VARCHAR(255) DEFAULT 'Trial'"},
+		{"expired", "ALTER TABLE users ADD COLUMN expired VARCHAR(255) DEFAULT NULL"},
+		{"gmail", "ALTER TABLE users ADD COLUMN gmail VARCHAR(255) DEFAULT NULL"},
+		{"phone", "ALTER TABLE users ADD COLUMN phone VARCHAR(20) DEFAULT NULL"},
 	}
 
 	for _, col := range columns {
@@ -80,20 +80,20 @@ func (ah *AuthHandlers) autoMigrate() error {
 		err := ah.db.QueryRow(`
 			SELECT COUNT(*) 
 			FROM INFORMATION_SCHEMA.COLUMNS 
-			WHERE TABLE_NAME = 'user' 
+			WHERE TABLE_NAME = 'users' 
 			AND COLUMN_NAME = ?
 		`, col.name).Scan(&count)
 
 		if err != nil {
-			logrus.WithError(err).Errorf("Failed to check column %s in user", col.name)
+			logrus.WithError(err).Errorf("Failed to check column %s in users", col.name)
 			continue
 		}
 
 		if count == 0 {
 			if _, err := ah.db.Exec(col.definition); err != nil {
-				logrus.WithError(err).Errorf("Failed to add column %s to user", col.name)
+				logrus.WithError(err).Errorf("Failed to add column %s to users", col.name)
 			} else {
-				logrus.Infof("Added column %s to user", col.name)
+				logrus.Infof("Added column %s to users", col.name)
 			}
 		}
 	}
@@ -165,9 +165,9 @@ func (ah *AuthHandlers) Register(c *fiber.Ctx) error {
 		})
 	}
 
-	// Check if user already exists in user table
+	// Check if user already exists in users table
 	var existingUserID string
-	err := ah.db.QueryRow("SELECT id FROM user WHERE email = ?", req.Email).Scan(&existingUserID)
+	err := ah.db.QueryRow("SELECT id FROM users WHERE email = ?", req.Email).Scan(&existingUserID)
 	if err == nil {
 		return c.Status(fiber.StatusConflict).JSON(fiber.Map{
 			"success": false,
@@ -197,9 +197,9 @@ func (ah *AuthHandlers) Register(c *fiber.Ctx) error {
 	// Calculate expired date (current date + 7 days)
 	expiredDate := time.Now().Add(7 * 24 * time.Hour).Format("2006-01-02 15:04:05")
 
-	// Insert new user into user table with status='Trial' and expired=now+7days
+	// Insert new user into users table with status='Trial' and expired=now+7days
 	_, err = ah.db.Exec(
-		`INSERT INTO user 
+		`INSERT INTO users 
 		(id, email, full_name, password, is_active, created_at, updated_at, status, expired) 
 		VALUES (?, ?, ?, ?, 1, NOW(), NOW(), 'Trial', ?)`,
 		userID, req.Email, req.FullName, string(hashedPassword), expiredDate,
@@ -212,14 +212,14 @@ func (ah *AuthHandlers) Register(c *fiber.Ctx) error {
 		})
 	}
 
-	// Fetch the created user from user
+	// Fetch the created user from users
 	var user models.User
 	err = ah.db.QueryRow(
-		"SELECT id, email, full_name, is_active, created_at, updated_at, last_login FROM user WHERE id = ?",
+		"SELECT id, email, full_name, is_active, created_at, updated_at, last_login FROM users WHERE id = ?",
 		userID,
 	).Scan(&user.ID, &user.Email, &user.FullName, &user.IsActive, &user.CreatedAt, &user.UpdatedAt, &user.LastLogin)
 	if err != nil {
-		logrus.WithError(err).Error("Failed to fetch created user from user")
+		logrus.WithError(err).Error("Failed to fetch created user from users")
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 			"success": false,
 			"error":   "Failed to create user",
@@ -297,11 +297,11 @@ func (ah *AuthHandlers) Login(c *fiber.Ctx) error {
 		})
 	}
 
-	// Fetch user from user table
+	// Fetch user from users table
 	var user models.User
 	var hashedPassword string
 	err := ah.db.QueryRow(
-		"SELECT id, email, full_name, password, is_active, created_at, updated_at, last_login FROM user WHERE email = ? AND is_active = 1",
+		"SELECT id, email, full_name, password, is_active, created_at, updated_at, last_login FROM users WHERE email = ? AND is_active = 1",
 		req.Email,
 	).Scan(&user.ID, &user.Email, &user.FullName, &hashedPassword, &user.IsActive, &user.CreatedAt, &user.UpdatedAt, &user.LastLogin)
 	if err == sql.ErrNoRows {
@@ -310,7 +310,7 @@ func (ah *AuthHandlers) Login(c *fiber.Ctx) error {
 			"error":   "Invalid email or password",
 		})
 	} else if err != nil {
-		logrus.WithError(err).Error("Failed to fetch user from user")
+		logrus.WithError(err).Error("Failed to fetch user from users")
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 			"success": false,
 			"error":   "Internal server error",
@@ -326,10 +326,10 @@ func (ah *AuthHandlers) Login(c *fiber.Ctx) error {
 		})
 	}
 
-	// Update last_login timestamp in user
-	_, err = ah.db.Exec("UPDATE user SET last_login = NOW() WHERE id = ?", user.ID)
+	// Update last_login timestamp in users
+	_, err = ah.db.Exec("UPDATE users SET last_login = NOW() WHERE id = ?", user.ID)
 	if err != nil {
-		logrus.WithError(err).Error("Failed to update last_login in user")
+		logrus.WithError(err).Error("Failed to update last_login in users")
 		// Don't fail the login for this error, just log it
 	}
 
@@ -436,14 +436,14 @@ func (ah *AuthHandlers) GetCurrentUser(c *fiber.Ctx) error {
 		})
 	}
 
-	// Fetch user from user table
+	// Fetch user from users table
 	var user models.User
 	err := ah.db.QueryRow(
-		"SELECT id, email, full_name, is_active, created_at, updated_at, last_login FROM user WHERE id = ?",
+		"SELECT id, email, full_name, is_active, created_at, updated_at, last_login FROM users WHERE id = ?",
 		userID,
 	).Scan(&user.ID, &user.Email, &user.FullName, &user.IsActive, &user.CreatedAt, &user.UpdatedAt, &user.LastLogin)
 	if err != nil {
-		logrus.WithError(err).Error("Failed to fetch current user from user")
+		logrus.WithError(err).Error("Failed to fetch current user from users")
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 			"success": false,
 			"error":   "Failed to fetch user data",

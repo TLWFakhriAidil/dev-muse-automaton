@@ -58,7 +58,7 @@ func (adh *AppDataHandlers) GetAppData(c *fiber.Ctx) error {
 			u.is_active, u.created_at, u.updated_at, u.last_login,
 			COUNT(CASE WHEN d.id_device IS NOT NULL AND d.id_device != '' THEN 1 END) as device_count,
 			GROUP_CONCAT(CASE WHEN d.id_device IS NOT NULL AND d.id_device != '' THEN d.id_device END) as device_ids_concat
-		FROM user u
+		FROM users u
 		LEFT JOIN device_setting d ON u.id = d.user_id
 		WHERE u.id = ?
 		GROUP BY u.id, u.email, u.full_name, u.gmail, u.phone, u.status, u.expired, 
@@ -139,7 +139,7 @@ func (adh *AppDataHandlers) GetAppDataStatus(c *fiber.Ctx) error {
 		SELECT 
 			u.status, u.expired, u.is_active,
 			COUNT(CASE WHEN d.id_device IS NOT NULL AND d.id_device != '' THEN 1 END) as device_count
-		FROM user u
+		FROM users u
 		LEFT JOIN device_setting d ON u.id = d.user_id
 		WHERE u.id = ?
 		GROUP BY u.status, u.expired, u.is_active
