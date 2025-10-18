@@ -29,6 +29,10 @@ import (
 )
 
 func main() {
+	// Set logrus to output to stdout for debugging
+	logrus.SetOutput(os.Stdout)
+	logrus.SetLevel(logrus.DebugLevel)
+	
 	logrus.Info("Starting NodePath Chat Server...")
 
 	// Load environment variables from .env file if it exists
@@ -39,7 +43,12 @@ func main() {
 	}
 
 	// Load configuration
+	logrus.Debug("Loading configuration...")
 	cfg := config.Load()
+	logrus.WithFields(logrus.Fields{
+		"supabase_url": cfg.SupabaseURL,
+		"port": cfg.Port,
+	}).Debug("Configuration loaded")
 
 	// Initialize Supabase database (required)
 	var db *sql.DB

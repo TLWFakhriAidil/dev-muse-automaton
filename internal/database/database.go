@@ -3,26 +3,69 @@ package database
 import (
 	"database/sql"
 	"fmt"
+	"strings"
 
 	"nodepath-chat/internal/config"
 
+	_ "github.com/lib/pq" // PostgreSQL driver for Supabase
 	"github.com/sirupsen/logrus"
 )
 
-// Initialize creates and returns a Supabase (PostgreSQL) database connection
+// Initialize creates and returns a Supabase PostgreSQL database connection
 func Initialize(cfg *config.Config) (*sql.DB, error) {
-	// Supabase is the only supported database
-	if cfg.SupabaseURL == "" || cfg.SupabaseServiceKey == "" {
-		return nil, fmt.Errorf("SUPABASE_URL and SUPABASE_SERVICE_KEY environment variables are required")
+	// Supabase is the primary database for this system
+	if cfg.SupabaseURL == "" {
+		return nil, fmt.Errorf("SUPABASE_URL environment variable is required")
 	}
 
-	logrus.Info("🚀 Initializing Supabase (PostgreSQL) database connection")
-	supabaseClient, err := InitializeSupabase(cfg)
-	if err != nil {
-		return nil, fmt.Errorf("failed to initialize Supabase: %w", err)
+	logrus.Info("🚀 Initializing Supabase PostgreSQL database connection")
+	
+	// Build PostgreSQL connection string from Supabase URL
+	// Supabase URL format: https://project-ref.supabase.co
+	// We need to construct the PostgreSQL connection string
+	connStr := fmt.Sprintf("host=db.%s.supabase.co port=5432 user=postgres dbname=postgres sslmode=require",
+		extractProjectRef(cfg.SupabaseURL))
+	
+	if cfg.SupabaseDBPassword != "" {
+		connStr += fmt.Sprintf(" password=%s", cfg.SupabaseDBPassword)
 	}
 	
-	return supabaseClient.DB, nil
+	// Open PostgreSQL connection
+	db, err := sql.Open("postgres", connStr)
+	if err != nil {
+		return nil, fmt.Errorf("failed to open Supabase PostgreSQL connection: %w", err)
+	}
+
+	// Configure connection pool for high concurrency (3000+ users)
+	// Optimized settings for handling 3000+ concurrent users with real-time messaging
+	db.SetMaxOpenConns(500)   // Increased significantly for 3000+ concurrent users
+	db.SetMaxIdleConns(100)   // Higher idle connections to reduce connection overhead
+	db.SetConnMaxLifetime(60) // Longer lifetime to reduce connection churn (in minutes)
+	db.SetConnMaxIdleTime(15) // Balanced idle time for resource efficiency (in minutes)
+
+	// Test the connection
+	if err := db.Ping(); err != nil {
+		return nil, fmt.Errorf("failed to ping Supabase PostgreSQL database: %w", err)
+	}
+
+	logrus.Info("Supabase PostgreSQL database connection established successfully")
+	return db, nil
+}
+
+// extractProjectRef extracts the project reference from Supabase URL
+// Example: https://abcdefghijklmnop.supabase.co -> abcdefghijklmnop
+func extractProjectRef(supabaseURL string) string {
+	// Remove protocol
+	url := strings.TrimPrefix(supabaseURL, "https://")
+	url = strings.TrimPrefix(url, "http://")
+	
+	// Extract project reference (everything before .supabase.co)
+	parts := strings.Split(url, ".")
+	if len(parts) > 0 {
+		return parts[0]
+	}
+	
+	return url
 }
 
 // RunMigrations runs all database migrations

@@ -1,15 +1,12 @@
 1. The port that used in this project is 8080 both local and Railways app.
 2. The system need to handle high performance response and reply in real time.
-3. The project will store all data into the MYSQL Database 5.7.
+3. The project will store all data into the supabase database.
 4. The deployment platform is Railways.
 5. The project is open source and the code is hosted on GitHub.
 6. The systems need to handle more than 3000+ real time device and user reply both sender and receiver at same time.
 7. Each time finish fix, update, debug, create new any code function or anything update into the readme file.
-8. The system naming for the database table will be end with the _nodepath.
-9. The are no alter for the database table name because there may has same name, if ot same then create new database table but end it with _nodepath except for the database column for drop, create new column, update column.
-10. The system default api url for AI is https://openrouter.ai/api/v1/chat/completions.
-11. The model AI will be based on the device_setting_nodepath columns of api_key_option based on the id_device.
-12. The AI payload will be used this on the whole system project $payload = [
+8. The model AI will be based on the device_setting_nodepath columns of api_key_option based on the id_device.
+9. The AI payload will be used this on the whole system project $payload = [
         'model' => $model,
         'messages' => [
             ['role' => 'system', 'content' => $content],
@@ -20,7 +17,7 @@
         'top_p' => 1,           // Keep responses within natural probability range
         'repetition_penalty' => 1, // Avoid repetitive responses
     ];.
-13. The AI rules will be follow this $content = {AI PROMPT NODE DATA} "\n\n" . 
+10. The AI rules will be follow this $content = {AI PROMPT NODE DATA} "\n\n" . 
            "### Instructions:\n" . 
            "1. If the current stage is null or undefined, default to the first stage.\n" . 
            "2. Always analyze the user's input to determine the appropriate stage. If the input context is unclear, guide the user within the default stage context.\n" . 
@@ -69,8 +66,8 @@
            "      - Add `\"Jenis\": \"onemessage\"` to each `text` type in the `Response` array.\n" . 
            "   - If the directive is not present, omit the `Jenis` field entirely.\n" . 
            "   - Non-text types like `image` never include the `Jenis` field.\n\n";.
-14. The system has three type personal user device command that is % for wablas provider, # for whacenter provider,this will be used when bot of AI reply not trigger to trigger to the receiver based on the current stage of the receiver and cmd for change status human into 1 that mean no ai reply and by default it 0 that mean ai reply is active.
-15. The systems will used this for ai generate reply, sanitize contain, satge, save data and etc:    $wa_no   = $whats->prospect_num;
+11. The system has three type personal user device command that is % for wablas provider, # for whacenter provider,this will be used when bot of AI reply not trigger to trigger to the receiver based on the current stage of the receiver and cmd for change status human into 1 that mean no ai reply and by default it 0 that mean ai reply is active.
+12. The systems will used this for ai generate reply, sanitize contain, satge, save data and etc:    $wa_no   = $whats->prospect_num;
             $wa_nama = $whats->prospect_nama;
         
             // Check time difference
@@ -348,14 +345,8 @@
                     }
                 }
             }.
-16. The system will be record new prospect number only one time for each id_device mean that same phone number can be save multiple time but with same id_device.
-17. The system will have a remote access into the databse using this mysql://admin_aqil:admin_aqil@157.245.206.124:3306/admin_railway.
-18. The system only use the MYSQL_URI to conencted to the database using the enviroment variables in railways for both system deploy in railways and local development.
-19. The systems only used id_device for all process, so there will be no id_staff in the system.
-20. The system database type input will not used the json type except the chatbot_flows_nodepath database.
-21. The system database type output will not used the json type except the chatbot_flows_nodepath database.
-22. The provider that used in this are Wablas and Whacenter only, this will get from the device_setting_nodepath columns of provider.
-23. The system will used the instance from the device_setting_nodepath columns of instance for sending message.
-24. For testing flow will be using id_device FakhriAidilTLW-001, flow flow_ai_1756016272 and phone number 601137508067 for testing.
-25. The system will always do the run test simulaion wihtout ncgo and fix any error occurs.
-
+13. The system will be record new prospect number only one time for each id_device mean that same phone number can be save multiple time but with same id_device.
+14. The system will have a remote access into the database using this SUPABASE_URL.
+15. The system only use the SUPABASE_URL to connected to the database using the enviroment variables in railways for both system deploy in railways and local development.
+16. The systems only used id_device for all process, so there will be no id_staff in the system.
+17. The system will always do the run test simulaion wihtout ncgo and fix any error occurs.

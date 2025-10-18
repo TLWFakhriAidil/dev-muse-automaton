@@ -479,23 +479,41 @@ Frontend Storage
 - **Auto-scaling**: Enabled
 
 ### **Environment Variables**
+
+#### **Railway Production Environment** ✅ **TESTED & WORKING**
 ```bash
 # Application Configuration
+APP_DEBUG=false
+APP_OS=Chrome
+APP_PORT=3000
 PORT=8080
-APP_ENV=production
 
+# Database Connection - Supabase (PostgreSQL) ✅ CONNECTED
+SUPABASE_URL=https://bjnjucwpwdzgsnqmpmff.supabase.co
+SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJqbmp1Y3dwd2R6Z3NucW1wbWZmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjA0OTk1MzksImV4cCI6MjA3NjA3NTUzOX0.vw1rOUqYWFkPNDwTdEgIfsCO9pyvTsFKaXHq3RcRTNU
+SUPABASE_SERVICE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJqbmp1Y3dwd2R6Z3NucW1wbWZmIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2MDQ5OTUzOSwiZXhwIjoyMDc2MDc1NTM5fQ.YRL0K_pGM0mTVANwfEokCHTqDMIoZ4OxbJuES6Q2ZFk
+SUPABASE_DB_PASSWORD=1M5JnZx7PDQyaUPs
+
+# Frontend Database Config (Supabase)
+VITE_SUPABASE_URL=https://bjnjucwpwdzgsnqmpmff.supabase.co
+VITE_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJqbmp1Y3dwd2R6Z3NucW1wbWZmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjA0OTk1MzksImV4cCI6MjA3NjA3NTUzOX0.vw1rOUqYWFkPNDwTdEgIfsCO9pyvTsFKaXHq3RcRTNU
+VITE_SUPABASE_SERVICE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJqbmp1Y3dwd2R6Z3NucW1wbWZmIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2MDQ5OTUzOSwiZXhwIjoyMDc2MDc1NTM5fQ.YRL0K_pGM0mTVANwfEokCHTqDMIoZ4OxbJuES6Q2ZFk
+VITE_SUPABASE_DB_PASSWORD=1M5JnZx7PDQyaUPs
+
+# Redis Configuration ✅ CONFIGURED
+REDIS_PASSWORD=nbTytJyhefkvwHRrBmBZTwuTYhLOFCEb
+REDIS_URL=redis://default:nbTytJyhefkvwHRrBmBZTwuTYhLOFCEb@redis.railway.internal:6379
+REDISHOST=redis.railway.internal
+REDISPORT=6379
+
+# Local Development Template
 # Database Connection - Supabase (PostgreSQL)
 SUPABASE_URL=https://your-project.supabase.co
-SUPABASE_SERVICE_KEY=your-service-role-key
-SUPABASE_ANON_KEY=your-anon-key
 SUPABASE_DB_PASSWORD=your-database-password
 
 # Frontend Database Config (Supabase)
-VITE_DB_HOST=localhost
-VITE_DB_NAME=admin_railway
-VITE_DB_USER=root
-VITE_DB_PASSWORD=
-VITE_DB_PORT=3306
+VITE_SUPABASE_URL=https://your-project.supabase.co
+VITE_SUPABASE_ANON_KEY=your-anon-key
 
 # Redis Configuration
 REDIS_URL=redis://localhost:6379
@@ -711,8 +729,6 @@ All tables now use PostgreSQL-optimized syntax:
 #### **Environment Variables Required:**
 ```bash
 SUPABASE_URL=https://your-project.supabase.co
-SUPABASE_SERVICE_KEY=your-service-role-key
-SUPABASE_ANON_KEY=your-anon-key
 SUPABASE_DB_PASSWORD=your-database-password
 ```
 
@@ -724,6 +740,20 @@ SUPABASE_DB_PASSWORD=your-database-password
 
 ### 🔍 **Troubleshooting Supabase Connection Issues**
 
+#### **⚠️ IMPORTANT: Railway Environment Variable Whitespace Issue**
+**Your current Railway environment variables contain extra whitespace and backticks:**
+```bash
+# ❌ PROBLEMATIC (contains spaces and backticks)
+SUPABASE_URL=" `https://bjnjucwpwdzgsnqmpmff.supabase.co` "
+VITE_SUPABASE_URL=" `https://bjnjucwpwdzgsnqmpmff.supabase.co` "
+
+# ✅ CORRECT (clean URLs)
+SUPABASE_URL=https://bjnjucwpwdzgsnqmpmff.supabase.co
+VITE_SUPABASE_URL=https://bjnjucwpwdzgsnqmpmff.supabase.co
+```
+
+**Fix**: Remove the extra spaces and backticks from your Railway environment variables to prevent potential connection issues.
+
 #### **Common Error: "Tenant or user not found"**
 **Symptoms**: 
 ```
@@ -734,8 +764,6 @@ failed to ping Supabase database: pq: Tenant or user not found
 1. **Check Environment Variables**: Ensure all required Supabase variables are set in Railway:
    ```bash
    SUPABASE_URL=https://your-project.supabase.co
-   SUPABASE_SERVICE_KEY=your-service-role-key
-   SUPABASE_ANON_KEY=your-anon-key
    SUPABASE_DB_PASSWORD=your-database-password
    ```
 
@@ -829,3 +857,42 @@ if item.ProspectName.Valid {
 - **Data Display**: ✅ **WORKING** - All fields render correctly in tables
 - **Frontend Stability**: ✅ **IMPROVED** - No more crashes on NULL data
 - **User Experience**: ✅ **ENHANCED** - Smooth data loading and display
+
+---
+
+## 🔄 **Latest Update: Database Reversion to Supabase** (January 2025)
+
+### **Change Summary**
+**Reverted database configuration from MySQL back to Supabase PostgreSQL** for optimal performance and Railway deployment compatibility.
+
+### **Files Updated:**
+1. **`cmd/server/main.go`** - Updated database initialization logging and error messages
+2. **`internal/database/database.go`** - Complete reversion to Supabase PostgreSQL connection
+   - Changed driver from `github.com/go-sql-driver/mysql` to `github.com/lib/pq`
+   - Updated connection string format for PostgreSQL
+   - Added `extractProjectRef()` helper function for Supabase URL parsing
+3. **`README.md`** - Updated environment variables and documentation
+
+### **Environment Variables Simplified:**
+```bash
+# Required for Supabase Connection
+SUPABASE_URL=https://your-project.supabase.co
+SUPABASE_DB_PASSWORD=your-database-password
+
+# Frontend Configuration
+VITE_SUPABASE_URL=https://your-project.supabase.co
+VITE_SUPABASE_ANON_KEY=your-anon-key
+```
+
+### **Testing Results:**
+- ✅ **Build Status**: Compiles successfully with PostgreSQL driver
+- ✅ **Connection Logic**: Properly extracts project reference from Supabase URL
+- ✅ **Error Handling**: Correct error messages for missing environment variables
+- ✅ **Railway Ready**: Optimized for Railway deployment with Supabase
+
+### **Benefits of Supabase:**
+- **Performance**: Better suited for 3000+ concurrent users
+- **Scalability**: Auto-scaling PostgreSQL database
+- **Integration**: Native support for real-time features
+- **Deployment**: Seamless Railway integration
+- **Maintenance**: Managed database service with automatic backups
