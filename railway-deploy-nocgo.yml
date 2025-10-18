@@ -59,8 +59,8 @@ services:
 
 # Database configuration
 database:
-  # Use existing MySQL database
-  type: mysql
+  # Use Supabase database (external)
+  # type: mysql
   version: "5.7"
   
 # Monitoring and logging

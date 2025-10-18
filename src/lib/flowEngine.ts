@@ -192,7 +192,7 @@ export class FlowEngine {
     console.log('Image node data:', node.data)
     let mediaUrl = node.data.mediaUrl || node.data.imageUrl
 
-    // Handle wrapped string objects from MySQL storage
+    // Handle wrapped string objects from database storage
     if (mediaUrl && typeof mediaUrl === 'object' && (mediaUrl as any)._type === 'String') {
       mediaUrl = (mediaUrl as any).value
     }
@@ -242,7 +242,7 @@ export class FlowEngine {
     console.log('Audio node data:', node.data)
     let mediaUrl = node.data.mediaUrl || node.data.audioUrl
 
-    // Handle wrapped string objects from MySQL storage
+    // Handle wrapped string objects from database storage
     if (mediaUrl && typeof mediaUrl === 'object' && (mediaUrl as any)._type === 'String') {
       mediaUrl = (mediaUrl as any).value
     }
@@ -291,7 +291,7 @@ export class FlowEngine {
     console.log('Video node data:', node.data)
     let mediaUrl = node.data.mediaUrl || node.data.videoUrl
 
-    // Handle wrapped string objects from MySQL storage
+    // Handle wrapped string objects from database storage
     if (mediaUrl && typeof mediaUrl === 'object' && (mediaUrl as any)._type === 'String') {
       mediaUrl = (mediaUrl as any).value
     }
@@ -463,7 +463,7 @@ export class FlowEngine {
   }
 
   private async saveState(): Promise<void> {
-    // Save execution state to localStorage since MySQL bridge is removed
+    // Save execution state to localStorage since we're using local storage for executions
     try {
       await saveExecution(this.execution)
     } catch (error) {

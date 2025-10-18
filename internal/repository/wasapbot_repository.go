@@ -3,12 +3,12 @@ package repository
 import (
 	"database/sql"
 	"fmt"
+	"strings"
 	"time"
 
 	"nodepath-chat/internal/models"
 	"nodepath-chat/internal/utils"
 
-	mysql "github.com/go-sql-driver/mysql"
 	"github.com/sirupsen/logrus"
 )
 
@@ -355,13 +355,12 @@ func (r *wasapBotRepository) TryAcquireSession(prospectNum, deviceID string) (bo
 		return false, fmt.Errorf("database connection is not available")
 	}
 
-	const query = `INSERT INTO wasapBot_session (id_prospect, id_device, ` + "`timestamp`" + `) VALUES (?, ?, ?)`
+	const query = `INSERT INTO wasapBot_session (id_prospect, id_device, timestamp) VALUES ($1, $2, $3)`
 	_, err := r.db.Exec(query, prospectNum, deviceID, time.Now().Format(time.RFC3339Nano))
 	if err != nil {
-		if mysqlErr, ok := err.(*mysql.MySQLError); ok {
-			if mysqlErr.Number == 1062 {
-				return false, nil
-			}
+		// PostgreSQL unique constraint violation error code is 23505
+		if strings.Contains(err.Error(), "duplicate key value violates unique constraint") {
+			return false, nil
 		}
 		return false, fmt.Errorf("failed to acquire WasapBot session lock: %w", err)
 	}

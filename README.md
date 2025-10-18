@@ -7,8 +7,8 @@ A high-performance, full-stack WhatsApp AI chatbot platform with visual flow bui
 **Build Status**: ✅ **COMPILES SUCCESSFULLY**  
 **Deployment**: ✅ **RAILWAY READY**  
 **Performance**: ✅ **3000+ CONCURRENT USERS**  
-**Database**: ✅ **MYSQL + REDIS OPERATIONAL**  
-**Last Update**: ✅ **Date Filter & Dynamic Stages Added (2025-01-15)**  
+**Database**: ✅ **SUPABASE + REDIS OPERATIONAL**  
+**Last Update**: ✅ **Table Names Simplified - _nodepath Suffix Removed (2025-01-18)**  
 
 ---
 
@@ -17,7 +17,7 @@ A high-performance, full-stack WhatsApp AI chatbot platform with visual flow bui
 ### **Technology Stack**
 - **Backend**: Go 1.23+ with Fiber v2 framework
 - **Frontend**: React 18 + TypeScript + Vite
-- **Database**: MySQL 5.7 with connection pooling
+- **Database**: Supabase (PostgreSQL) with connection pooling
 - **Cache**: Redis for high-performance caching
 - **WhatsApp**: Multi-provider integration (Wablas, Whacenter, WAHA)
 - **AI**: OpenRouter + OpenAI integration
@@ -27,7 +27,7 @@ A high-performance, full-stack WhatsApp AI chatbot platform with visual flow bui
 ### **Core Architecture**
 ```
 ┌─────────────────┐    ┌──────────────────┐    ┌─────────────────┐
-│   Go Fiber API  │◄──►│ MySQL Database   │◄──►│ Redis Cache     │
+│   Go Fiber API  │◄──►│ Supabase (PgSQL) │◄──►│ Redis Cache     │
 │   (Port 8080)   │    │ (Connection Pool)│    │ (High Perf)     │
 └─────────────────┘    └──────────────────┘    └─────────────────┘
          │                       │                       │
@@ -161,20 +161,20 @@ src/
 
 ## 🗄️ **Database Schema**
 
-### **Core Tables** (All end with `_nodepath`)
+### **Core Tables** (Clean table names without suffixes)
 
-#### **chatbot_flows_nodepath**
+#### **chatbot_flows**
 ```sql
-CREATE TABLE chatbot_flows_nodepath (
+CREATE TABLE chatbot_flows (
   id VARCHAR(255) PRIMARY KEY,
   name VARCHAR(255) NOT NULL,
   description TEXT,
   niche TEXT,
   id_device VARCHAR(255),
-  nodes JSON,                    -- Flow node definitions
-  edges JSON,                    -- Flow connections
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+  nodes JSONB,                   -- Flow node definitions (PostgreSQL JSONB)
+  edges JSONB,                   -- Flow connections (PostgreSQL JSONB)
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 ```
 
@@ -484,10 +484,13 @@ Frontend Storage
 PORT=8080
 APP_ENV=production
 
-# Database Connection
-MYSQL_URI=mysql://user:password@host:port/database
+# Database Connection - Supabase (PostgreSQL)
+SUPABASE_URL=https://your-project.supabase.co
+SUPABASE_SERVICE_KEY=your-service-role-key
+SUPABASE_ANON_KEY=your-anon-key
+SUPABASE_DB_PASSWORD=your-database-password
 
-# Frontend Database Config (Auto-populated from MYSQL_URI in Railway)
+# Frontend Database Config (Supabase)
 VITE_DB_HOST=localhost
 VITE_DB_NAME=admin_railway
 VITE_DB_USER=root
@@ -574,7 +577,7 @@ go build -o test-build ./cmd/server
 
 ### ✅ **Working Components**
 - **Backend Compilation**: ✅ Builds successfully without errors
-- **Database Layer**: ✅ MySQL + Redis fully operational
+- **Database Layer**: ✅ Supabase + Redis fully operational
 - **API Endpoints**: ✅ All REST APIs functional
 - **WhatsApp Integration**: ✅ Multi-provider support working
 - **AI Services**: ✅ OpenRouter + OpenAI integration active
@@ -635,13 +638,13 @@ CGO_ENABLED=0 go build -o test-build ./cmd/server
 ### **System Requirements**
 - **Go**: 1.23+
 - **Node.js**: 18+
-- **MySQL**: 5.7+
+- **Supabase**: PostgreSQL 15+
 - **Redis**: 6.0+ (optional)
 
 ### **Development Environment**
 - **OS**: Windows (primary), Linux compatible
 - **IDE**: Any Go/TypeScript compatible IDE
-- **Database**: Remote MySQL via MYSQL_URI
+- **Database**: Supabase (PostgreSQL) via SUPABASE_URL
 - **Deployment**: Railway platform
 
 ---
@@ -650,7 +653,109 @@ CGO_ENABLED=0 go build -o test-build ./cmd/server
 
 ---
 
-## 🔧 **Latest Railway Deployment Fix** (January 2025)
+## 🔧 **Latest Database Table Simplification** (January 2025)
+
+### ✅ **Table Names Simplified - _nodepath Suffix Removed**
+**Change**: All database tables now use clean names without the `_nodepath` suffix  
+**Impact**: Simplified database schema and improved code readability
+
+#### **Table Name Changes:**
+- `chatbot_flows_nodepath` → `chatbot_flows`
+- `ai_whatsapp_nodepath` → `ai_whatsapp`
+- `device_setting_nodepath` → `device_setting`
+- `wasapBot_nodepath` → `wasapBot`
+- `orders_nodepath` → `orders`
+- `conversation_log_nodepath` → `conversation_log`
+- `users_nodepath` → `users`
+- `user_sessions_nodepath` → `user_sessions`
+- `ai_whatsapp_session_nodepath` → `ai_whatsapp_session`
+- `wasapBot_session_nodepath` → `wasapBot_session`
+
+#### **Benefits:**
+1. **Cleaner Code**: Simplified table references throughout the codebase
+2. **Better Readability**: Standard table naming conventions
+3. **Easier Maintenance**: Reduced complexity in SQL queries and migrations
+4. **Industry Standard**: Follows PostgreSQL/Supabase best practices
+
+#### **Updated Schema:**
+All tables now use PostgreSQL-optimized syntax:
+- `JSONB` instead of `JSON` for better performance
+- `TIMESTAMP WITH TIME ZONE` for proper timezone handling
+- `SERIAL` for auto-incrementing primary keys
+- `CHECK` constraints instead of `ENUM` types
+
+### 🚀 **Current Database Status**
+- **Table Names**: ✅ Simplified without _nodepath suffix
+- **PostgreSQL Compatibility**: ✅ Full Supabase optimization
+- **Code References**: ✅ All updated and tested
+- **Build Status**: ✅ Compiles successfully
+
+---
+
+## 🔧 **Previous Supabase Connection Fix** (January 2025)
+
+### ✅ **Supabase "Tenant or user not found" Error Resolved**
+**Issue**: Railway deployment failing with `pq: Tenant or user not found` error when connecting to Supabase  
+**Root Cause**: Two issues causing connection failures:
+1. Environment variables containing whitespace (Railway formatting)
+2. Incorrect PostgreSQL connection string format for Supabase
+
+#### **Fix Details:**
+1. **Environment Variable Trimming**: Enhanced `getEnv()` function to automatically trim whitespace from all environment variables
+2. **Correct Supabase Connection Format**: Updated `buildPostgresURI()` to use proper Supabase PostgreSQL connection string:
+   ```
+   postgres://postgres:[PASSWORD]@db.[PROJECT_REF].supabase.co:5432/postgres?sslmode=require
+   ```
+3. **Database Password Authentication**: Fixed to use `SUPABASE_DB_PASSWORD` instead of service key for PostgreSQL connections
+
+#### **Environment Variables Required:**
+```bash
+SUPABASE_URL=https://your-project.supabase.co
+SUPABASE_SERVICE_KEY=your-service-role-key
+SUPABASE_ANON_KEY=your-anon-key
+SUPABASE_DB_PASSWORD=your-database-password
+```
+
+### 🚀 **Current Deployment Status**
+- **Supabase Connection**: ✅ Fixed and working
+- **Environment Variables**: ✅ Whitespace handling implemented
+- **PostgreSQL Format**: ✅ Correct connection string format
+- **Railway Deployment**: ✅ Ready for deployment
+
+### 🔍 **Troubleshooting Supabase Connection Issues**
+
+#### **Common Error: "Tenant or user not found"**
+**Symptoms**: 
+```
+failed to ping Supabase database: pq: Tenant or user not found
+```
+
+**Solutions**:
+1. **Check Environment Variables**: Ensure all required Supabase variables are set in Railway:
+   ```bash
+   SUPABASE_URL=https://your-project.supabase.co
+   SUPABASE_SERVICE_KEY=your-service-role-key
+   SUPABASE_ANON_KEY=your-anon-key
+   SUPABASE_DB_PASSWORD=your-database-password
+   ```
+
+2. **Verify Database Password**: The `SUPABASE_DB_PASSWORD` should be your actual database password, not the service key
+
+3. **Check Project Reference**: Ensure the URL format is correct: `https://[PROJECT_REF].supabase.co`
+
+4. **Test Connection Format**: The system expects this PostgreSQL connection format:
+   ```
+   postgres://postgres:[PASSWORD]@db.[PROJECT_REF].supabase.co:5432/postgres?sslmode=require
+   ```
+
+#### **Environment Variable Whitespace Issues**
+Railway sometimes adds spaces around environment variables. The system now automatically trims whitespace, but if you encounter issues:
+- Check for leading/trailing spaces in Railway environment variables
+- Remove any extra spaces manually in Railway dashboard
+
+---
+
+## 🔧 **Previous Railway Deployment Fix** (January 2025)
 
 ### ✅ **Docker Build Issue Resolved**
 **Issue**: Railway deployment failing with `"/index.html": not found` error in Dockerfile  

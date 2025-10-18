@@ -95,9 +95,10 @@ func (c *Config) IsDevelopment() bool {
 }
 
 // getEnv gets an environment variable with a fallback value
+// Trims whitespace to handle Railway environment variable formatting
 func getEnv(key, fallback string) string {
 	if value := os.Getenv(key); value != "" {
-		return value
+		return strings.TrimSpace(value)
 	}
 	return fallback
 }

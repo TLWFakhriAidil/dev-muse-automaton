@@ -245,8 +245,8 @@ func (r *aiWhatsappRepository) GetAIWhatsappByProspectNum(prospectNum string) (*
 		       created_at, updated_at,
 		       current_node_id, waiting_for_reply, flow_id, last_node_id, 
 		       flow_reference, execution_status, execution_id
-		FROM ai_whatsapp 
-		WHERE prospect_num = ?
+		FROM ai_whatsapp
+		WHERE prospect_num = $1
 	`
 
 	row := r.db.QueryRow(query, prospectNum)
@@ -293,7 +293,7 @@ func (r *aiWhatsappRepository) GetAIWhatsappByID(id int) (*models.AIWhatsapp, er
 		       balas, keywordiklan, marketer, update_today, 
 		       created_at, updated_at
 		FROM ai_whatsapp 
-		WHERE id_prospect = ?
+		WHERE id_prospect = $1
 	`
 
 	row := r.db.QueryRow(query, id)

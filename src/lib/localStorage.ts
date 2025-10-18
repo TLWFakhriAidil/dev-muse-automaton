@@ -1,24 +1,23 @@
 import { ChatbotFlow, MediaFile, FlowExecution } from '@/types/chatbot'
-import { saveFlow as saveMySQLFlow, getFlows as getMySQLFlows, getFlow as getMySQLFlow, deleteFlow as deleteMySQLFlow } from './mysqlStorage'
-import { saveFlowExecution as saveMySQLExecution, getFlowExecution as getMySQLExecution, deleteFlowExecution as deleteMySQLExecution, updateFlowExecution } from './mysqlStorage'
+import { saveFlow as saveSupabaseFlow, getFlows as getSupabaseFlows, getFlow as getSupabaseFlow, deleteFlow as deleteSupabaseFlow } from './supabaseFlowStorage'
 
 const MEDIA_KEY = 'chatbot_media'
 
-// Flow management - using MySQL
+// Flow management - using Supabase
 export const saveFlow = async (flow: ChatbotFlow): Promise<void> => {
-  return saveMySQLFlow(flow)
+  return saveSupabaseFlow(flow)
 }
 
 export const getFlows = async (): Promise<ChatbotFlow[]> => {
-  return getMySQLFlows()
+  return getSupabaseFlows()
 }
 
 export const getFlow = async (id: string): Promise<ChatbotFlow | null> => {
-  return getMySQLFlow(id)
+  return getSupabaseFlow(id)
 }
 
 export const deleteFlow = async (id: string): Promise<void> => {
-  return deleteMySQLFlow(id)
+  return deleteSupabaseFlow(id)
 }
 
 // Media management
@@ -43,23 +42,45 @@ export const deleteMediaFile = (id: string): void => {
   localStorage.setItem(MEDIA_KEY, JSON.stringify(media))
 }
 
-// Execution management - now using MySQL
-export const saveExecution = async (execution: FlowExecution): Promise<void> => {
-  return saveMySQLExecution(execution)
+// Execution management - using local storage for now
+const EXECUTION_KEY = 'chatbot_executions'
+
+export const saveFlowExecution = async (execution: FlowExecution): Promise<void> => {
+  const executions = getFlowExecutionsFromStorage()
+  const existingIndex = executions.findIndex(e => e.id === execution.id)
+  
+  if (existingIndex >= 0) {
+    executions[existingIndex] = execution
+  } else {
+    executions.push(execution)
+  }
+  
+  localStorage.setItem(EXECUTION_KEY, JSON.stringify(executions))
 }
 
-export const getExecution = async (flowId: string): Promise<FlowExecution | null> => {
-  return getMySQLExecution(flowId)
+export const getFlowExecution = async (flowId: string): Promise<FlowExecution | null> => {
+  const executions = getFlowExecutionsFromStorage()
+  return executions.find(e => e.flowId === flowId) || null
 }
 
-export const getExecutions = async (): Promise<FlowExecution[]> => {
-  // For now, return empty array since we don't have a "get all executions" function
-  // You can implement this if needed by creating a function in mysqlStorage.ts
-  return []
+export const updateFlowExecution = async (execution: FlowExecution): Promise<void> => {
+  return saveFlowExecution(execution)
 }
 
-export const deleteExecution = async (flowId: string): Promise<void> => {
-  return deleteMySQLExecution(flowId)
+export const deleteFlowExecution = async (flowId: string): Promise<void> => {
+  const executions = getFlowExecutionsFromStorage()
+  const filtered = executions.filter(e => e.flowId !== flowId)
+  localStorage.setItem(EXECUTION_KEY, JSON.stringify(filtered))
+}
+
+const getFlowExecutionsFromStorage = (): FlowExecution[] => {
+  try {
+    const stored = localStorage.getItem(EXECUTION_KEY)
+    return stored ? JSON.parse(stored) : []
+  } catch (error) {
+    console.error('Error parsing flow executions from localStorage:', error)
+    return []
+  }
 }
 
 // Utility functions

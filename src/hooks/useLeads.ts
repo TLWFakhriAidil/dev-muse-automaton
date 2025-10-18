@@ -36,8 +36,8 @@ export const useLeads = () => {
         device_ids: device_ids // Include user's device IDs in filters
       }
       
-      // Direct MySQL API call would go here with device filtering
-      // For now, return empty array since MySQL connection is needed
+      // Direct Supabase API call would go here with device filtering
+    // For now, return empty array since Supabase connection is needed
       // TODO: Implement actual API call with device filtering
       setLeads([])
     } catch (error) {
@@ -67,7 +67,7 @@ export const useLeads = () => {
         device_ids: device_ids // Include user's device IDs in filters
       }
       
-      // Direct MySQL stats call would go here with device filtering
+      // Direct Supabase stats call would go here with device filtering
       // TODO: Implement actual API call with device filtering
       setStats([])
     } catch (error) {
@@ -110,7 +110,7 @@ export const useLeads = () => {
 
   const createLead = async (leadData: Omit<Lead, 'id' | 'created_at' | 'updated_at'>) => {
     try {
-      // Direct MySQL insert would go here
+      // Direct Supabase insert would go here
       toast.success('Lead created successfully')
       return null
     } catch (error) {
@@ -122,7 +122,7 @@ export const useLeads = () => {
 
   const updateLead = async (id: string, updates: Partial<Lead>) => {
     try {
-      // Direct MySQL update would go here
+      // Direct Supabase update would go here
       toast.success('Lead updated successfully')
       return null
     } catch (error) {
@@ -134,7 +134,7 @@ export const useLeads = () => {
 
   const deleteLead = async (id: string) => {
     try {
-      // Direct MySQL delete would go here
+      // Direct Supabase delete would go here
       toast.success('Lead deleted successfully')
     } catch (error) {
       console.error('Error deleting lead:', error)

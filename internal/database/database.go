@@ -98,19 +98,33 @@ func RunMigrations(db *sql.DB) error {
 	return nil
 }
 
-// Migration SQL statements
+// Migration SQL statements - PostgreSQL format for Supabase
 const createFlowsTable = `
 CREATE TABLE IF NOT EXISTS chatbot_flows (
     id VARCHAR(255) PRIMARY KEY,
     name VARCHAR(255) NOT NULL,
-    description TEXT COLLATE utf8mb4_unicode_ci,
-    niche TEXT COLLATE utf8mb4_unicode_ci,
+    description TEXT,
+    niche TEXT,
     id_device VARCHAR(255),
-    nodes JSON,
-    edges JSON,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+    nodes JSONB,
+    edges JSONB,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Create trigger for updated_at
+CREATE OR REPLACE FUNCTION update_updated_at_column()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.updated_at = NOW();
+    RETURN NEW;
+END;
+$$ language 'plpgsql';
+
+CREATE TRIGGER update_chatbot_flows_updated_at 
+    BEFORE UPDATE ON chatbot_flows 
+    FOR EACH ROW 
+    EXECUTE FUNCTION update_updated_at_column();
 `
 
 // Test chat executions table schema removed
@@ -118,20 +132,28 @@ CREATE TABLE IF NOT EXISTS chatbot_flows (
 const createDeviceSettingsTable = `
 CREATE TABLE IF NOT EXISTS device_setting (
     id VARCHAR(255) PRIMARY KEY,
-    device_id VARCHAR(255), -- Changed to allow NULL for manual creation
-    api_key_option ENUM('openai/gpt-5-chat', 'openai/gpt-5-mini', 'openai/chatgpt-4o-latest', 'openai/gpt-4.1', 'google/gemini-2.5-pro', 'google/gemini-pro-1.5') DEFAULT 'openai/gpt-4.1',
+    device_id VARCHAR(255),
+    api_key_option VARCHAR(100) DEFAULT 'openai/gpt-4.1' CHECK (api_key_option IN ('openai/gpt-5-chat', 'openai/gpt-5-mini', 'openai/chatgpt-4o-latest', 'openai/gpt-4.1', 'google/gemini-2.5-pro', 'google/gemini-pro-1.5')),
     webhook_id VARCHAR(500),
-    provider ENUM('whacenter', 'wablas', 'waha') DEFAULT 'wablas',
+    provider VARCHAR(20) DEFAULT 'wablas' CHECK (provider IN ('whacenter', 'wablas', 'waha')),
     phone_number VARCHAR(20),
     api_key TEXT,
     id_device VARCHAR(255),
     id_erp VARCHAR(255),
     id_admin VARCHAR(255),
     user_id CHAR(36),
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    INDEX idx_user_id (user_id)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+    instance TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_device_setting_user_id ON device_setting(user_id);
+CREATE INDEX IF NOT EXISTS idx_device_setting_id_device ON device_setting(id_device);
+
+CREATE TRIGGER update_device_setting_updated_at 
+    BEFORE UPDATE ON device_setting 
+    FOR EACH ROW 
+    EXECUTE FUNCTION update_updated_at_column();
 `
 
 // Create users table for authentication (matches existing schema)
@@ -141,11 +163,16 @@ CREATE TABLE IF NOT EXISTS users (
 	email VARCHAR(255) NOT NULL,
 	full_name VARCHAR(255) NOT NULL,
 	password_hash VARCHAR(255) NOT NULL,
-	is_active TINYINT(1) DEFAULT 1,
-	created_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
-	updated_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
-	last_login TIMESTAMP NULL DEFAULT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+	is_active BOOLEAN DEFAULT true,
+	created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+	updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+	last_login TIMESTAMP WITH TIME ZONE DEFAULT NULL
+);
+
+CREATE TRIGGER update_users_updated_at 
+    BEFORE UPDATE ON users 
+    FOR EACH ROW 
+    EXECUTE FUNCTION update_updated_at_column();
 `
 
 // Create user_sessions table for authentication sessions (matches existing schema)
@@ -154,88 +181,94 @@ CREATE TABLE IF NOT EXISTS user_sessions (
 	id CHAR(36) NOT NULL PRIMARY KEY,
 	user_id CHAR(36) NOT NULL,
 	token VARCHAR(255) NOT NULL,
-	expires_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-	created_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+	expires_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+	created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
 `
 
 // AI WhatsApp conversation table for managing AI-powered WhatsApp conversations
 const createAIWhatsappTable = `
 CREATE TABLE IF NOT EXISTS ai_whatsapp (
-    id_prospect INT(11) NOT NULL AUTO_INCREMENT PRIMARY KEY,
-    flow_reference VARCHAR(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT 'Reference to chatbot flow being executed',
-    execution_id VARCHAR(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT 'Unique execution identifier',
-    date_order DATETIME DEFAULT NULL,
-    id_device VARCHAR(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-    niche VARCHAR(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-    prospect_name VARCHAR(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-    prospect_num VARCHAR(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-    intro VARCHAR(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-    stage VARCHAR(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-    conv_last TEXT COLLATE utf8mb4_unicode_ci,
-    conv_current TEXT COLLATE utf8mb4_unicode_ci,
-    execution_status ENUM('active','completed','failed') COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT 'Flow execution status',
-    flow_id VARCHAR(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT 'ID of the current chatbot flow being executed',
-    current_node_id VARCHAR(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT 'Current node ID in the chatbot flow',
-    last_node_id VARCHAR(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT 'Previous node ID for flow tracking',
-    waiting_for_reply TINYINT(1) DEFAULT 0 COMMENT '1 = waiting for user reply, 0 = not waiting',
-    balas VARCHAR(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-    human INT(11) DEFAULT 0,
-    keywordiklan VARCHAR(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-    marketer VARCHAR(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    update_today DATETIME DEFAULT NULL,
-    UNIQUE KEY uniq_execution_id (execution_id),
-    KEY idx_flow_id (flow_id),
-    KEY idx_current_node_id (current_node_id),
-    KEY idx_id_device (id_device),
-    KEY idx_prospect_num (prospect_num)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+    id_prospect SERIAL PRIMARY KEY,
+    flow_reference VARCHAR(255) DEFAULT NULL,
+    execution_id VARCHAR(255) DEFAULT NULL,
+    date_order TIMESTAMP WITH TIME ZONE DEFAULT NULL,
+    id_device VARCHAR(255) DEFAULT NULL,
+    niche VARCHAR(255) DEFAULT NULL,
+    prospect_name VARCHAR(255) DEFAULT NULL,
+    prospect_num VARCHAR(255) DEFAULT NULL,
+    intro VARCHAR(255) DEFAULT NULL,
+    stage VARCHAR(255) DEFAULT NULL,
+    conv_last TEXT,
+    conv_current TEXT,
+    execution_status VARCHAR(20) DEFAULT NULL CHECK (execution_status IN ('active','completed','failed')),
+    flow_id VARCHAR(255) DEFAULT NULL,
+    current_node_id VARCHAR(255) DEFAULT NULL,
+    last_node_id VARCHAR(255) DEFAULT NULL,
+    waiting_for_reply BOOLEAN DEFAULT false,
+    balas VARCHAR(255) DEFAULT NULL,
+    human INTEGER DEFAULT 0,
+    keywordiklan VARCHAR(255) DEFAULT NULL,
+    marketer VARCHAR(255) DEFAULT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    update_today TIMESTAMP WITH TIME ZONE DEFAULT NULL
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS uniq_execution_id ON ai_whatsapp(execution_id);
+CREATE INDEX IF NOT EXISTS idx_flow_id ON ai_whatsapp(flow_id);
+CREATE INDEX IF NOT EXISTS idx_current_node_id ON ai_whatsapp(current_node_id);
+CREATE INDEX IF NOT EXISTS idx_id_device ON ai_whatsapp(id_device);
+CREATE INDEX IF NOT EXISTS idx_prospect_num ON ai_whatsapp(prospect_num);
+
+CREATE TRIGGER update_ai_whatsapp_updated_at 
+    BEFORE UPDATE ON ai_whatsapp 
+    FOR EACH ROW 
+    EXECUTE FUNCTION update_updated_at_column();
 `
 
 // WasapBot table for WasapBot Exama flow process
 const createWasapBotTable = `
 CREATE TABLE IF NOT EXISTS wasapBot (
-  id_prospect       INT(11) NOT NULL AUTO_INCREMENT,
-  flow_reference    VARCHAR(255) COLLATE latin1_swedish_ci DEFAULT NULL,
-  execution_id      VARCHAR(255) COLLATE latin1_swedish_ci DEFAULT NULL,
-  execution_status  ENUM('active','completed','failed') COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT 'Flow execution status',
-  flow_id           VARCHAR(255) COLLATE latin1_swedish_ci DEFAULT NULL COMMENT 'ID of the current chatbot flow being executed',
-  current_node_id   VARCHAR(255) COLLATE latin1_swedish_ci DEFAULT NULL COMMENT 'Current node ID in the chatbot flow',
-  last_node_id      VARCHAR(255) COLLATE latin1_swedish_ci DEFAULT NULL COMMENT 'Previous node ID for flow tracking',
-  waiting_for_reply TINYINT(1) DEFAULT 0 COMMENT '1 = waiting for user reply, 0 = not waiting',
-  marketer_id       VARCHAR(100) COLLATE latin1_swedish_ci DEFAULT NULL,
-  prospect_num      VARCHAR(100) COLLATE latin1_swedish_ci DEFAULT NULL,
-  niche             VARCHAR(300) COLLATE latin1_swedish_ci DEFAULT NULL,
-  instance          VARCHAR(255) COLLATE latin1_swedish_ci DEFAULT NULL,
-  peringkat_sekolah VARCHAR(100) COLLATE latin1_swedish_ci DEFAULT NULL,
-  alamat            VARCHAR(100) COLLATE latin1_swedish_ci DEFAULT NULL,
-  nama              VARCHAR(100) COLLATE latin1_swedish_ci DEFAULT NULL,
-  pakej             VARCHAR(100) COLLATE latin1_swedish_ci DEFAULT NULL,
-  no_fon            VARCHAR(20)  COLLATE latin1_swedish_ci DEFAULT NULL,
-  cara_bayaran      VARCHAR(100) COLLATE latin1_swedish_ci DEFAULT NULL,
-  tarikh_gaji       VARCHAR(20)  COLLATE latin1_swedish_ci DEFAULT NULL,
-  stage             VARCHAR(200) COLLATE latin1_swedish_ci DEFAULT NULL,
-  temp_stage        VARCHAR(200) COLLATE latin1_swedish_ci DEFAULT NULL,
-  conv_start        VARCHAR(200) COLLATE latin1_swedish_ci DEFAULT NULL,
-  conv_last         TEXT         COLLATE latin1_swedish_ci,
-  date_start        VARCHAR(50)  COLLATE latin1_swedish_ci DEFAULT NULL,
-  date_last         VARCHAR(50)  COLLATE latin1_swedish_ci DEFAULT NULL,
-  status            VARCHAR(200) COLLATE latin1_swedish_ci DEFAULT 'Prospek',
-  staff_cls         VARCHAR(200) COLLATE latin1_swedish_ci DEFAULT NULL,
-  umur              VARCHAR(200) COLLATE latin1_swedish_ci DEFAULT NULL,
-  kerja             VARCHAR(200) COLLATE latin1_swedish_ci DEFAULT NULL,
-  sijil             VARCHAR(200) COLLATE latin1_swedish_ci DEFAULT NULL,
-  user_input        TEXT         COLLATE latin1_swedish_ci,
-  alasan            VARCHAR(200) COLLATE latin1_swedish_ci DEFAULT NULL,
-  nota              VARCHAR(200) COLLATE latin1_swedish_ci DEFAULT NULL,
-  PRIMARY KEY (id_prospect),
-  INDEX idx_prospect_num (prospect_num),
-  INDEX idx_flow_id (flow_id),
-  INDEX idx_execution_id (execution_id),
-  INDEX idx_instance (instance)
-) ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci;
+  id_prospect SERIAL PRIMARY KEY,
+  flow_reference VARCHAR(255) DEFAULT NULL,
+  execution_id VARCHAR(255) DEFAULT NULL,
+  execution_status VARCHAR(20) DEFAULT NULL CHECK (execution_status IN ('active','completed','failed')),
+  flow_id VARCHAR(255) DEFAULT NULL,
+  current_node_id VARCHAR(255) DEFAULT NULL,
+  last_node_id VARCHAR(255) DEFAULT NULL,
+  waiting_for_reply BOOLEAN DEFAULT false,
+  marketer_id VARCHAR(100) DEFAULT NULL,
+  prospect_num VARCHAR(100) DEFAULT NULL,
+  niche VARCHAR(300) DEFAULT NULL,
+  instance VARCHAR(255) DEFAULT NULL,
+  peringkat_sekolah VARCHAR(100) DEFAULT NULL,
+  alamat VARCHAR(100) DEFAULT NULL,
+  nama VARCHAR(100) DEFAULT NULL,
+  pakej VARCHAR(100) DEFAULT NULL,
+  no_fon VARCHAR(20) DEFAULT NULL,
+  cara_bayaran VARCHAR(100) DEFAULT NULL,
+  tarikh_gaji VARCHAR(20) DEFAULT NULL,
+  stage VARCHAR(200) DEFAULT NULL,
+  temp_stage VARCHAR(200) DEFAULT NULL,
+  conv_start VARCHAR(200) DEFAULT NULL,
+  conv_last TEXT,
+  date_start VARCHAR(50) DEFAULT NULL,
+  date_last VARCHAR(50) DEFAULT NULL,
+  status VARCHAR(200) DEFAULT 'Prospek',
+  staff_cls VARCHAR(200) DEFAULT NULL,
+  umur VARCHAR(200) DEFAULT NULL,
+  kerja VARCHAR(200) DEFAULT NULL,
+  sijil VARCHAR(200) DEFAULT NULL,
+  user_input TEXT,
+  alasan VARCHAR(200) DEFAULT NULL,
+  nota VARCHAR(200) DEFAULT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_wasapbot_prospect_num ON wasapBot(prospect_num);
+CREATE INDEX IF NOT EXISTS idx_wasapbot_flow_id ON wasapBot(flow_id);
+CREATE INDEX IF NOT EXISTS idx_wasapbot_execution_id ON wasapBot(execution_id);
+CREATE INDEX IF NOT EXISTS idx_wasapbot_instance ON wasapBot(instance);
 `
 
 // Conversation log table for storing all AI conversation history
@@ -243,64 +276,73 @@ const createConversationLogTable = `
 CREATE TABLE IF NOT EXISTS conversation_log (
     id VARCHAR(255) PRIMARY KEY,
     prospect_num VARCHAR(20) NOT NULL,
-    sender ENUM('user', 'bot', 'staff') NOT NULL,
-    message TEXT COLLATE utf8mb4_unicode_ci NOT NULL,
-    message_type ENUM('text', 'image', 'document', 'audio', 'video') DEFAULT 'text',
+    sender VARCHAR(10) NOT NULL CHECK (sender IN ('user', 'bot', 'staff')),
+    message TEXT NOT NULL,
+    message_type VARCHAR(10) DEFAULT 'text' CHECK (message_type IN ('text', 'image', 'document', 'audio', 'video')),
     stage VARCHAR(255),
-    ai_response JSON COMMENT 'Full AI response with stage and content',
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    INDEX idx_prospect_num (prospect_num),
-    INDEX idx_sender (sender),
-    INDEX idx_created_at (created_at),
-    INDEX idx_stage (stage)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+    ai_response JSONB,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_conversation_log_prospect_num ON conversation_log(prospect_num);
+CREATE INDEX IF NOT EXISTS idx_conversation_log_sender ON conversation_log(sender);
+CREATE INDEX IF NOT EXISTS idx_conversation_log_created_at ON conversation_log(created_at);
+CREATE INDEX IF NOT EXISTS idx_conversation_log_stage ON conversation_log(stage);
 `
 
 // Orders table for Billplz payment integration
 const createOrdersTable = `
 CREATE TABLE IF NOT EXISTS orders (
-    id INT(11) NOT NULL AUTO_INCREMENT PRIMARY KEY,
-    amount DECIMAL(10,2) NOT NULL COMMENT 'Amount in RM',
-    collection_id VARCHAR(255) COLLATE utf8mb4_unicode_ci,
-    status ENUM('Pending', 'Processing', 'Success', 'Failed') DEFAULT 'Pending',
-    bill_id VARCHAR(255) COLLATE utf8mb4_unicode_ci,
-    url TEXT COLLATE utf8mb4_unicode_ci COMMENT 'Billplz payment URL',
-    product VARCHAR(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-    method VARCHAR(50) COLLATE utf8mb4_unicode_ci DEFAULT 'billplz',
+    id SERIAL PRIMARY KEY,
+    amount DECIMAL(10,2) NOT NULL,
+    collection_id VARCHAR(255),
+    status VARCHAR(20) DEFAULT 'Pending' CHECK (status IN ('Pending', 'Processing', 'Success', 'Failed')),
+    bill_id VARCHAR(255),
+    url TEXT,
+    product VARCHAR(255) NOT NULL,
+    method VARCHAR(50) DEFAULT 'billplz',
     user_id CHAR(36),
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    INDEX idx_bill_id (bill_id),
-    INDEX idx_status (status),
-    INDEX idx_user_id (user_id)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_orders_bill_id ON orders(bill_id);
+CREATE INDEX IF NOT EXISTS idx_orders_status ON orders(status);
+CREATE INDEX IF NOT EXISTS idx_orders_user_id ON orders(user_id);
+
+CREATE TRIGGER update_orders_updated_at 
+    BEFORE UPDATE ON orders 
+    FOR EACH ROW 
+    EXECUTE FUNCTION update_updated_at_column();
 `
 
 const createAIWhatsappSessionTable = `
 CREATE TABLE IF NOT EXISTS ai_whatsapp_session (
-    id_sessionX INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    id_sessionX SERIAL PRIMARY KEY,
     phone_number VARCHAR(255) NOT NULL,
     device_id VARCHAR(255) NOT NULL,
-    locked_at TIMESTAMP NULL DEFAULT NULL,
-    last_activity TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    ` + "`timestamp`" + ` VARCHAR(255) NOT NULL,
-    UNIQUE KEY uniq_ai_whatsapp_session (phone_number, device_id),
-    KEY idx_ai_whatsapp_session_device (device_id),
-    KEY idx_ai_session_locked (locked_at),
-    KEY idx_ai_session_activity (last_activity)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+    locked_at TIMESTAMP WITH TIME ZONE DEFAULT NULL,
+    last_activity TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    timestamp VARCHAR(255) NOT NULL
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS uniq_ai_whatsapp_session ON ai_whatsapp_session(phone_number, device_id);
+CREATE INDEX IF NOT EXISTS idx_ai_whatsapp_session_device ON ai_whatsapp_session(device_id);
+CREATE INDEX IF NOT EXISTS idx_ai_session_locked ON ai_whatsapp_session(locked_at);
+CREATE INDEX IF NOT EXISTS idx_ai_session_activity ON ai_whatsapp_session(last_activity);
 `
 
 const createWasapBotSessionTable = `
 CREATE TABLE IF NOT EXISTS wasapBot_session (
-    id_sessionY INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    id_sessionY SERIAL PRIMARY KEY,
     id_prospect VARCHAR(255) NOT NULL,
     id_device VARCHAR(255) NOT NULL,
-    ` + "`timestamp`" + ` VARCHAR(255) NOT NULL,
-    UNIQUE KEY uniq_wasapbot_session (id_prospect, id_device),
-    KEY idx_wasapbot_session_device (id_device)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+    timestamp VARCHAR(255) NOT NULL
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS uniq_wasapbot_session ON wasapBot_session(id_prospect, id_device);
+CREATE INDEX IF NOT EXISTS idx_wasapbot_session_device ON wasapBot_session(id_device);
 `
 
 // addMissingColumnsToFlowsTable adds missing columns to the flows table
@@ -309,19 +351,19 @@ func addMissingColumnsToFlowsTable(db *sql.DB) error {
 		name       string
 		definition string
 	}{
-		{"niche", "TEXT COLLATE utf8mb4_unicode_ci"},
+		{"niche", "TEXT"},
 		{"id_device", "VARCHAR(255)"},
 	}
 
 	for _, col := range columns {
-		// Check if column exists
+		// Check if column exists (PostgreSQL syntax)
 		var count int
 		err := db.QueryRow(`
 			SELECT COUNT(*) 
-			FROM INFORMATION_SCHEMA.COLUMNS 
-			WHERE TABLE_SCHEMA = DATABASE() 
-			AND TABLE_NAME = 'chatbot_flows' 
-			AND COLUMN_NAME = ?
+			FROM information_schema.columns 
+			WHERE table_schema = 'public' 
+			AND table_name = 'chatbot_flows' 
+			AND column_name = $1
 		`, col.name).Scan(&count)
 
 		if err != nil {
@@ -364,93 +406,47 @@ func updateProviderRvsbWasapToWaha(db *sql.DB) error {
 	return nil
 }
 
-// updateProviderEnum updates the provider ENUM to include 'waha' and remove 'rvsb_wasap'
+// updateProviderEnum updates the provider constraint to include 'waha' and remove 'rvsb_wasap'
 func updateProviderEnum(db *sql.DB) error {
-	logrus.Info("🔧 Checking provider ENUM constraint in device_setting table")
+	logrus.Info("🔧 Checking provider constraint in device_setting table")
 
-	// Check if table exists first
+	// Check if table exists first (PostgreSQL syntax)
 	var tableExists int
 	err := db.QueryRow(`
 		SELECT COUNT(*) 
-		FROM INFORMATION_SCHEMA.TABLES 
-		WHERE TABLE_SCHEMA = DATABASE() 
-		AND TABLE_NAME = 'device_setting'
+		FROM information_schema.tables 
+		WHERE table_schema = 'public' 
+		AND table_name = 'device_setting'
 	`).Scan(&tableExists)
 
 	if err != nil {
-		logrus.WithError(err).Warn("Failed to check if device_setting table exists, skipping provider ENUM update")
+		logrus.WithError(err).Warn("Failed to check if device_setting table exists, skipping provider constraint update")
 		return nil
 	}
 
 	if tableExists == 0 {
-		logrus.Info("device_setting table doesn't exist yet, skipping provider ENUM update")
+		logrus.Info("device_setting table doesn't exist yet, skipping provider constraint update")
 		return nil
 	}
 
-	// Check current ENUM values for provider column
-	var columnType string
-	err = db.QueryRow(`
-		SELECT COLUMN_TYPE 
-		FROM INFORMATION_SCHEMA.COLUMNS 
-		WHERE TABLE_SCHEMA = DATABASE() 
-		AND TABLE_NAME = 'device_setting' 
-		AND COLUMN_NAME = 'provider'
-	`).Scan(&columnType)
-
+	// For PostgreSQL, we need to drop and recreate the constraint
+	logrus.Info("🔧 Updating provider constraint to include 'waha' and remove 'rvsb_wasap'")
+	
+	// Drop existing constraint if it exists
+	_, err = db.Exec("ALTER TABLE device_setting DROP CONSTRAINT IF EXISTS device_setting_provider_check")
 	if err != nil {
-		logrus.WithError(err).Warn("Failed to check provider column type, attempting to alter anyway")
-	} else {
-		logrus.WithField("current_enum", columnType).Info("Current provider ENUM constraint")
-
-		// If already has 'waha' and doesn't have 'rvsb_wasap', skip
-		if contains(columnType, "'waha'") && !contains(columnType, "'rvsb_wasap'") {
-			logrus.Info("✅ Provider ENUM already has 'waha' and doesn't have 'rvsb_wasap' - no update needed")
-			return nil
-		}
+		logrus.WithError(err).Warn("Failed to drop existing provider constraint")
 	}
 
-	// Update the ENUM to replace 'rvsb_wasap' with 'waha'
-	logrus.Info("🔧 Updating provider ENUM to include 'waha' and remove 'rvsb_wasap'")
-	_, err = db.Exec("ALTER TABLE device_setting MODIFY COLUMN provider ENUM('whacenter', 'wablas', 'waha') DEFAULT 'wablas'")
+	// Add new constraint
+	_, err = db.Exec("ALTER TABLE device_setting ADD CONSTRAINT device_setting_provider_check CHECK (provider IN ('whacenter', 'wablas', 'waha'))")
 	if err != nil {
-		logrus.WithError(err).Error("❌ Failed to update provider ENUM - this will cause WAHA provider issues")
-		return fmt.Errorf("failed to update provider ENUM: %w", err)
+		logrus.WithError(err).Error("❌ Failed to update provider constraint - this will cause WAHA provider issues")
+		return fmt.Errorf("failed to update provider constraint: %w", err)
 	}
 
-	logrus.Info("✅ Successfully updated provider ENUM to support WAHA provider")
-
-	// Verify the change was applied
-	err = db.QueryRow(`
-		SELECT COLUMN_TYPE 
-		FROM INFORMATION_SCHEMA.COLUMNS 
-		WHERE TABLE_SCHEMA = DATABASE() 
-		AND TABLE_NAME = 'device_setting' 
-		AND COLUMN_NAME = 'provider'
-	`).Scan(&columnType)
-
-	if err == nil {
-		logrus.WithField("updated_enum", columnType).Info("✅ Verified provider ENUM after migration")
-	}
-
+	logrus.Info("✅ Successfully updated provider constraint to support WAHA provider")
 	return nil
-}
-
-// contains checks if a string contains a substring
-func contains(s, substr string) bool {
-	return len(s) >= len(substr) && (s == substr || (len(s) > len(substr) &&
-		(s[:len(substr)] == substr || s[len(s)-len(substr):] == substr ||
-			len(s) > len(substr)+1 && s[1:len(substr)+1] == substr ||
-			findInString(s, substr))))
-}
-
-// findInString is a simple string search helper
-func findInString(s, substr string) bool {
-	for i := 0; i <= len(s)-len(substr); i++ {
-		if s[i:i+len(substr)] == substr {
-			return true
-		}
-	}
-	return false
 }
 
 // removeDeprecatedColumnsFromFlowsTable removes deprecated columns from the flows table
@@ -461,14 +457,14 @@ func removeDeprecatedColumnsFromFlowsTable(db *sql.DB) error {
 	}
 
 	for _, col := range columns {
-		// Check if column exists
+		// Check if column exists (PostgreSQL syntax)
 		var count int
 		err := db.QueryRow(`
 			SELECT COUNT(*) 
-			FROM INFORMATION_SCHEMA.COLUMNS 
-			WHERE TABLE_SCHEMA = DATABASE() 
-			AND TABLE_NAME = 'chatbot_flows' 
-			AND COLUMN_NAME = ?
+			FROM information_schema.columns 
+			WHERE table_schema = 'public' 
+			AND table_name = 'chatbot_flows' 
+			AND column_name = $1
 		`, col).Scan(&count)
 
 		if err != nil {
@@ -498,18 +494,18 @@ func addMissingColumnsToDeviceSettingsTable(db *sql.DB) error {
 	}{
 		{"phone_number", "VARCHAR(20)"},
 		{"instance", "TEXT"},
-		{"user_id", "INT"},
+		{"user_id", "CHAR(36)"},
 	}
 
 	for _, col := range columns {
-		// Check if column exists
+		// Check if column exists (PostgreSQL syntax)
 		var count int
 		err := db.QueryRow(`
 			SELECT COUNT(*) 
-			FROM INFORMATION_SCHEMA.COLUMNS 
-			WHERE TABLE_SCHEMA = DATABASE() 
-			AND TABLE_NAME = 'device_setting' 
-			AND COLUMN_NAME = ?
+			FROM information_schema.columns 
+			WHERE table_schema = 'public' 
+			AND table_name = 'device_setting' 
+			AND column_name = $1
 		`, col.name).Scan(&count)
 
 		if err != nil {
@@ -522,12 +518,11 @@ func addMissingColumnsToDeviceSettingsTable(db *sql.DB) error {
 			if _, err := db.Exec(query); err != nil {
 				return fmt.Errorf("failed to add column %s: %w", col.name, err)
 			}
-			logrus.WithField("column", col.name).Info("Added missing column to device_setting")
+			logrus.WithField("column", col.name).Info("Added missing column")
 		} else {
-			logrus.WithField("column", col.name).Debug("Column already exists in device_setting")
+			logrus.WithField("column", col.name).Debug("Column already exists")
 		}
 	}
-
 	return nil
 }
 

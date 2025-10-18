@@ -128,9 +128,9 @@ func validateSupabaseURL(supabaseURL string) error {
 }
 
 // buildPostgresURI constructs a PostgreSQL connection URI from Supabase configuration
-func buildPostgresURI(supabaseURL, serviceToken string) (string, error) {
+func buildPostgresURI(supabaseURL, dbPassword string) (string, error) {
 	// Supabase provides a REST API URL like: https://xxxxx.supabase.co
-	// We need to convert this to PostgreSQL connection string using the service role token
+	// We need to convert this to PostgreSQL connection string using the database password
 	
 	// Extract project reference from Supabase URL
 	// URL format: https://xxxxx.supabase.co or https://xxxxx.supabase.co/
@@ -153,19 +153,16 @@ func buildPostgresURI(supabaseURL, serviceToken string) (string, error) {
 		return "", fmt.Errorf("empty project reference extracted from URL: %s", supabaseURL)
 	}
 
-	// Build PostgreSQL connection URI using service role token for auth
-	// Use connection pooler (port 6543) instead of direct connection (port 5432)
-	// This provides better IPv4 support and connection pooling for Railway deployments
-	host := fmt.Sprintf("db.%s.supabase.co", projectRef)
-	
-	// Use port 6543 (connection pooler) with transaction mode for better compatibility
-	// Connection pooler supports IPv4 and provides better stability on Railway
-	uri := fmt.Sprintf("postgres://postgres.%s:%s@aws-0-us-east-1.pooler.supabase.com:6543/postgres?sslmode=require", projectRef, serviceToken)
+	// Build PostgreSQL connection URI using database password for auth
+	// Use the correct Supabase PostgreSQL connection format
+	// Format: postgres://postgres:[PASSWORD]@db.[PROJECT_REF].supabase.co:5432/postgres
+	uri := fmt.Sprintf("postgres://postgres:%s@db.%s.supabase.co:5432/postgres?sslmode=require", dbPassword, projectRef)
 	
 	logrus.WithFields(logrus.Fields{
 		"project_ref": projectRef,
-		"host": host,
-	}).Debug("Built PostgreSQL connection URI")
+		"host": fmt.Sprintf("db.%s.supabase.co", projectRef),
+		"port": "5432",
+	}).Info("Supabase URL validation passed")
 	
 	return uri, nil
 }
