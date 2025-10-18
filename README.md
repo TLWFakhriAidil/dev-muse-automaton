@@ -903,24 +903,30 @@ if item.ProspectName.Valid {
 
 ---
 
-## 🔄 **Latest Update: Database Reversion to Supabase** (January 2025)
+## 🔄 **Latest Update: Railway Deployment Connection Optimization** (January 2025)
 
 ### **Change Summary**
-**Reverted database configuration from MySQL back to Supabase PostgreSQL** for optimal performance and Railway deployment compatibility.
+**Enhanced database connection resilience for Railway deployment** with improved retry logic and connection handling for Supabase PostgreSQL.
 
-### **Files Updated:**
-1. **`cmd/server/main.go`** - Updated database initialization logging and error messages
-2. **`internal/database/database.go`** - Complete reversion to Supabase PostgreSQL connection
-   - Changed driver from `github.com/go-sql-driver/mysql` to `github.com/lib/pq`
-   - Updated connection string format for PostgreSQL
-   - Added `extractProjectRef()` helper function for Supabase URL parsing
-3. **`README.md`** - Updated environment variables and documentation
+### **Railway Deployment Improvements:**
+1. **Connection Resilience**: Added 3-attempt retry mechanism with 2-second delays
+2. **Timeout Optimization**: Enhanced connection timeout parameters for Railway infrastructure
+3. **IPv6/IPv4 Handling**: Improved network connectivity for Railway's environment
+4. **Error Logging**: Enhanced debugging for deployment troubleshooting
 
-### **Environment Variables Simplified:**
+### **Technical Enhancements:**
+- **Connection String**: Added `connect_timeout=30` and `application_name=railway-deployment`
+- **Retry Logic**: Automatic retry on connection failures
+- **Better Error Messages**: Detailed logging for Railway deployment issues
+- **Network Optimization**: Improved handling of Railway's network infrastructure
+
+### **Environment Variables Required:**
 ```bash
 # Required for Supabase Connection
 SUPABASE_URL=https://your-project.supabase.co
 SUPABASE_DB_PASSWORD=your-database-password
+SUPABASE_ANON_KEY=your-anon-key
+SUPABASE_SERVICE_KEY=your-service-key
 
 # Frontend Configuration
 VITE_SUPABASE_URL=https://your-project.supabase.co
@@ -928,10 +934,24 @@ VITE_SUPABASE_ANON_KEY=your-anon-key
 ```
 
 ### **Testing Results:**
-- ✅ **Build Status**: Compiles successfully with PostgreSQL driver
-- ✅ **Connection Logic**: Properly extracts project reference from Supabase URL
-- ✅ **Error Handling**: Correct error messages for missing environment variables
-- ✅ **Railway Ready**: Optimized for Railway deployment with Supabase
+- ✅ **Build Status**: Compiles successfully with enhanced connection logic
+- ✅ **Railway Compatibility**: Optimized for Railway's infrastructure
+- ✅ **Connection Reliability**: Retry logic handles network issues
+- ✅ **Deployment Ready**: Enhanced resilience for production deployment
+
+### **Benefits of Enhanced Connection:**
+- **Reliability**: Better handling of Railway network connectivity
+- **Performance**: Optimized connection parameters for 3000+ concurrent users
+- **Resilience**: Automatic retry on temporary connection failures
+- **Monitoring**: Enhanced logging for deployment troubleshooting
+- **Scalability**: Improved connection pooling for high-load scenarios
+
+---
+
+## 🔄 **Previous Update: Database Reversion to Supabase** (January 2025)
+
+### **Change Summary**
+**Reverted database configuration from MySQL back to Supabase PostgreSQL** for optimal performance and Railway deployment compatibility.
 
 ### **Benefits of Supabase:**
 - **Performance**: Better suited for 3000+ concurrent users

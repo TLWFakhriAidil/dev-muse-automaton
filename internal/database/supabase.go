@@ -3,6 +3,7 @@ package database
 import (
 	"database/sql"
 	"fmt"
+	"time"
 
 	"nodepath-chat/internal/config"
 
@@ -64,9 +65,26 @@ func InitializeSupabase(cfg *config.Config) (*SupabaseClient, error) {
 	db.SetConnMaxLifetime(60) // Longer lifetime to reduce connection churn (in minutes)
 	db.SetConnMaxIdleTime(15) // Balanced idle time for resource efficiency (in minutes)
 
-	// Test the connection
-	if err := db.Ping(); err != nil {
-		return nil, fmt.Errorf("failed to ping Supabase database: %w", err)
+	// Test the connection with retry logic for Railway deployment
+	logrus.Debug("Testing Supabase PostgreSQL connection...")
+	var pingErr error
+	for i := 0; i < 3; i++ {
+		if pingErr = db.Ping(); pingErr == nil {
+			break
+		}
+		logrus.WithFields(logrus.Fields{
+			"attempt": i + 1,
+			"error":   pingErr.Error(),
+		}).Warn("Database ping failed, retrying...")
+		
+		if i < 2 { // Don't sleep on the last attempt
+			logrus.Info("Waiting 2 seconds before retry...")
+			time.Sleep(2 * time.Second)
+		}
+	}
+	
+	if pingErr != nil {
+		return nil, fmt.Errorf("failed to ping Supabase PostgreSQL database after 3 attempts: %w", pingErr)
 	}
 
 	logrus.Info("Supabase database connection established successfully")
@@ -154,9 +172,9 @@ func buildPostgresURI(supabaseURL, dbPassword string) (string, error) {
 	}
 
 	// Build PostgreSQL connection URI using database password for auth
-	// Use the correct Supabase PostgreSQL connection format
+	// Use the correct Supabase PostgreSQL connection format with Railway-optimized parameters
 	// Format: postgres://postgres:[PASSWORD]@db.[PROJECT_REF].supabase.co:5432/postgres
-	uri := fmt.Sprintf("postgres://postgres:%s@db.%s.supabase.co:5432/postgres?sslmode=require", dbPassword, projectRef)
+	uri := fmt.Sprintf("postgres://postgres:%s@db.%s.supabase.co:5432/postgres?sslmode=require&connect_timeout=30&application_name=railway-deployment", dbPassword, projectRef)
 	
 	logrus.WithFields(logrus.Fields{
 		"project_ref": projectRef,
