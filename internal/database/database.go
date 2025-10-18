@@ -22,13 +22,19 @@ func Initialize(cfg *config.Config) (*sql.DB, error) {
 	
 	// Build PostgreSQL connection string from Supabase URL
 	// Supabase URL format: https://project-ref.supabase.co
-	// We need to construct the PostgreSQL connection string
-	connStr := fmt.Sprintf("host=db.%s.supabase.co port=5432 user=postgres dbname=postgres sslmode=require",
-		extractProjectRef(cfg.SupabaseURL))
+	// We need to construct the PostgreSQL connection string with IPv4 forcing
+	projectRef := extractProjectRef(cfg.SupabaseURL)
+	logrus.WithField("project_ref", projectRef).Debug("Extracted project reference")
+	
+	// Force IPv4 connection to avoid IPv6 network unreachable errors
+	connStr := fmt.Sprintf("host=db.%s.supabase.co port=5432 user=postgres dbname=postgres sslmode=require connect_timeout=30",
+		projectRef)
 	
 	if cfg.SupabaseDBPassword != "" {
 		connStr += fmt.Sprintf(" password=%s", cfg.SupabaseDBPassword)
 	}
+	
+	logrus.WithField("connection_string", strings.ReplaceAll(connStr, cfg.SupabaseDBPassword, "***")).Debug("Using connection string")
 	
 	// Open PostgreSQL connection
 	db, err := sql.Open("postgres", connStr)

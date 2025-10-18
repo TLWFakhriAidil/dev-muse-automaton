@@ -95,10 +95,22 @@ func (c *Config) IsDevelopment() bool {
 }
 
 // getEnv gets an environment variable with a fallback value
-// Trims whitespace to handle Railway environment variable formatting
+// Trims whitespace, backticks, and quotes to handle Railway environment variable formatting
 func getEnv(key, fallback string) string {
 	if value := os.Getenv(key); value != "" {
-		return strings.TrimSpace(value)
+		// Remove leading/trailing whitespace
+		cleaned := strings.TrimSpace(value)
+		
+		// Remove backticks (`) that Railway sometimes adds
+		cleaned = strings.Trim(cleaned, "`")
+		
+		// Remove quotes (") that might be present
+		cleaned = strings.Trim(cleaned, "\"")
+		
+		// Remove any remaining whitespace after quote/backtick removal
+		cleaned = strings.TrimSpace(cleaned)
+		
+		return cleaned
 	}
 	return fallback
 }
