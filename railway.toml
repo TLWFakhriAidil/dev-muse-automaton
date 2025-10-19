@@ -1,17 +1,22 @@
 [build]
   builder = "DOCKERFILE"
-  # Fallback command if Dockerfile build fails
-  # buildCommand = "chmod +x ./railway-build.sh && ./railway-build.sh"
+  # Use optimized build process
+  buildCommand = "chmod +x ./railway-production-deploy.sh && ./railway-production-deploy.sh"
+  # Optimize build performance
+  watchPatterns = ["cmd/**/*.go", "internal/**/*.go", "Dockerfile"]
+  nixPacksConfigPath = "railway.toml"
 
 [deploy]
-  healthcheckTimeout = 300
-  restartPolicyType = "on_failure"
-  restartPolicyMaxRetries = 10
-  
-  # Supabase connection optimization
+  # Optimized deployment settings
   healthcheckPath = "/healthz"
   healthcheckTimeout = 60
   startupTimeout = 180
+  restartPolicyType = "on_failure"
+  restartPolicyMaxRetries = 10
+  
+  # Repository snapshot optimization
+  skipCache = false
+  numReplicas = 1
 
 # Phases setup not needed when using Dockerfile
 # [phases.setup]

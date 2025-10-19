@@ -1,6 +1,7 @@
 # Git
 .git
 .gitignore
+.github
 
 # Node.js
 node_modules
@@ -8,12 +9,17 @@ npm-debug.log
 yarn-error.log
 .npm
 .yarn
+package-lock.json
+bun.lockb
 
 # Build artifacts
 # dist - commented out because we need it for the Docker build
 build
 *.exe
 server
+*.o
+*.a
+*.so
 
 # Development files
 .env
@@ -21,12 +27,17 @@ server
 .env.development
 .env.test
 .env.production
+.env.example
+*.test
+*_test.go
+test_*.go
 
 # IDE
 .vscode
 .idea
 *.swp
 *.swo
+.editorconfig
 
 # OS
 .DS_Store
@@ -35,19 +46,54 @@ Thumbs.db
 # Logs
 *.log
 logs
+server_log.txt
 
 # Temporary files
 tmp
 temp
+.tmp
+.temp
 
 # Documentation
 *.md
 README*
+RAILWAY_*
+SESSION_*
+FINAL_*
+REQUIRED_*
+
+# Media and large files
+media/
+*.jpg
+*.jpeg
+*.png
+*.gif
+*.mp4
+*.mp3
+*.pdf
+*.zip
+*.tar.gz
 
 # Scripts not needed in container
-railway-build.sh
-start.sh
+railway-*.sh
+start*.sh
 test-*.sh
+build-*.sh
+build-*.bat
+build-*.ps1
+
+# Vercel and other deployment configs
+.vercel
+.vercelignore
+vercel.json
+
+# Supabase local development
+supabase/
+
+# Test directories
+test/
+tests/
+__tests__/
 *.bat
 *.ps1
 
