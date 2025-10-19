@@ -6,8 +6,8 @@ WORKDIR /app
 # Copy package files and npm configuration
 COPY package*.json .npmrc ./
 
-# Install dependencies
-RUN npm ci
+# Install dependencies (using npm install instead of npm ci since package-lock.json might not be available)
+RUN npm install --production=false
 
 # Copy source code and configuration files needed for build
 COPY src/ ./src/
