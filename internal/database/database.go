@@ -1,6 +1,7 @@
 package database
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 	"net"
@@ -117,20 +118,22 @@ func Initialize(cfg *config.Config) (*sql.DB, error) {
 			logrus.WithField("connection_string", strings.ReplaceAll(localhostConnStr, cfg.SupabaseDBPassword, "[REDACTED]")).
 				Info("Using localhost connection string")
 			
-			db, err = sql.Open("postgres", localhostConnStr)
-			if err != nil {
-				logrus.WithError(err).Error("Failed to open localhost connection")
+			var dbLocal *sql.DB
+			var errLocal error
+			dbLocal, errLocal = sql.Open("postgres", localhostConnStr)
+			if errLocal != nil {
+				logrus.WithError(errLocal).Error("Failed to open localhost connection")
 				// Reopen with original connection string
 				logrus.Info("Reopening with original connection string")
 				db, _ = sql.Open("postgres", connStr)
 			} else {
-				pingErr := db.Ping()
+				pingErr := dbLocal.Ping()
 				if pingErr == nil {
 					logrus.Info("Successfully connected to database via localhost")
-					return db, nil
+					return dbLocal, nil
 				}
 				logrus.WithError(pingErr).Error("Failed to ping localhost connection, reverting to original connection")
-				db.Close()
+				dbLocal.Close()
 				db, _ = sql.Open("postgres", connStr)
 			}
 		}

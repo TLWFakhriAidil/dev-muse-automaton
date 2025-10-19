@@ -70,7 +70,7 @@ func (h *HealthHandlers) HandleHealthCheck(c *fiber.Ctx) error {
 
 // HandleRailwayHealthCheck is a dedicated endpoint for Railway health checks
 // It always returns 200 OK during startup to prevent unnecessary restarts
-func (h *Handler) HandleRailwayHealthCheck(c *fiber.Ctx) error {
+func (h *HealthHandlers) HandleRailwayHealthCheck(c *fiber.Ctx) error {
 	// Always return 200 OK for Railway health checks
 	// This prevents Railway from restarting the service during database connection attempts
 	return c.Status(fiber.StatusOK).JSON(fiber.Map{

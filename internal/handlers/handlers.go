@@ -171,7 +171,7 @@ func (h *Handlers) SetupRoutes(api fiber.Router) {
 	health.Delete("/cache", h.HandleClearHealthCache)
 	
 	// Railway health check endpoint - always returns 200 during startup
-	app.Get("/healthz", h.HandleRailwayHealthCheck)
+	api.Get("/healthz", h.HealthHandlers.HandleRailwayHealthCheck)
 
 	// Config routes (removed database config endpoint - no longer needed with Supabase)
 
