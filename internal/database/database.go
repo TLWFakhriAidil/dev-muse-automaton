@@ -13,11 +13,38 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-// resolveIPv4 resolves a hostname to its IPv4 address to avoid IPv6 issues
+// resolveIPv4 forcefully resolves a hostname to its IPv4 address to avoid IPv6 issues in Railway
 func resolveIPv4(hostname string) (string, error) {
+	// First try using context with explicit IPv4 network type
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	
+	// Force IPv4-only resolution using net.Dialer
+	dialer := &net.Dialer{
+		Timeout:   5 * time.Second,
+		KeepAlive: 30 * time.Second,
+	}
+	
+	// Try to dial to get the actual IPv4 address used
+	conn, err := dialer.DialContext(ctx, "tcp4", hostname+":5432")
+	if err == nil {
+		defer conn.Close()
+		if tcpAddr, ok := conn.RemoteAddr().(*net.TCPAddr); ok {
+			if ipv4 := tcpAddr.IP.To4(); ipv4 != nil {
+				logrus.WithFields(logrus.Fields{
+					"hostname": hostname,
+					"ipv4":     ipv4.String(),
+					"method":   "tcp4_dial",
+				}).Info("Successfully resolved hostname to IPv4 via TCP4 dial")
+				return ipv4.String(), nil
+			}
+		}
+	}
+	
+	// Fallback: try explicit A record lookup
 	ips, err := net.LookupIP(hostname)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("failed to lookup IP for %s: %w", hostname, err)
 	}
 	
 	// Find the first IPv4 address
@@ -26,12 +53,44 @@ func resolveIPv4(hostname string) (string, error) {
 			logrus.WithFields(logrus.Fields{
 				"hostname": hostname,
 				"ipv4":     ipv4.String(),
-			}).Debug("Resolved hostname to IPv4")
+				"method":   "lookup_fallback",
+			}).Info("Resolved hostname to IPv4 via lookup fallback")
 			return ipv4.String(), nil
 		}
 	}
 	
-	return "", fmt.Errorf("no IPv4 address found for hostname: %s", hostname)
+	// Final fallback: use known Supabase IPv4 ranges or external DNS
+	if strings.Contains(hostname, "supabase.co") {
+		// Try using Google DNS to get IPv4 address
+		r := &net.Resolver{
+			PreferGo: true,
+			Dial: func(ctx context.Context, network, address string) (net.Conn, error) {
+				d := net.Dialer{
+					Timeout: time.Second * 5,
+				}
+				return d.DialContext(ctx, "udp4", "8.8.8.8:53")
+			},
+		}
+		
+		ctx2, cancel2 := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel2()
+		
+		addrs, err := r.LookupHost(ctx2, hostname)
+		if err == nil {
+			for _, addr := range addrs {
+				if ip := net.ParseIP(addr); ip != nil && ip.To4() != nil {
+					logrus.WithFields(logrus.Fields{
+						"hostname": hostname,
+						"ipv4":     addr,
+						"method":   "google_dns",
+					}).Info("Resolved hostname to IPv4 via Google DNS")
+					return addr, nil
+				}
+			}
+		}
+	}
+	
+	return "", fmt.Errorf("no IPv4 address found for hostname: %s after trying multiple methods", hostname)
 }
 
 // Initialize creates and returns a Supabase PostgreSQL database connection
@@ -139,40 +198,38 @@ func Initialize(cfg *config.Config) (*sql.DB, error) {
 		   strings.Contains(pingErr.Error(), "IPv6") {
 			logrus.Info("Detected IPv6 network issue, attempting IPv4-only connection")
 			
-			// Create a fallback connection string - ALWAYS use hostaddr to force IPv4
-			ipv4Conn := fmt.Sprintf("hostaddr=%s port=5432 user=postgres dbname=postgres password=%s sslmode=disable connect_timeout=60", ipv4Address, cfg.SupabaseDBPassword)
-			
-			// If we couldn't resolve the IPv4 address, try with the original hostname but disable IPv6
-			if ipv4Address == "" {
-				// Try to resolve again with a different approach
-				ctx := context.Background()
-				addrs, lookupErr := net.DefaultResolver.LookupHost(ctx, hostname)
-				if lookupErr == nil {
-					for _, addr := range addrs {
-						if net.ParseIP(addr).To4() != nil {
-							ipv4Address = addr
-							break
-						}
-					}
-				}
+			// Try to get a fresh IPv4 address with our improved resolution
+			freshIPv4, resolveErr := resolveIPv4(hostname)
+			if resolveErr != nil {
+				logrus.WithError(resolveErr).Warn("Failed to resolve fresh IPv4 address")
 				
-				// If we still don't have an IPv4 address, use a direct connection with IPv4 hints
-				if ipv4Address == "" {
-					ipv4Conn = fmt.Sprintf("host=%s port=5432 user=postgres dbname=postgres password=%s sslmode=disable", 
-						hostname, cfg.SupabaseDBPassword)
-				} else {
-					ipv4Conn = fmt.Sprintf("hostaddr=%s port=5432 user=postgres dbname=postgres password=%s sslmode=disable", 
-						ipv4Address, cfg.SupabaseDBPassword)
+				// Last resort: try a hardcoded approach for Railway
+				logrus.Info("Attempting last resort IPv4 connection using external DNS")
+				fallbackConnStr := fmt.Sprintf("host=%s port=5432 user=postgres dbname=postgres password=%s sslmode=require connect_timeout=30 application_name=railway-ipv4-fallback", 
+					hostname, cfg.SupabaseDBPassword)
+				
+				db.Close()
+				db, err = sql.Open("postgres", fallbackConnStr)
+				if err != nil {
+					logrus.WithError(err).Error("Failed to create fallback connection")
+					// Continue with original connection
+					db, _ = sql.Open("postgres", connStr)
 				}
-			}
-			
-			// Try to close and reopen with IPv4-only connection
-			db.Close()
-			db, err = sql.Open("postgres", ipv4Conn)
-			if err != nil {
-				logrus.WithError(err).Error("Failed to create IPv4-only connection")
-				// Continue with original connection
-				db, _ = sql.Open("postgres", connStr)
+			} else {
+				// Use the fresh IPv4 address with hostaddr to force IPv4
+				ipv4Conn := fmt.Sprintf("hostaddr=%s port=5432 user=postgres dbname=postgres password=%s sslmode=require connect_timeout=30 application_name=railway-ipv4", 
+					freshIPv4, cfg.SupabaseDBPassword)
+				
+				logrus.WithField("ipv4", freshIPv4).Info("Using fresh IPv4 address for Railway compatibility")
+				
+				// Try to close and reopen with IPv4-only connection
+				db.Close()
+				db, err = sql.Open("postgres", ipv4Conn)
+				if err != nil {
+					logrus.WithError(err).Error("Failed to create IPv4-only connection")
+					// Continue with original connection
+					db, _ = sql.Open("postgres", connStr)
+				}
 			}
 		}
 		
