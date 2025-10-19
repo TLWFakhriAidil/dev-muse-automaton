@@ -44,8 +44,10 @@ Thumbs.db
 tmp/
 temp/
 node_modules
-node_modules
-node_modules
-node_modules
-node_modules
-node_modules
+
+# Build artifacts and binaries
+test-build
+server
+bin/
+*.exe
+*.bin
