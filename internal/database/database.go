@@ -49,6 +49,9 @@ func Initialize(cfg *config.Config) (*sql.DB, error) {
 	// FORCE IPv4 for Railway compatibility - this is critical to avoid IPv6 issues
 	hostname := fmt.Sprintf("db.%s.supabase.co", projectRef)
 	
+	// Initialize connection string variable
+	var connStr string
+	
 	// Always use hostaddr parameter to force IPv4 connection
 	ipv4Address, err := resolveIPv4(hostname)
 	if err == nil {
@@ -98,9 +101,18 @@ func Initialize(cfg *config.Config) (*sql.DB, error) {
 		if strings.Contains(pingErr.Error(), "network is unreachable") || 
 		   strings.Contains(pingErr.Error(), "IPv6") {
 			logrus.Info("Detected IPv6 network issue, attempting IPv4-only connection")
-			// Force IPv4 by using hostaddr with a common IPv4 address format
-			ipv4Conn := fmt.Sprintf("hostaddr=127.0.0.1 port=5432 user=postgres dbname=postgres password=%s sslmode=disable", 
-				cfg.SupabaseDBPassword)
+			
+			// Create a fallback connection string
+			var ipv4Conn string
+			if ipv4Address != "" {
+				// Use the resolved IPv4 address if available
+				ipv4Conn = fmt.Sprintf("hostaddr=%s port=5432 user=postgres dbname=postgres password=%s sslmode=disable", 
+					ipv4Address, cfg.SupabaseDBPassword)
+			} else {
+				// Fallback to localhost if no IPv4 address was resolved
+				ipv4Conn = fmt.Sprintf("hostaddr=127.0.0.1 port=5432 user=postgres dbname=postgres password=%s sslmode=disable", 
+					cfg.SupabaseDBPassword)
+			}
 			
 			// Try to close and reopen with IPv4-only connection
 			db.Close()
