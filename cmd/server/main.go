@@ -33,7 +33,7 @@ func main() {
 	logrus.SetOutput(os.Stdout)
 	logrus.SetLevel(logrus.DebugLevel)
 	
-	logrus.Info("Starting NodePath Chat Server...")
+	logrus.Info("Starting Chatbot Automation Server...")
 
 	// Load environment variables from .env file if it exists
 	if err := godotenv.Load(); err != nil {

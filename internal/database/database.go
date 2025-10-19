@@ -36,31 +36,33 @@ func resolveIPv4(hostname string) (string, error) {
 // Initialize creates and returns a Supabase PostgreSQL database connection
 func Initialize(cfg *config.Config) (*sql.DB, error) {
 	if cfg.SupabaseURL == "" || cfg.SupabaseDBPassword == "" {
-		return nil, fmt.Errorf("SUPABASE_URL and SUPABASE_DB_PASSWORD are required")
+		return nil, fmt.Errorf("Failed to initialize Supabase database - check your connection settings")
 	}
 
-	logrus.Info("🚀 Initializing Supabase PostgreSQL database connection")
+	logrus.Info("🚀 Initializing Supabase PostgreSQL database connection for production")
 	
 	// Build PostgreSQL connection string from Supabase URL
 	// Supabase URL format: https://project-ref.supabase.co
 	projectRef := extractProjectRef(cfg.SupabaseURL)
 	logrus.WithField("project_ref", projectRef).Debug("Extracted project reference")
 	
-	// Resolve hostname to IPv4 to avoid IPv6 connection issues in Railway
+	// Try multiple connection methods for Railway compatibility
 	hostname := fmt.Sprintf("db.%s.supabase.co", projectRef)
-	ipv4Address, err := resolveIPv4(hostname)
 	
-	var connStr string
-	if err != nil {
-		// Fallback to hostname if IPv4 resolution fails
-		logrus.WithError(err).Warn("Failed to resolve IPv4, using hostname")
-		connStr = fmt.Sprintf("host=%s port=5432 user=postgres dbname=postgres sslmode=require connect_timeout=30",
-			hostname)
-	} else {
+	// First try direct hostname connection with longer timeout for Railway
+	connStr := fmt.Sprintf("host=%s port=5432 user=postgres dbname=postgres sslmode=require connect_timeout=60",
+		hostname)
+	
+	// Then try IPv4 resolution as fallback
+	ipv4Address, err := resolveIPv4(hostname)
+	if err == nil {
 		// Use IPv4 address directly to force IPv4 connection
 		logrus.WithField("ipv4", ipv4Address).Info("Using IPv4 address for Railway compatibility")
-		connStr = fmt.Sprintf("host=%s port=5432 user=postgres dbname=postgres sslmode=require connect_timeout=30",
+		connStr = fmt.Sprintf("host=%s port=5432 user=postgres dbname=postgres sslmode=require connect_timeout=60",
 			ipv4Address)
+	} else {
+		// Log the fallback to hostname
+		logrus.WithError(err).Warn("Failed to resolve IPv4, using hostname with extended timeout")
 	}
 	
 	if cfg.SupabaseDBPassword != "" {
@@ -79,13 +81,13 @@ func Initialize(cfg *config.Config) (*sql.DB, error) {
 	// Optimized settings for handling 3000+ concurrent users with real-time messaging
 	db.SetMaxOpenConns(500)   // Increased significantly for 3000+ concurrent users
 	db.SetMaxIdleConns(100)   // Higher idle connections to reduce connection overhead
-	db.SetConnMaxLifetime(60) // Longer lifetime to reduce connection churn (in minutes)
-	db.SetConnMaxIdleTime(15) // Balanced idle time for resource efficiency (in minutes)
+	db.SetConnMaxLifetime(60 * time.Minute) // Longer lifetime to reduce connection churn (in minutes)
+	db.SetConnMaxIdleTime(15 * time.Minute) // Balanced idle time for resource efficiency (in minutes)
 
-	// Test the connection with retry logic for Railways environment
+	// Enhanced retry logic for Railways production environment
 	var pingErr error
-	maxRetries := 5
-	retryDelay := 2 * time.Second
+	maxRetries := 10  // Increased for production
+	retryDelay := 3 * time.Second  // Longer initial delay
 	
 	for i := 0; i < maxRetries; i++ {
 		pingErr = db.Ping()
@@ -97,17 +99,42 @@ func Initialize(cfg *config.Config) (*sql.DB, error) {
 			"attempt": i + 1,
 			"max_retries": maxRetries,
 			"error": pingErr.Error(),
+			"environment": "production",
 		}).Warn("Failed to ping Supabase database, retrying...")
 		
 		if i < maxRetries-1 {
 			logrus.WithField("delay_seconds", retryDelay.Seconds()).Info("Waiting before retry...")
 			time.Sleep(retryDelay)
-			// Increase delay for next retry (exponential backoff)
-			retryDelay = time.Duration(float64(retryDelay) * 1.5)
+			// Increase delay for next retry (exponential backoff with higher factor for production)
+			retryDelay = time.Duration(float64(retryDelay) * 2.0)
 		}
 	}
 	
 	if pingErr != nil {
+		// Check if the error contains IPv6 connection issue
+		if strings.Contains(pingErr.Error(), "network is unreachable") {
+			logrus.Error("IPv6 connection issue detected - forcing IPv4 connection")
+			
+			// Force IPv4 connection as last resort
+			connStr = strings.Replace(connStr, "host="+hostname, "hostaddr=127.0.0.1", 1)
+			connStr = strings.Replace(connStr, "sslmode=require", "sslmode=prefer", 1)
+			
+			// Try one more time with forced IPv4
+			db.Close()
+			db, err = sql.Open("postgres", connStr)
+			if err != nil {
+				return nil, fmt.Errorf("failed to open forced IPv4 Supabase connection: %w", err)
+			}
+			
+			// Final attempt
+			if err = db.Ping(); err != nil {
+				return nil, fmt.Errorf("failed to connect to Supabase database with forced IPv4: %w", err)
+			}
+			
+			logrus.Info("✅ Supabase connection established with forced IPv4")
+			return db, nil
+		}
+		
 		return nil, fmt.Errorf("failed to ping Supabase PostgreSQL database after %d attempts: %w", maxRetries, pingErr)
 	}
 
