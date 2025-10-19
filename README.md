@@ -492,7 +492,7 @@ Frontend Storage
 - **Build Command**: `CGO_ENABLED=0 go build -o main ./cmd/server`
 - **Start Command**: `./main`
 - **Port**: 8080
-- **Health Check**: `/api/health`
+- **Health Check**: `/healthz`
 - **Auto-scaling**: Enabled
 
 ### **Environment Variables**

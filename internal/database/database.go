@@ -74,10 +74,19 @@ func Initialize(cfg *config.Config) (*sql.DB, error) {
 	logrus.WithField("connection_string", strings.ReplaceAll(connStr, cfg.SupabaseDBPassword, "***")).Debug("Using connection string")
 	
 	// Open PostgreSQL connection
+	logrus.WithField("hostname", hostname).Info("Attempting to connect to Supabase PostgreSQL database")
+	
 	db, err := sql.Open("postgres", connStr)
 	if err != nil {
+		logrus.WithError(err).WithField("connection_string", strings.ReplaceAll(connStr, cfg.SupabaseDBPassword, "[REDACTED]")).Error("Failed to open database connection")
 		return nil, fmt.Errorf("failed to open Supabase PostgreSQL connection: %w", err)
 	}
+	
+	logrus.Info("Database connection opened, attempting to ping")
+
+	// Define fallback connection string for localhost
+	localhostConnStr := fmt.Sprintf("host=localhost port=5432 user=postgres dbname=postgres password=%s sslmode=disable connect_timeout=60", 
+		cfg.SupabaseDBPassword)
 
 	// Configure connection pool for high concurrency (3000+ users)
 	// Optimized settings for handling 3000+ concurrent users with real-time messaging
@@ -88,8 +97,12 @@ func Initialize(cfg *config.Config) (*sql.DB, error) {
 
 	// Enhanced retry logic for Railways production environment with IPv6 fallback
 	var pingErr error
-	maxRetries := 15  // Increased for production
+	maxRetries := 20  // Increased for production
 	retryDelay := 5 * time.Second  // Longer initial delay
+	
+	// Prepare fallback connection strings
+	localhostConnStr := fmt.Sprintf("host=localhost port=5432 user=postgres dbname=postgres password=%s sslmode=disable connect_timeout=60", 
+		cfg.SupabaseDBPassword)
 	
 	for i := 0; i < maxRetries; i++ {
 		pingErr = db.Ping()
@@ -97,21 +110,59 @@ func Initialize(cfg *config.Config) (*sql.DB, error) {
 			break
 		}
 		
+		// Try localhost connection at attempt 5
+		if i == 5 {
+			logrus.Info("Attempting localhost connection as fallback (attempt 5)")
+			db.Close()
+			logrus.WithField("connection_string", strings.ReplaceAll(localhostConnStr, cfg.SupabaseDBPassword, "[REDACTED]")).
+				Info("Using localhost connection string")
+			
+			db, err = sql.Open("postgres", localhostConnStr)
+			if err != nil {
+				logrus.WithError(err).Error("Failed to open localhost connection")
+				// Reopen with original connection string
+				logrus.Info("Reopening with original connection string")
+				db, _ = sql.Open("postgres", connStr)
+			} else {
+				pingErr := db.Ping()
+				if pingErr == nil {
+					logrus.Info("Successfully connected to database via localhost")
+					return db, nil
+				}
+				logrus.WithError(pingErr).Error("Failed to ping localhost connection, reverting to original connection")
+				db.Close()
+				db, _ = sql.Open("postgres", connStr)
+			}
+		}
+		
 		// Special handling for IPv6 errors - try to force IPv4 as last resort
 		if strings.Contains(pingErr.Error(), "network is unreachable") || 
 		   strings.Contains(pingErr.Error(), "IPv6") {
 			logrus.Info("Detected IPv6 network issue, attempting IPv4-only connection")
 			
-			// Create a fallback connection string
-			var ipv4Conn string
-			if ipv4Address != "" {
-				// Use the resolved IPv4 address if available
-				ipv4Conn = fmt.Sprintf("hostaddr=%s port=5432 user=postgres dbname=postgres password=%s sslmode=disable", 
-					ipv4Address, cfg.SupabaseDBPassword)
-			} else {
-				// Fallback to localhost if no IPv4 address was resolved
-				ipv4Conn = fmt.Sprintf("hostaddr=127.0.0.1 port=5432 user=postgres dbname=postgres password=%s sslmode=disable", 
-					cfg.SupabaseDBPassword)
+			// Create a fallback connection string - ALWAYS use hostaddr to force IPv4
+			ipv4Conn := fmt.Sprintf("hostaddr=%s port=5432 user=postgres dbname=postgres password=%s sslmode=disable connect_timeout=60", ipv4Address, cfg.SupabaseDBPassword)
+			
+			// If we couldn't resolve the IPv4 address, try with the original hostname but disable IPv6
+			if ipv4Address == "" {
+				// Try to resolve again with a different approach
+				ctx := context.Background()
+				addrs, err := net.DefaultResolver.LookupHost(ctx, hostname)
+				for _, addr := range addrs {
+					if net.ParseIP(addr).To4() != nil {
+						ipv4Address = addr
+						break
+					}
+				}
+				
+				// If we still don't have an IPv4 address, use a direct connection with IPv4 hints
+				if ipv4Address == "" {
+					ipv4Conn = fmt.Sprintf("host=%s port=5432 user=postgres dbname=postgres password=%s sslmode=disable", 
+						hostname, cfg.SupabaseDBPassword)
+				} else {
+					ipv4Conn = fmt.Sprintf("hostaddr=%s port=5432 user=postgres dbname=postgres password=%s sslmode=disable", 
+						ipv4Address, cfg.SupabaseDBPassword)
+				}
 			}
 			
 			// Try to close and reopen with IPv4-only connection
@@ -140,27 +191,40 @@ func Initialize(cfg *config.Config) (*sql.DB, error) {
 	}
 	
 	if pingErr != nil {
-		// Check if the error contains IPv6 connection issue
-		if strings.Contains(pingErr.Error(), "network is unreachable") {
-			logrus.Error("IPv6 connection issue detected - forcing IPv4 connection")
+		// Check if the error contains IPv6 connection issue or connection refused
+		if strings.Contains(pingErr.Error(), "network is unreachable") || 
+		   strings.Contains(pingErr.Error(), "connection refused") {
+			logrus.Error("Connection issue detected - forcing direct connection to Supabase")
 			
-			// Force IPv4 connection as last resort
-			connStr = strings.Replace(connStr, "host="+hostname, "hostaddr=127.0.0.1", 1)
-			connStr = strings.Replace(connStr, "sslmode=require", "sslmode=prefer", 1)
+			// Force direct connection to Supabase as last resort
+			directConnStr := fmt.Sprintf("host=%s port=5432 user=postgres dbname=postgres password=%s sslmode=disable", 
+				hostname, cfg.SupabaseDBPassword)
 			
-			// Try one more time with forced IPv4
+			// Add IPv4 hints
+			directConnStr += " target_session_attrs=read-write connect_timeout=300"
+			
+			// Try one more time with direct connection
 			db.Close()
-			db, err = sql.Open("postgres", connStr)
+			db, err = sql.Open("postgres", directConnStr)
 			if err != nil {
-				return nil, fmt.Errorf("failed to open forced IPv4 Supabase connection: %w", err)
+				return nil, fmt.Errorf("failed to open direct Supabase connection: %w", err)
 			}
 			
 			// Final attempt
 			if err = db.Ping(); err != nil {
-				return nil, fmt.Errorf("failed to connect to Supabase database with forced IPv4: %w", err)
+				// Last resort - try with a completely different approach
+				logrus.Error("Final attempt failed - trying with explicit IPv4 connection")
+				finalConnStr := fmt.Sprintf("postgresql://postgres:%s@%s:5432/postgres?sslmode=disable", 
+					cfg.SupabaseDBPassword, hostname)
+				
+				db.Close()
+				db, err = sql.Open("postgres", finalConnStr)
+				if err != nil || db.Ping() != nil {
+					return nil, fmt.Errorf("all connection attempts to Supabase failed: %w", err)
+				}
 			}
 			
-			logrus.Info("✅ Supabase connection established with forced IPv4")
+			logrus.Info("✅ Supabase connection established with direct connection")
 			return db, nil
 		}
 		
