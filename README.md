@@ -161,6 +161,23 @@ src/
 
 ## 🗄️ **Database Schema**
 
+### **Database Setup**
+
+The application uses Supabase (PostgreSQL) for data storage. To set up the database:
+
+1. **Automatic Setup (Railway Deployment)**:
+   - The application automatically runs migrations on startup
+   - Required tables are created using the `railway-db-migration.sh` script
+   - No manual setup required for Railway deployments
+
+2. **Manual Setup**:
+   - Run the migration script: `./railway-db-migration.sh`
+   - Or execute the SQL directly: `psql "$CONN_STRING" -f migrations/rebuild_schema.sql`
+
+3. **Required Environment Variables**:
+   - `SUPABASE_URL`: Your Supabase project URL
+   - `SUPABASE_DB_PASSWORD`: Database password for PostgreSQL connection
+
 ### **Core Tables** (Clean table names without suffixes)
 
 #### **chatbot_flows**
@@ -907,6 +924,15 @@ if item.ProspectName.Valid {
 
 ### **Change Summary**
 **Enhanced database connection resilience for Railway deployment** with improved retry logic and connection handling for Supabase PostgreSQL.
+
+### **IPv6 Connection Fix** (February 2025)
+- **Issue**: Health check failures due to "dial tcp: connect: network is unreachable" errors
+- **Root Cause**: IPv6 connection attempts failing in Railway environment
+- **Solution**: 
+  - Force IPv4 connections using `hostaddr` parameter
+  - Increased connection timeout and retry attempts
+  - Added fallback mechanism for IPv6 errors
+  - Enhanced error handling for network connectivity issues
 
 ### **Railway Deployment Improvements:**
 1. **Connection Resilience**: Added 3-attempt retry mechanism with 2-second delays

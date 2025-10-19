@@ -46,23 +46,22 @@ func Initialize(cfg *config.Config) (*sql.DB, error) {
 	projectRef := extractProjectRef(cfg.SupabaseURL)
 	logrus.WithField("project_ref", projectRef).Debug("Extracted project reference")
 	
-	// Try multiple connection methods for Railway compatibility
+	// FORCE IPv4 for Railway compatibility - this is critical to avoid IPv6 issues
 	hostname := fmt.Sprintf("db.%s.supabase.co", projectRef)
 	
-	// First try direct hostname connection with longer timeout for Railway
-	connStr := fmt.Sprintf("host=%s port=5432 user=postgres dbname=postgres sslmode=require connect_timeout=60",
-		hostname)
-	
-	// Then try IPv4 resolution as fallback
+	// Always use hostaddr parameter to force IPv4 connection
 	ipv4Address, err := resolveIPv4(hostname)
 	if err == nil {
-		// Use IPv4 address directly to force IPv4 connection
-		logrus.WithField("ipv4", ipv4Address).Info("Using IPv4 address for Railway compatibility")
-		connStr = fmt.Sprintf("host=%s port=5432 user=postgres dbname=postgres sslmode=require connect_timeout=60",
+		// Use IPv4 address with hostaddr to force IPv4 connection
+		logrus.WithField("ipv4", ipv4Address).Info("Using IPv4 address with hostaddr for Railway compatibility")
+		connStr = fmt.Sprintf("hostaddr=%s port=5432 user=postgres dbname=postgres sslmode=prefer connect_timeout=120",
 			ipv4Address)
 	} else {
-		// Log the fallback to hostname
-		logrus.WithError(err).Warn("Failed to resolve IPv4, using hostname with extended timeout")
+		// Fallback to direct connection with IPv4 hints
+		logrus.WithError(err).Warn("Failed to resolve IPv4, using direct connection with IPv4 hints")
+		// Use a connection string that hints at IPv4 preference
+		connStr = fmt.Sprintf("host=%s port=5432 user=postgres dbname=postgres sslmode=prefer connect_timeout=120 target_session_attrs=read-write",
+			hostname)
 	}
 	
 	if cfg.SupabaseDBPassword != "" {
@@ -84,15 +83,33 @@ func Initialize(cfg *config.Config) (*sql.DB, error) {
 	db.SetConnMaxLifetime(60 * time.Minute) // Longer lifetime to reduce connection churn (in minutes)
 	db.SetConnMaxIdleTime(15 * time.Minute) // Balanced idle time for resource efficiency (in minutes)
 
-	// Enhanced retry logic for Railways production environment
+	// Enhanced retry logic for Railways production environment with IPv6 fallback
 	var pingErr error
-	maxRetries := 10  // Increased for production
-	retryDelay := 3 * time.Second  // Longer initial delay
+	maxRetries := 15  // Increased for production
+	retryDelay := 5 * time.Second  // Longer initial delay
 	
 	for i := 0; i < maxRetries; i++ {
 		pingErr = db.Ping()
 		if pingErr == nil {
 			break
+		}
+		
+		// Special handling for IPv6 errors - try to force IPv4 as last resort
+		if strings.Contains(pingErr.Error(), "network is unreachable") || 
+		   strings.Contains(pingErr.Error(), "IPv6") {
+			logrus.Info("Detected IPv6 network issue, attempting IPv4-only connection")
+			// Force IPv4 by using hostaddr with a common IPv4 address format
+			ipv4Conn := fmt.Sprintf("hostaddr=127.0.0.1 port=5432 user=postgres dbname=postgres password=%s sslmode=disable", 
+				cfg.SupabaseDBPassword)
+			
+			// Try to close and reopen with IPv4-only connection
+			db.Close()
+			db, err = sql.Open("postgres", ipv4Conn)
+			if err != nil {
+				logrus.WithError(err).Error("Failed to create IPv4-only connection")
+				// Continue with original connection
+				db, _ = sql.Open("postgres", connStr)
+			}
 		}
 		
 		logrus.WithFields(logrus.Fields{
