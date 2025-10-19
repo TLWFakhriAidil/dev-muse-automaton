@@ -85,10 +85,6 @@ func Initialize(cfg *config.Config) (*sql.DB, error) {
 	
 	logrus.Info("Database connection opened, attempting to ping")
 
-	// Define fallback connection string for localhost
-	localhostConnStr := fmt.Sprintf("host=localhost port=5432 user=postgres dbname=postgres password=%s sslmode=disable connect_timeout=60", 
-		cfg.SupabaseDBPassword)
-
 	// Configure connection pool for high concurrency (3000+ users)
 	// Optimized settings for handling 3000+ concurrent users with real-time messaging
 	db.SetMaxOpenConns(500)   // Increased significantly for 3000+ concurrent users
@@ -150,11 +146,13 @@ func Initialize(cfg *config.Config) (*sql.DB, error) {
 			if ipv4Address == "" {
 				// Try to resolve again with a different approach
 				ctx := context.Background()
-				addrs, err := net.DefaultResolver.LookupHost(ctx, hostname)
-				for _, addr := range addrs {
-					if net.ParseIP(addr).To4() != nil {
-						ipv4Address = addr
-						break
+				addrs, lookupErr := net.DefaultResolver.LookupHost(ctx, hostname)
+				if lookupErr == nil {
+					for _, addr := range addrs {
+						if net.ParseIP(addr).To4() != nil {
+							ipv4Address = addr
+							break
+						}
 					}
 				}
 				
