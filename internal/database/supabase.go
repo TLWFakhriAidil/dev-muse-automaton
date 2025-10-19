@@ -171,16 +171,28 @@ func buildPostgresURI(supabaseURL, dbPassword string) (string, error) {
 		return "", fmt.Errorf("empty project reference extracted from URL: %s", supabaseURL)
 	}
 
-	// Build PostgreSQL connection URI using database password for auth
-	// Use the correct Supabase PostgreSQL connection format with Railway-optimized parameters
-	// Format: postgres://postgres:[PASSWORD]@db.[PROJECT_REF].supabase.co:5432/postgres
-	uri := fmt.Sprintf("postgres://postgres:%s@db.%s.supabase.co:5432/postgres?sslmode=require&connect_timeout=30&application_name=railway-deployment", dbPassword, projectRef)
+	// Resolve hostname to IPv4 to avoid IPv6 connection issues in Railway
+	hostname := fmt.Sprintf("db.%s.supabase.co", projectRef)
+	ipv4Address, err := resolveIPv4(hostname)
+	
+	var uri string
+	if err != nil {
+		// Fallback to hostname if IPv4 resolution fails
+		logrus.WithError(err).Warn("Failed to resolve IPv4 for Supabase, using hostname")
+		uri = fmt.Sprintf("postgres://postgres:%s@%s:5432/postgres?sslmode=require&connect_timeout=30&application_name=railway-deployment", 
+			dbPassword, hostname)
+	} else {
+		// Use IPv4 address directly to force IPv4 connection
+		logrus.WithField("ipv4", ipv4Address).Info("Using IPv4 address for Supabase connection (Railway compatibility)")
+		uri = fmt.Sprintf("postgres://postgres:%s@%s:5432/postgres?sslmode=require&connect_timeout=30&application_name=railway-deployment", 
+			dbPassword, ipv4Address)
+	}
 	
 	logrus.WithFields(logrus.Fields{
 		"project_ref": projectRef,
-		"host": fmt.Sprintf("db.%s.supabase.co", projectRef),
+		"host": hostname,
 		"port": "5432",
-	}).Info("Supabase URL validation passed")
+	}).Info("Supabase connection string built successfully")
 	
 	return uri, nil
 }

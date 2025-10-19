@@ -7,6 +7,11 @@
   healthcheckTimeout = 300
   restartPolicyType = "on_failure"
   restartPolicyMaxRetries = 10
+  
+  # Supabase connection optimization
+  healthcheckPath = "/healthz"
+  healthcheckTimeout = 60
+  startupTimeout = 180
 
 # Phases setup not needed when using Dockerfile
 # [phases.setup]
@@ -18,11 +23,17 @@
   name = "web"
   internal_port = 8080
   protocol = "http"
+  
+  # Optimized for Supabase connection
+  startup_timeout = 180
+  auto_restart = true
+  auto_stop_machines = false
+  min_machines_running = 1
 
   [services.concurrency]
     type = "connections"
-    hard_limit = 25
-    soft_limit = 20
+    hard_limit = 50  # Increased for 3000+ concurrent users
+    soft_limit = 40  # Increased for better performance
 
   [[services.ports]]
     port = 80

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net"
 	"strings"
+	"time"
 
 	"nodepath-chat/internal/config"
 	_ "github.com/lib/pq" // PostgreSQL driver for Supabase
@@ -35,7 +36,7 @@ func resolveIPv4(hostname string) (string, error) {
 // Initialize creates and returns a Supabase PostgreSQL database connection
 func Initialize(cfg *config.Config) (*sql.DB, error) {
 	if cfg.SupabaseURL == "" || cfg.SupabaseDBPassword == "" {
-		return nil, fmt.Errorf("SUPABASE_URL and SUPABASE_SERVICE_KEY are required")
+		return nil, fmt.Errorf("SUPABASE_URL and SUPABASE_DB_PASSWORD are required")
 	}
 
 	logrus.Info("🚀 Initializing Supabase PostgreSQL database connection")
@@ -81,12 +82,36 @@ func Initialize(cfg *config.Config) (*sql.DB, error) {
 	db.SetConnMaxLifetime(60) // Longer lifetime to reduce connection churn (in minutes)
 	db.SetConnMaxIdleTime(15) // Balanced idle time for resource efficiency (in minutes)
 
-	// Test the connection
-	if err := db.Ping(); err != nil {
-		return nil, fmt.Errorf("failed to ping Supabase PostgreSQL database: %w", err)
+	// Test the connection with retry logic for Railways environment
+	var pingErr error
+	maxRetries := 5
+	retryDelay := 2 * time.Second
+	
+	for i := 0; i < maxRetries; i++ {
+		pingErr = db.Ping()
+		if pingErr == nil {
+			break
+		}
+		
+		logrus.WithFields(logrus.Fields{
+			"attempt": i + 1,
+			"max_retries": maxRetries,
+			"error": pingErr.Error(),
+		}).Warn("Failed to ping Supabase database, retrying...")
+		
+		if i < maxRetries-1 {
+			logrus.WithField("delay_seconds", retryDelay.Seconds()).Info("Waiting before retry...")
+			time.Sleep(retryDelay)
+			// Increase delay for next retry (exponential backoff)
+			retryDelay = time.Duration(float64(retryDelay) * 1.5)
+		}
+	}
+	
+	if pingErr != nil {
+		return nil, fmt.Errorf("failed to ping Supabase PostgreSQL database after %d attempts: %w", maxRetries, pingErr)
 	}
 
-	logrus.Info("Supabase PostgreSQL database connection established successfully")
+	logrus.Info("✅ Supabase PostgreSQL database connection established successfully")
 	return db, nil
 }
 

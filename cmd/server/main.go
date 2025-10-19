@@ -55,9 +55,9 @@ func main() {
 	var err error
 	db, err = database.Initialize(cfg)
 	if err != nil {
-		logrus.WithError(err).Fatal("Failed to initialize Supabase database - SUPABASE_URL and SUPABASE_SERVICE_KEY are required")
+		logrus.WithError(err).Fatal("Failed to initialize Supabase database - check your connection settings")
 	}
-	logrus.Info("Supabase database initialized successfully")
+	logrus.Info("✅ Supabase database initialized successfully")
 
 	// Run migrations
 	if err := database.RunMigrations(db); err != nil {
