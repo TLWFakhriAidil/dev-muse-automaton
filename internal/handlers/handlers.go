@@ -31,6 +31,7 @@ type Handlers struct {
 	profileHandlers       *ProfileHandlers
 	billingHandlers       *BillingHandlers
 	appDataHandlers       *AppDataHandlers // Optimized app data handlers
+	HealthHandlers        *HealthHandlers  // Health check handlers
 	executionProcessRepo  repository.ExecutionProcessRepository
 	db                    *sql.DB // Add database field
 }
@@ -83,6 +84,9 @@ func NewHandlers(
 	// Initialize optimized app data handlers
 	appDataHandlers := NewAppDataHandlers(db)
 
+	// Initialize health handlers
+	healthHandlers := NewHealthHandlers(healthService)
+
 	// Create main handlers instance
 	mainHandlers := &Handlers{
 		flowService:           flowService,
@@ -100,6 +104,7 @@ func NewHandlers(
 		profileHandlers:       profileHandlers,
 		billingHandlers:       billingHandlers,
 		appDataHandlers:       appDataHandlers, // Add optimized app data handlers
+		HealthHandlers:        healthHandlers,  // Add health handlers
 		executionProcessRepo:  executionProcessRepo,
 		db:                    db, // Store the database
 	}
