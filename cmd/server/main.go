@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 	"net/http"
@@ -217,13 +218,29 @@ func main() {
 		})
 	})
 
-	// Health check endpoint with performance metrics and database status
+	// RAILWAY ULTRA-FIX: Immediate 200 OK health endpoint
 	app.Get("/healthz", func(c *fiber.Ctx) error {
-		// Check database connectivity
+		// CRITICAL: Return 200 OK immediately - ZERO dependencies, ZERO blocking operations
+		c.Set("Content-Type", "application/json")
+		return c.Status(200).SendString(`{"status":"ok","railway":true}`)
+	})
+	
+	// Alternative super simple health endpoint
+	app.Get("/health/basic", func(c *fiber.Ctx) error {
+		return c.Status(200).SendString("OK")
+	})
+
+	// Detailed health check endpoint (non-blocking for Railway)
+	app.Get("/health", func(c *fiber.Ctx) error {
+		// Check database connectivity (with timeout)
 		dbStatus := "unavailable"
 		dbError := ""
 		if db != nil {
-			if err := db.Ping(); err != nil {
+			// Use a very short timeout for health checks
+			ctx, cancel := context.WithTimeout(c.Context(), 1*time.Second)
+			defer cancel()
+			
+			if err := db.PingContext(ctx); err != nil {
 				dbStatus = "error"
 				dbError = err.Error()
 			} else {
@@ -231,11 +248,14 @@ func main() {
 			}
 		}
 
-		// Check Redis connectivity
+		// Check Redis connectivity (with timeout)
 		redisStatus := "unavailable"
 		redisError := ""
 		if concreteRedisClient != nil {
-			if err := concreteRedisClient.Ping(c.Context()).Err(); err != nil {
+			ctx, cancel := context.WithTimeout(c.Context(), 1*time.Second)
+			defer cancel()
+			
+			if err := concreteRedisClient.Ping(ctx).Err(); err != nil {
 				redisStatus = "error"
 				redisError = err.Error()
 			} else {
@@ -243,14 +263,12 @@ func main() {
 			}
 		}
 
-		// RAILWAY FIX: Always return OK status for healthcheck
-		// Determine overall status - but always return 200 for Railway
+		// Always return 200 OK - status is informational only
 		overallStatus := "ok"
 		if dbStatus == "error" || redisStatus == "error" {
 			overallStatus = "degraded"
 		}
 		
-		// Special handling for Railway - always return 200 OK during startup
 		if db == nil {
 			overallStatus = "starting"
 		}
@@ -273,9 +291,6 @@ func main() {
 			"railway_compatible":    true,
 		}
 
-		// RAILWAY: Always return 200 OK to pass healthcheck
-		// Railway needs the service to be "healthy" to avoid restarts
-		// The actual status is available in the response body
 		return c.JSON(healthData)
 	})
 
@@ -452,9 +467,12 @@ func main() {
 		app.Shutdown()
 	}()
 
-	// Start server
-	logrus.Infof("Server starting on port %d", cfg.Port)
-	if err := app.Listen(fmt.Sprintf(":%d", cfg.Port)); err != nil {
+	// Start server - Railway specific binding
+	bind := fmt.Sprintf("0.0.0.0:%d", cfg.Port)
+	logrus.Infof("🚀 RAILWAY: Server starting on %s", bind)
+	logrus.Infof("🔗 Health endpoint available at: http://0.0.0.0:%d/healthz", cfg.Port)
+	
+	if err := app.Listen(bind); err != nil {
 		logrus.WithError(err).Fatal("Failed to start server")
 	}
 }
