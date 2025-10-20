@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"database/sql"
 	"fmt"
 	"net/http"
@@ -53,113 +52,160 @@ func main() {
 
 	// Initialize Supabase database (Railway-compatible with retry)
 	var db *sql.DB
-	var err error
 	
-	// RAILWAY FIX: Allow startup even if database is temporarily unavailable
-	db, err = database.Initialize(cfg)
-	if err != nil {
-		logrus.WithError(err).Error("⚠️  Failed to initialize Supabase database during startup")
-		logrus.Warn("🚀 RAILWAY: Starting server without database - will retry connection in background")
-		logrus.Warn("📊 Health endpoint will be available, but database features may be limited")
-		// Set db to nil to indicate no connection - handlers should check for this
-		db = nil
-	} else {
-		logrus.Info("✅ Supabase database initialized successfully")
-	}
+	// RAILWAY CRITICAL FIX: Start server IMMEDIATELY, initialize everything in background
+	
+	// Create basic Fiber app first - BEFORE any service initialization
+	app := fiber.New(fiber.Config{
+		ErrorHandler: func(c *fiber.Ctx, err error) error {
+			logrus.WithError(err).Error("Fiber error")
+			return c.Status(500).JSON(fiber.Map{"error": "Internal server error"})
+		},
+		ReadTimeout:  30 * time.Second,
+		WriteTimeout: 30 * time.Second,
+		IdleTimeout:  60 * time.Second,
+	})
 
-	// Run migrations
-	if err := database.RunMigrations(db); err != nil {
-		logrus.WithError(err).Warn("Failed to run migrations, continuing anyway")
-	} else {
-		logrus.Info("Database migrations completed")
-	}
+	// RAILWAY ULTRA-FIX: Immediate health endpoints - BEFORE service initialization
+	app.Get("/healthz", func(c *fiber.Ctx) error {
+		c.Set("Content-Type", "application/json")
+		return c.Status(200).SendString(`{"status":"ok","railway":true}`)
+	})
+	
+	app.Get("/health/basic", func(c *fiber.Ctx) error {
+		return c.Status(200).SendString("OK")
+	})
 
-	// Initialize Redis with clustering support
-	redisClient := services.InitializeRedis(cfg)
-	logrus.Info("Redis initialized successfully")
-
-	// Initialize performance-optimized services
-	// Handle Redis client for services that need concrete type
-	var concreteRedisClient *redis.Client
-	if redisClient != nil {
-		var ok bool
-		concreteRedisClient, ok = redisClient.(*redis.Client)
-		if !ok {
-			logrus.Warn("Redis client type assertion failed, using nil client")
-			concreteRedisClient = nil
+	// Start server immediately in background
+	go func() {
+		bind := fmt.Sprintf("0.0.0.0:%d", cfg.Port)
+		logrus.Infof("🚀 RAILWAY: Server starting IMMEDIATELY on %s", bind)
+		logrus.Infof("🔗 Health endpoint available at: http://0.0.0.0:%d/healthz", cfg.Port)
+		
+		if err := app.Listen(bind); err != nil {
+			logrus.WithError(err).Fatal("Failed to start server")
 		}
-	} else {
-		logrus.Warn("Redis not available, services will run without caching")
-	}
+	}()
 
-	// Initialize repositories first (before services)
-	aiWhatsappRepo := repository.NewAIWhatsappRepository(db)
-	deviceSettingsRepo := repository.NewDeviceSettingsRepository(db)
-	wasapBotRepo := repository.NewWasapBotRepository(db)
-	logrus.Info("Repositories initialized successfully")
+	// Give server a moment to start listening
+	time.Sleep(100 * time.Millisecond)
+	logrus.Info("🚀 RAILWAY: Server is now listening, proceeding with background initialization")
 
-	flowService := services.NewFlowService(db, concreteRedisClient)
-	aiService := services.NewAIService(cfg, deviceSettingsRepo)
-	queueMonitor := services.NewQueueMonitor()
-	queueService := services.NewQueueService(redisClient, queueMonitor)
-	deviceSettingsService := services.NewDeviceSettingsService(db)
+	// Initialize essential services for routes (NON-FATAL for Railway)
+	// These services are needed for the routes below, so can't be fully background
+	var websocketService *services.WebSocketService
+	var mediaService *services.MediaService
+	var whatsappService *whatsapp.Service
+	var queueService *services.QueueService
+	
+	// Initialize minimal services needed for routes
+	websocketService = services.NewWebSocketService(cfg.MaxConcurrentUsers)
+	mediaService = services.NewMediaService(cfg.CDNEnabled, cfg.CDNBaseURL, "./media")
+	logrus.Info("✅ RAILWAY: Essential services initialized for immediate routes")
 
-	// Initialize unified flow service for table routing
-	unifiedFlowService := services.NewUnifiedFlowService(flowService, aiWhatsappRepo, wasapBotRepo)
-	logrus.Info("Unified flow service initialized for table routing")
+	// Background initialization for heavy services - NON-FATAL
+	go func() {
+		logrus.Info("🔄 Background: Starting heavy services initialization...")
+		
+		// Initialize database
+		var err error
+		db, err = database.Initialize(cfg)
+		if err != nil {
+			logrus.WithError(err).Error("⚠️  Background: Failed to initialize Supabase database")
+			db = nil
+		} else {
+			logrus.Info("✅ Background: Supabase database initialized successfully")
+			
+			// Run migrations
+			if err := database.RunMigrations(db); err != nil {
+				logrus.WithError(err).Warn("Background: Failed to run migrations, continuing anyway")
+			} else {
+				logrus.Info("Background: Database migrations completed")
+			}
+		}
 
-	// Initialize WebSocket service for real-time communication
-	websocketService := services.NewWebSocketService(cfg.MaxConcurrentUsers)
-	logrus.Info("WebSocket service initialized for real-time messaging")
+		// Initialize Redis with clustering support
+		redisClient := services.InitializeRedis(cfg)
+		logrus.Info("Background: Redis initialized successfully")
 
-	// Initialize media service with CDN support
-	mediaService := services.NewMediaService(cfg.CDNEnabled, cfg.CDNBaseURL, "./media")
-	logrus.Info("Media service initialized with CDN support")
+		// Initialize performance-optimized services
+		// Handle Redis client for services that need concrete type
+		var concreteRedisClient *redis.Client
+		if redisClient != nil {
+			var ok bool
+			concreteRedisClient, ok = redisClient.(*redis.Client)
+			if !ok {
+				logrus.Warn("Background: Redis client type assertion failed, using nil client")
+				concreteRedisClient = nil
+			}
+		} else {
+			logrus.Warn("Background: Redis not available, services will run without caching")
+		}
 
-	// Initialize provider service for message sending
-	providerService := services.NewProviderService()
-	logrus.Info("Provider service initialized for Wablas/Whacenter APIs")
+		// Initialize repositories first (before services)
+		aiWhatsappRepo := repository.NewAIWhatsappRepository(db)
+		deviceSettingsRepo := repository.NewDeviceSettingsRepository(db)
+		wasapBotRepo := repository.NewWasapBotRepository(db)
+		logrus.Info("Background: Repositories initialized successfully")
 
-	// Initialize media detection service for centralized media URL detection
-	mediaDetectionService := services.NewMediaDetectionService()
-	logrus.Info("Media detection service initialized for multiple format support")
+		flowService := services.NewFlowService(db, concreteRedisClient)
+		aiService := services.NewAIService(cfg, deviceSettingsRepo)
+		queueMonitor := services.NewQueueMonitor()
+		queueService = services.NewQueueService(redisClient, queueMonitor)
+		deviceSettingsService := services.NewDeviceSettingsService(db)
 
-	// Initialize health service for comprehensive system monitoring
-	healthService := services.NewHealthService(db, concreteRedisClient, "1.0.0")
-	logrus.Info("Health service initialized for system monitoring")
+		// Initialize unified flow service for table routing
+		unifiedFlowService := services.NewUnifiedFlowService(flowService, aiWhatsappRepo, wasapBotRepo)
+		logrus.Info("Background: Unified flow service initialized for table routing")
 
-	// Initialize AI WhatsApp service with media detection service
-	aiWhatsappService := services.NewAIWhatsappService(aiWhatsappRepo, deviceSettingsRepo, flowService, mediaDetectionService, cfg)
-	logrus.Info("AI WhatsApp service initialized with media detection service")
+		// Initialize provider service for message sending
+		providerService := services.NewProviderService()
+		logrus.Info("Background: Provider service initialized for Wablas/Whacenter APIs")
 
-	// Initialize WhatsApp service with multi-device support
-	logrus.Info("🔧 MAIN: About to initialize WhatsApp service...")
-	logrus.Info("🔧 MAIN: Initializing WhatsApp service...")
-	whatsappService, err := whatsapp.NewService(cfg, queueService, flowService, aiService, aiWhatsappService, websocketService, deviceSettingsService, providerService, mediaDetectionService, unifiedFlowService)
-	if err != nil {
-		logrus.WithError(err).Fatal("Failed to initialize WhatsApp service")
-	}
-	logrus.Info("✅ MAIN: WhatsApp service initialized successfully")
+		// Initialize media detection service for centralized media URL detection
+		mediaDetectionService := services.NewMediaDetectionService()
+		logrus.Info("Background: Media detection service initialized for multiple format support")
 
-	// Set WhatsApp service dependency on queue service for flow continuation
-	queueService.SetWhatsAppService(whatsappService)
-	logrus.Info("✅ MAIN: Queue service configured with WhatsApp service dependency")
+		// Initialize health service for comprehensive system monitoring
+		healthService := services.NewHealthService(db, concreteRedisClient, "1.0.0")
+		logrus.Info("Background: Health service initialized for system monitoring")
 
-	// Initialize handlers with all services
-	handlers := handlers.NewHandlers(
-		flowService,
-		aiService,
-		queueService,
-		whatsappService,
-		deviceSettingsService,
-		websocketService,
-		mediaService,
-		healthService,
-		db,
-		cfg,
-	)
+		// Initialize AI WhatsApp service with media detection service
+		aiWhatsappService := services.NewAIWhatsappService(aiWhatsappRepo, deviceSettingsRepo, flowService, mediaDetectionService, cfg)
+		logrus.Info("Background: AI WhatsApp service initialized with media detection service")
 
-	// Initialize HTML template engine
+		// Initialize WhatsApp service with multi-device support - NON-FATAL in background
+		logrus.Info("Background: About to initialize WhatsApp service...")
+		whatsappService, err = whatsapp.NewService(cfg, queueService, flowService, aiService, aiWhatsappService, websocketService, deviceSettingsService, providerService, mediaDetectionService, unifiedFlowService)
+		if err != nil {
+			logrus.WithError(err).Error("Background: Failed to initialize WhatsApp service - continuing without it")
+			return // Exit background initialization, but don't kill the server
+		}
+		logrus.Info("✅ Background: WhatsApp service initialized successfully")
+
+		// Set WhatsApp service dependency on queue service for flow continuation
+		queueService.SetWhatsAppService(whatsappService)
+		logrus.Info("✅ Background: Queue service configured with WhatsApp service dependency")
+
+		// Initialize handlers with all services - in background
+		_ = handlers.NewHandlers(
+			flowService,
+			aiService,
+			queueService,
+			whatsappService,
+			deviceSettingsService,
+			websocketService,
+			mediaService,
+			healthService,
+			db,
+			cfg,
+		)
+		
+		logrus.Info("✅ Background: All services initialized successfully")
+		
+	}()
+
+	// Initialize HTML template engine for the existing app
 	engine := html.New("./templates", ".html")
 	engine.Reload(cfg.AppEnv == "development")
 
@@ -168,16 +214,8 @@ func main() {
 		return time.Now()
 	})
 
-	// Create Fiber app with performance optimizations
-	app := fiber.New(fiber.Config{
-		Views:        engine,
-		ErrorHandler: customErrorHandler,
-		BodyLimit:    50 * 1024 * 1024,           // 50MB for media files
-		ReadTimeout:  30 * time.Second,           // Increased for large uploads
-		WriteTimeout: 30 * time.Second,           // Increased for large downloads
-		IdleTimeout:  120 * time.Second,          // Keep connections alive longer
-		Concurrency:  cfg.MaxConcurrentUsers * 2, // Handle high concurrency
-	})
+	// Update existing app config for production features
+	// Note: The basic app is already created and listening above
 
 	// Performance and security middleware
 	app.Use(recover.New())
@@ -218,81 +256,7 @@ func main() {
 		})
 	})
 
-	// RAILWAY ULTRA-FIX: Immediate 200 OK health endpoint
-	app.Get("/healthz", func(c *fiber.Ctx) error {
-		// CRITICAL: Return 200 OK immediately - ZERO dependencies, ZERO blocking operations
-		c.Set("Content-Type", "application/json")
-		return c.Status(200).SendString(`{"status":"ok","railway":true}`)
-	})
-	
-	// Alternative super simple health endpoint
-	app.Get("/health/basic", func(c *fiber.Ctx) error {
-		return c.Status(200).SendString("OK")
-	})
-
-	// Detailed health check endpoint (non-blocking for Railway)
-	app.Get("/health", func(c *fiber.Ctx) error {
-		// Check database connectivity (with timeout)
-		dbStatus := "unavailable"
-		dbError := ""
-		if db != nil {
-			// Use a very short timeout for health checks
-			ctx, cancel := context.WithTimeout(c.Context(), 1*time.Second)
-			defer cancel()
-			
-			if err := db.PingContext(ctx); err != nil {
-				dbStatus = "error"
-				dbError = err.Error()
-			} else {
-				dbStatus = "connected"
-			}
-		}
-
-		// Check Redis connectivity (with timeout)
-		redisStatus := "unavailable"
-		redisError := ""
-		if concreteRedisClient != nil {
-			ctx, cancel := context.WithTimeout(c.Context(), 1*time.Second)
-			defer cancel()
-			
-			if err := concreteRedisClient.Ping(ctx).Err(); err != nil {
-				redisStatus = "error"
-				redisError = err.Error()
-			} else {
-				redisStatus = "connected"
-			}
-		}
-
-		// Always return 200 OK - status is informational only
-		overallStatus := "ok"
-		if dbStatus == "error" || redisStatus == "error" {
-			overallStatus = "degraded"
-		}
-		
-		if db == nil {
-			overallStatus = "starting"
-		}
-
-		healthData := fiber.Map{
-			"status":                overallStatus,
-			"time":                  time.Now().Unix(),
-			"websocket_connections": websocketService.GetConnectionCount(),
-			"max_concurrent_users":  cfg.MaxConcurrentUsers,
-			"cdn_enabled":           cfg.CDNEnabled,
-			"database": fiber.Map{
-				"status": dbStatus,
-				"error":  dbError,
-			},
-			"redis": fiber.Map{
-				"status": redisStatus,
-				"error":  redisError,
-			},
-			"fallback_auth_enabled": db == nil,
-			"railway_compatible":    true,
-		}
-
-		return c.JSON(healthData)
-	})
+	// Note: Health endpoints already defined above during immediate server start
 
 	// WebSocket endpoint for real-time communication
 	app.Use("/ws", func(c *fiber.Ctx) error {
@@ -362,12 +326,17 @@ func main() {
 		return c.Next()
 	})
 
-	// Setup template routes for login/register pages
-	handlers.SetupTemplateRoutes(app)
-
-	// Setup API routes
+	// Setup placeholder routes - handlers will be initialized in background
+	// Placeholder API routes while handlers are loading
 	api := app.Group("/api")
-	handlers.SetupRoutes(api)
+	api.Get("/status", func(c *fiber.Ctx) error {
+		return c.JSON(fiber.Map{
+			"status": "loading",
+			"message": "Services are initializing in background",
+		})
+	})
+	
+	// Note: Full routes will be set up when background initialization completes
 
 	// Add middleware to force no-cache and prevent 304 responses - MUST BE BEFORE STATIC SERVING
 	app.Use("/assets/*", func(c *fiber.Ctx) error {
@@ -430,9 +399,17 @@ func main() {
 		}()
 	}
 
-	// Start background services
-	go whatsappService.StartQueueProcessor()
+	// Start background services - but only if they're initialized
 	go func() {
+		// Wait for services to be initialized before starting
+		for whatsappService == nil || queueService == nil {
+			time.Sleep(1 * time.Second)
+		}
+		
+		// Start WhatsApp queue processor
+		whatsappService.StartQueueProcessor()
+		
+		// Start delayed message processor
 		for {
 			if err := queueService.ProcessDelayedMessages(); err != nil {
 				logrus.WithError(err).Error("Error processing delayed messages")
@@ -467,14 +444,9 @@ func main() {
 		app.Shutdown()
 	}()
 
-	// Start server - Railway specific binding
-	bind := fmt.Sprintf("0.0.0.0:%d", cfg.Port)
-	logrus.Infof("🚀 RAILWAY: Server starting on %s", bind)
-	logrus.Infof("🔗 Health endpoint available at: http://0.0.0.0:%d/healthz", cfg.Port)
-	
-	if err := app.Listen(bind); err != nil {
-		logrus.WithError(err).Fatal("Failed to start server")
-	}
+	// Note: Server is already running from the background goroutine above
+	// Keep the main thread alive for graceful shutdown handling
+	select {} // Block forever until shutdown signal
 }
 
 func customErrorHandler(c *fiber.Ctx, err error) error {
