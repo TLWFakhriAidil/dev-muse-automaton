@@ -150,10 +150,10 @@ func Initialize(cfg *config.Config) (*sql.DB, error) {
 	db.SetConnMaxLifetime(60 * time.Minute) // Longer lifetime to reduce connection churn (in minutes)
 	db.SetConnMaxIdleTime(15 * time.Minute) // Balanced idle time for resource efficiency (in minutes)
 
-	// Enhanced retry logic for Railways production environment with IPv6 fallback
+	// RAILWAY FIX: Reduced retry logic for faster startup
 	var pingErr error
-	maxRetries := 20  // Increased for production
-	retryDelay := 5 * time.Second  // Longer initial delay
+	maxRetries := 5  // Reduced for Railway quick startup
+	retryDelay := 2 * time.Second  // Shorter delay for Railway
 	
 	// Prepare fallback connection strings
 	localhostConnStr := fmt.Sprintf("host=localhost port=5432 user=postgres dbname=postgres password=%s sslmode=disable connect_timeout=60", 
