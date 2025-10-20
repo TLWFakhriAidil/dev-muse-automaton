@@ -14,237 +14,81 @@ export type Database = {
   }
   public: {
     Tables: {
-      ai_whatsapp_nodepath: {
-        Row: {
-          balas: string | null
-          conv_current: string | null
-          conv_last: string | null
-          created_at: string
-          current_node_id: string | null
-          date_order: string | null
-          execution_id: string | null
-          execution_status: string | null
-          flow_id: string | null
-          flow_reference: string | null
-          human: number | null
-          id_device: string | null
-          id_prospect: number
-          intro: string | null
-          keywordiklan: string | null
-          last_node_id: string | null
-          marketer: string | null
-          niche: string | null
-          prospect_name: string | null
-          prospect_num: string | null
-          stage: string | null
-          update_today: string | null
-          updated_at: string
-          waiting_for_reply: boolean | null
-        }
-        Insert: {
-          balas?: string | null
-          conv_current?: string | null
-          conv_last?: string | null
-          created_at?: string
-          current_node_id?: string | null
-          date_order?: string | null
-          execution_id?: string | null
-          execution_status?: string | null
-          flow_id?: string | null
-          flow_reference?: string | null
-          human?: number | null
-          id_device?: string | null
-          id_prospect?: number
-          intro?: string | null
-          keywordiklan?: string | null
-          last_node_id?: string | null
-          marketer?: string | null
-          niche?: string | null
-          prospect_name?: string | null
-          prospect_num?: string | null
-          stage?: string | null
-          update_today?: string | null
-          updated_at?: string
-          waiting_for_reply?: boolean | null
-        }
-        Update: {
-          balas?: string | null
-          conv_current?: string | null
-          conv_last?: string | null
-          created_at?: string
-          current_node_id?: string | null
-          date_order?: string | null
-          execution_id?: string | null
-          execution_status?: string | null
-          flow_id?: string | null
-          flow_reference?: string | null
-          human?: number | null
-          id_device?: string | null
-          id_prospect?: number
-          intro?: string | null
-          keywordiklan?: string | null
-          last_node_id?: string | null
-          marketer?: string | null
-          niche?: string | null
-          prospect_name?: string | null
-          prospect_num?: string | null
-          stage?: string | null
-          update_today?: string | null
-          updated_at?: string
-          waiting_for_reply?: boolean | null
-        }
-        Relationships: []
-      }
-      ai_whatsapp_session_nodepath: {
-        Row: {
-          id_device: string
-          id_prospect: string
-          id_sessionx: number
-          timestamp: string
-        }
-        Insert: {
-          id_device: string
-          id_prospect: string
-          id_sessionx?: number
-          timestamp: string
-        }
-        Update: {
-          id_device?: string
-          id_prospect?: string
-          id_sessionx?: number
-          timestamp?: string
-        }
-        Relationships: []
-      }
       chatbot_flows_nodepath: {
         Row: {
-          created_at: string
+          created_at: string | null
           edges: Json | null
           id: string
-          id_device: string
+          id_device: string | null
           name: string
-          niche: string
+          niche: string | null
           nodes: Json | null
-          updated_at: string
+          updated_at: string | null
         }
         Insert: {
-          created_at?: string
+          created_at?: string | null
           edges?: Json | null
           id: string
-          id_device?: string
+          id_device?: string | null
           name: string
-          niche?: string
+          niche?: string | null
           nodes?: Json | null
-          updated_at?: string
+          updated_at?: string | null
         }
         Update: {
-          created_at?: string
+          created_at?: string | null
           edges?: Json | null
           id?: string
-          id_device?: string
+          id_device?: string | null
           name?: string
-          niche?: string
+          niche?: string | null
           nodes?: Json | null
-          updated_at?: string
+          updated_at?: string | null
         }
         Relationships: []
       }
       device_setting_nodepath: {
         Row: {
           api_key: string | null
-          api_key_option:
-            | Database["public"]["Enums"]["api_key_option_enum"]
-            | null
-          created_at: string
+          api_key_option: string | null
+          created_at: string | null
           device_id: string | null
           id: string
           id_admin: string | null
           id_device: string | null
-          id_erp: string | null
           instance: string | null
           phone_number: string | null
-          provider: Database["public"]["Enums"]["provider_enum"] | null
-          updated_at: string
-          user_id: string | null
+          provider: string | null
+          updated_at: string | null
           webhook_id: string | null
         }
         Insert: {
           api_key?: string | null
-          api_key_option?:
-            | Database["public"]["Enums"]["api_key_option_enum"]
-            | null
-          created_at?: string
-          device_id?: string | null
-          id: string
-          id_admin?: string | null
-          id_device?: string | null
-          id_erp?: string | null
-          instance?: string | null
-          phone_number?: string | null
-          provider?: Database["public"]["Enums"]["provider_enum"] | null
-          updated_at?: string
-          user_id?: string | null
-          webhook_id?: string | null
-        }
-        Update: {
-          api_key?: string | null
-          api_key_option?:
-            | Database["public"]["Enums"]["api_key_option_enum"]
-            | null
-          created_at?: string
+          api_key_option?: string | null
+          created_at?: string | null
           device_id?: string | null
           id?: string
           id_admin?: string | null
           id_device?: string | null
-          id_erp?: string | null
           instance?: string | null
           phone_number?: string | null
-          provider?: Database["public"]["Enums"]["provider_enum"] | null
-          updated_at?: string
-          user_id?: string | null
+          provider?: string | null
+          updated_at?: string | null
           webhook_id?: string | null
         }
-        Relationships: []
-      }
-      orders_nodepath: {
-        Row: {
-          amount: number
-          bill_id: string | null
-          collection_id: string | null
-          created_at: string
-          id: number
-          method: string | null
-          product: string
-          status: string | null
-          updated_at: string
-          url: string | null
-          user_id: string | null
-        }
-        Insert: {
-          amount: number
-          bill_id?: string | null
-          collection_id?: string | null
-          created_at?: string
-          id?: number
-          method?: string | null
-          product: string
-          status?: string | null
-          updated_at?: string
-          url?: string | null
-          user_id?: string | null
-        }
         Update: {
-          amount?: number
-          bill_id?: string | null
-          collection_id?: string | null
-          created_at?: string
-          id?: number
-          method?: string | null
-          product?: string
-          status?: string | null
-          updated_at?: string
-          url?: string | null
-          user_id?: string | null
+          api_key?: string | null
+          api_key_option?: string | null
+          created_at?: string | null
+          device_id?: string | null
+          id?: string
+          id_admin?: string | null
+          id_device?: string | null
+          instance?: string | null
+          phone_number?: string | null
+          provider?: string | null
+          updated_at?: string | null
+          webhook_id?: string | null
         }
         Relationships: []
       }
@@ -281,207 +125,6 @@ export type Database = {
           phone?: string | null
           status?: string | null
           updated_at?: string
-        }
-        Relationships: []
-      }
-      stagesetvalue_nodepath: {
-        Row: {
-          columnsdata: string | null
-          id_device: string | null
-          inputhardcode: string | null
-          stage: string | null
-          stagesetvalue_id: number
-          type_inputdata: string | null
-        }
-        Insert: {
-          columnsdata?: string | null
-          id_device?: string | null
-          inputhardcode?: string | null
-          stage?: string | null
-          stagesetvalue_id?: number
-          type_inputdata?: string | null
-        }
-        Update: {
-          columnsdata?: string | null
-          id_device?: string | null
-          inputhardcode?: string | null
-          stage?: string | null
-          stagesetvalue_id?: number
-          type_inputdata?: string | null
-        }
-        Relationships: []
-      }
-      user_nodepath: {
-        Row: {
-          created_at: string
-          email: string
-          expired: string | null
-          full_name: string
-          gmail: string | null
-          id: string
-          is_active: boolean | null
-          last_login: string | null
-          password: string
-          phone: string | null
-          status: string | null
-          updated_at: string
-        }
-        Insert: {
-          created_at?: string
-          email: string
-          expired?: string | null
-          full_name: string
-          gmail?: string | null
-          id: string
-          is_active?: boolean | null
-          last_login?: string | null
-          password: string
-          phone?: string | null
-          status?: string | null
-          updated_at?: string
-        }
-        Update: {
-          created_at?: string
-          email?: string
-          expired?: string | null
-          full_name?: string
-          gmail?: string | null
-          id?: string
-          is_active?: boolean | null
-          last_login?: string | null
-          password?: string
-          phone?: string | null
-          status?: string | null
-          updated_at?: string
-        }
-        Relationships: []
-      }
-      user_sessions_nodepath: {
-        Row: {
-          created_at: string
-          expires_at: string
-          id: string
-          token: string
-          user_id: string
-        }
-        Insert: {
-          created_at?: string
-          expires_at?: string
-          id: string
-          token: string
-          user_id: string
-        }
-        Update: {
-          created_at?: string
-          expires_at?: string
-          id?: string
-          token?: string
-          user_id?: string
-        }
-        Relationships: []
-      }
-      wasapbot_nodepath: {
-        Row: {
-          alamat: string | null
-          cara_bayaran: string | null
-          conv_last: string | null
-          conv_start: string | null
-          current_node_id: string | null
-          date_last: string | null
-          date_start: string | null
-          execution_id: string | null
-          execution_status: string | null
-          flow_id: string | null
-          flow_reference: string | null
-          id_device: string | null
-          id_prospect: number
-          last_node_id: string | null
-          nama: string | null
-          niche: string | null
-          no_fon: string | null
-          pakej: string | null
-          peringkat_sekolah: string | null
-          prospect_num: string | null
-          stage: string | null
-          status: string | null
-          tarikh_gaji: string | null
-          temp_stage: string | null
-          waiting_for_reply: boolean | null
-        }
-        Insert: {
-          alamat?: string | null
-          cara_bayaran?: string | null
-          conv_last?: string | null
-          conv_start?: string | null
-          current_node_id?: string | null
-          date_last?: string | null
-          date_start?: string | null
-          execution_id?: string | null
-          execution_status?: string | null
-          flow_id?: string | null
-          flow_reference?: string | null
-          id_device?: string | null
-          id_prospect?: number
-          last_node_id?: string | null
-          nama?: string | null
-          niche?: string | null
-          no_fon?: string | null
-          pakej?: string | null
-          peringkat_sekolah?: string | null
-          prospect_num?: string | null
-          stage?: string | null
-          status?: string | null
-          tarikh_gaji?: string | null
-          temp_stage?: string | null
-          waiting_for_reply?: boolean | null
-        }
-        Update: {
-          alamat?: string | null
-          cara_bayaran?: string | null
-          conv_last?: string | null
-          conv_start?: string | null
-          current_node_id?: string | null
-          date_last?: string | null
-          date_start?: string | null
-          execution_id?: string | null
-          execution_status?: string | null
-          flow_id?: string | null
-          flow_reference?: string | null
-          id_device?: string | null
-          id_prospect?: number
-          last_node_id?: string | null
-          nama?: string | null
-          niche?: string | null
-          no_fon?: string | null
-          pakej?: string | null
-          peringkat_sekolah?: string | null
-          prospect_num?: string | null
-          stage?: string | null
-          status?: string | null
-          tarikh_gaji?: string | null
-          temp_stage?: string | null
-          waiting_for_reply?: boolean | null
-        }
-        Relationships: []
-      }
-      wasapbot_session_nodepath: {
-        Row: {
-          id_device: string
-          id_prospect: string
-          id_sessiony: number
-          session_timestamp: string
-        }
-        Insert: {
-          id_device: string
-          id_prospect: string
-          id_sessiony?: number
-          session_timestamp: string
-        }
-        Update: {
-          id_device?: string
-          id_prospect?: string
-          id_sessiony?: number
-          session_timestamp?: string
         }
         Relationships: []
       }
