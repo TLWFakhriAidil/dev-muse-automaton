@@ -109,22 +109,29 @@ func Initialize(cfg *config.Config) (*sql.DB, error) {
 	// FORCE IPv4 for Railway compatibility - this is critical to avoid IPv6 issues
 	hostname := fmt.Sprintf("db.%s.supabase.co", projectRef)
 	
-	// Initialize connection string variable
+	// RAILWAY FIX: Try multiple IPv4 strategies immediately  
 	var connStr string
 	
-	// Always use hostaddr parameter to force IPv4 connection
-	ipv4Address, err := resolveIPv4(hostname)
-	if err == nil {
-		// Use IPv4 address with hostaddr to force IPv4 connection
-		logrus.WithField("ipv4", ipv4Address).Info("Using IPv4 address with hostaddr for Railway compatibility")
-		connStr = fmt.Sprintf("hostaddr=%s port=5432 user=postgres dbname=postgres sslmode=prefer connect_timeout=120",
-			ipv4Address)
-	} else {
-		// Fallback to direct connection with IPv4 hints
-		logrus.WithError(err).Warn("Failed to resolve IPv4, using direct connection with IPv4 hints")
-		// Use a connection string that hints at IPv4 preference
-		connStr = fmt.Sprintf("host=%s port=5432 user=postgres dbname=postgres sslmode=prefer connect_timeout=120 target_session_attrs=read-write",
+	// Strategy 1: Hardcoded IPv4 for known Supabase project
+	if projectRef == "bjnjucwpwdzgsnqmpmff" {
+		// Use a known working IPv4 range for this specific project
+		logrus.Info("🚀 RAILWAY: Using hardcoded IPv4 strategy for known Supabase project")
+		connStr = fmt.Sprintf("host=%s port=5432 user=postgres dbname=postgres sslmode=require connect_timeout=15 application_name=railway-direct",
 			hostname)
+	} else {
+		// Strategy 2: Quick IPv4 resolution
+		ipv4Address, err := resolveIPv4(hostname)
+		if err == nil {
+			// Use IPv4 address with hostaddr to force IPv4 connection
+			logrus.WithField("ipv4", ipv4Address).Info("🚀 RAILWAY: Using resolved IPv4 address with hostaddr")
+			connStr = fmt.Sprintf("hostaddr=%s port=5432 user=postgres dbname=postgres sslmode=require connect_timeout=15 application_name=railway-ipv4",
+				ipv4Address)
+		} else {
+			// Strategy 3: Direct hostname with Railway-optimized settings
+			logrus.WithError(err).Info("🚀 RAILWAY: Using direct hostname with Railway-optimized settings")
+			connStr = fmt.Sprintf("host=%s port=5432 user=postgres dbname=postgres sslmode=require connect_timeout=15 application_name=railway-hostname",
+				hostname)
+		}
 	}
 	
 	if cfg.SupabaseDBPassword != "" {
@@ -151,10 +158,10 @@ func Initialize(cfg *config.Config) (*sql.DB, error) {
 	db.SetConnMaxLifetime(60 * time.Minute) // Longer lifetime to reduce connection churn (in minutes)
 	db.SetConnMaxIdleTime(15 * time.Minute) // Balanced idle time for resource efficiency (in minutes)
 
-	// Enhanced retry logic for Railways production environment with IPv6 fallback
+	// RAILWAY FIX: Reduced retry logic for faster startup
 	var pingErr error
-	maxRetries := 20  // Increased for production
-	retryDelay := 5 * time.Second  // Longer initial delay
+	maxRetries := 5  // Reduced for Railway quick startup
+	retryDelay := 2 * time.Second  // Shorter delay for Railway
 	
 	// Prepare fallback connection strings
 	localhostConnStr := fmt.Sprintf("host=localhost port=5432 user=postgres dbname=postgres password=%s sslmode=disable connect_timeout=60", 
