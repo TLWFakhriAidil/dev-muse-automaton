@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
@@ -348,16 +349,43 @@ func main() {
 		return c.Next()
 	})
 
-	// Static files for React app (after API routes and middleware) with aggressive no-cache headers
+	// CRITICAL FIX: Static asset routes BEFORE catch-all to ensure proper MIME types
+	
+	// Serve static assets with proper MIME types
+	app.Static("/assets", "./dist/assets", fiber.Static{
+		CacheDuration: 0, // No cache for development
+		MaxAge:        0, // No browser cache
+		Browse:        false,
+		Index:         "",
+	})
+	
+	// Serve other static files (favicon, robots.txt, etc.)
 	app.Static("/", "./dist", fiber.Static{
 		CacheDuration: 0, // No cache
 		MaxAge:        0, // No browser cache
+		Browse:        false,
+		Index:         "index.html",
 	})
-	app.Static("/static", "./static") // Keep for backward compatibility
+	
+	// Keep for backward compatibility
+	app.Static("/static", "./static")
 
-	// Catch-all route for React Router (SPA) with aggressive cache busting
+	// Catch-all route for React Router (SPA) - ONLY for non-asset paths
 	app.Get("/*", func(c *fiber.Ctx) error {
-		// Add aggressive no-cache headers to HTML
+		path := c.Path()
+		
+		// Don't catch asset files - let them 404 if not found
+		if strings.HasPrefix(path, "/assets/") || 
+		   strings.HasSuffix(path, ".js") || 
+		   strings.HasSuffix(path, ".css") || 
+		   strings.HasSuffix(path, ".map") || 
+		   strings.HasSuffix(path, ".ico") ||
+		   strings.HasSuffix(path, ".png") ||
+		   strings.HasSuffix(path, ".svg") {
+			return fiber.NewError(404, "Asset not found")
+		}
+		
+		// Serve React app for SPA routes
 		c.Set("Cache-Control", "no-cache, no-store, must-revalidate")
 		c.Set("Pragma", "no-cache")
 		c.Set("Expires", "0")
