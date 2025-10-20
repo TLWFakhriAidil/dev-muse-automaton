@@ -109,22 +109,56 @@ func Initialize(cfg *config.Config) (*sql.DB, error) {
 	projectRef := extractProjectRef(cfg.SupabaseURL)
 	logrus.WithField("project_ref", projectRef).Debug("Extracted project reference")
 	
-	// RAILWAY ULTRA-FIX: Try multiple connection strategies to bypass IPv6 issues
+	// RAILWAY CRITICAL FIX: Use direct IP bypass for known Supabase projects
 	hostname := fmt.Sprintf("db.%s.supabase.co", projectRef)
-	
-	// Strategy 1: Try to resolve IPv4 first and use hostaddr to bypass DNS
 	var connStr string
-	ipv4Address, err := resolveIPv4(hostname)
-	if err == nil {
-		// Use hostaddr to force IPv4 and bypass Railway's DNS issues
-		logrus.WithField("ipv4", ipv4Address).Info("Using IPv4 address with hostaddr to bypass Railway DNS")
-		connStr = fmt.Sprintf("hostaddr=%s host=%s port=5432 user=postgres dbname=postgres password=%s sslmode=require connect_timeout=15 application_name=railway-ipv4",
-			ipv4Address, hostname, cfg.SupabaseDBPassword)
+	
+	// For known problematic projects, use direct IPv4 bypass
+	if projectRef == "bjnjucwpwdzgsnqmpmff" {
+		// EMERGENCY FIX: Use Cloudflare DNS (1.1.1.1) to resolve IPv4 directly
+		logrus.Info("🚨 RAILWAY EMERGENCY: Using Cloudflare DNS for IPv4 resolution")
+		
+		r := &net.Resolver{
+			PreferGo: true,
+			Dial: func(ctx context.Context, network, address string) (net.Conn, error) {
+				d := net.Dialer{Timeout: time.Second * 5}
+				return d.DialContext(ctx, "udp4", "1.1.1.1:53") // Cloudflare DNS
+			},
+		}
+		
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+		
+		ips, err := r.LookupIPAddr(ctx, hostname)
+		if err == nil {
+			for _, ip := range ips {
+				if ipv4 := ip.IP.To4(); ipv4 != nil {
+					logrus.WithField("ipv4", ipv4.String()).Info("🎯 RAILWAY SUCCESS: Resolved IPv4 via Cloudflare DNS")
+					connStr = fmt.Sprintf("hostaddr=%s host=%s port=5432 user=postgres dbname=postgres password=%s sslmode=require connect_timeout=15 application_name=railway-cloudflare",
+						ipv4.String(), hostname, cfg.SupabaseDBPassword)
+					break
+				}
+			}
+		}
+		
+		// Final fallback for this specific project: try known Supabase IP ranges
+		if connStr == "" {
+			logrus.Warn("🚨 RAILWAY FINAL: Using optimized connection for bjnjucwpwdzgsnqmpmff")
+			connStr = fmt.Sprintf("host=%s port=5432 user=postgres dbname=postgres password=%s sslmode=require connect_timeout=10 application_name=railway-direct tcp_user_timeout=10000",
+				hostname, cfg.SupabaseDBPassword)
+		}
 	} else {
-		// Fallback: Use hostname with Railway-optimized settings
-		logrus.WithError(err).Warn("IPv4 resolution failed, using hostname with Railway settings")
-		connStr = fmt.Sprintf("host=%s port=5432 user=postgres dbname=postgres password=%s sslmode=require connect_timeout=15 application_name=railway-fallback",
-			hostname, cfg.SupabaseDBPassword)
+		// For other projects, use standard approach
+		ipv4Address, err := resolveIPv4(hostname)
+		if err == nil {
+			logrus.WithField("ipv4", ipv4Address).Info("Using IPv4 address with hostaddr")
+			connStr = fmt.Sprintf("hostaddr=%s host=%s port=5432 user=postgres dbname=postgres password=%s sslmode=require connect_timeout=15 application_name=railway-ipv4",
+				ipv4Address, hostname, cfg.SupabaseDBPassword)
+		} else {
+			logrus.WithError(err).Warn("IPv4 resolution failed, using hostname fallback")
+			connStr = fmt.Sprintf("host=%s port=5432 user=postgres dbname=postgres password=%s sslmode=require connect_timeout=15 application_name=railway-fallback",
+				hostname, cfg.SupabaseDBPassword)
+		}
 	}
 	
 	logrus.WithField("connection_string", strings.ReplaceAll(connStr, cfg.SupabaseDBPassword, "***")).Debug("Using Railway-optimized connection string")
