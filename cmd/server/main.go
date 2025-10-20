@@ -57,10 +57,7 @@ func main() {
 	
 	// Create basic Fiber app first - BEFORE any service initialization
 	app := fiber.New(fiber.Config{
-		ErrorHandler: func(c *fiber.Ctx, err error) error {
-			logrus.WithError(err).Error("Fiber error")
-			return c.Status(500).JSON(fiber.Map{"error": "Internal server error"})
-		},
+		ErrorHandler: customErrorHandler,
 		ReadTimeout:  30 * time.Second,
 		WriteTimeout: 30 * time.Second,
 		IdleTimeout:  60 * time.Second,
@@ -456,8 +453,10 @@ func customErrorHandler(c *fiber.Ctx, err error) error {
 		code = e.Code
 	}
 
-	// Log error
-	logrus.Errorf("Error %d: %v", code, err)
+	// Log error for non-404s or API routes
+	if code != 404 || (c.Path() != "" && len(c.Path()) >= 4 && c.Path()[:4] == "/api") {
+		logrus.Errorf("Error %d: %v", code, err)
+	}
 
 	// Return JSON error for API routes
 	if c.Path() != "" && len(c.Path()) >= 4 && c.Path()[:4] == "/api" {
@@ -468,10 +467,18 @@ func customErrorHandler(c *fiber.Ctx, err error) error {
 		})
 	}
 
-	// Return error page for web routes
-	return c.Status(code).Render("error", fiber.Map{
-		"Title":   fmt.Sprintf("Error %d", code),
-		"Code":    code,
-		"Message": err.Error(),
+	// For 404 errors on web routes, serve the React app (SPA routing)
+	if code == 404 {
+		// Set no-cache headers for HTML
+		c.Set("Cache-Control", "no-cache, no-store, must-revalidate")
+		c.Set("Pragma", "no-cache")
+		c.Set("Expires", "0")
+		return c.SendFile("./dist/index.html")
+	}
+
+	// For other errors, return simple error response
+	return c.Status(code).JSON(fiber.Map{
+		"error": "Internal server error",
+		"code":  code,
 	})
 }
