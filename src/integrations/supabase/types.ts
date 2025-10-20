@@ -47,6 +47,51 @@ export type Database = {
         }
         Relationships: []
       }
+      device_setting_nodepath: {
+        Row: {
+          api_key: string | null
+          api_key_option: string | null
+          created_at: string | null
+          device_id: string | null
+          id: string
+          id_admin: string | null
+          id_device: string | null
+          instance: string | null
+          phone_number: string | null
+          provider: string | null
+          updated_at: string | null
+          webhook_id: string | null
+        }
+        Insert: {
+          api_key?: string | null
+          api_key_option?: string | null
+          created_at?: string | null
+          device_id?: string | null
+          id?: string
+          id_admin?: string | null
+          id_device?: string | null
+          instance?: string | null
+          phone_number?: string | null
+          provider?: string | null
+          updated_at?: string | null
+          webhook_id?: string | null
+        }
+        Update: {
+          api_key?: string | null
+          api_key_option?: string | null
+          created_at?: string | null
+          device_id?: string | null
+          id?: string
+          id_admin?: string | null
+          id_device?: string | null
+          instance?: string | null
+          phone_number?: string | null
+          provider?: string | null
+          updated_at?: string | null
+          webhook_id?: string | null
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           created_at: string
