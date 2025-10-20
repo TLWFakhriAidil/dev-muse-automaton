@@ -1,5 +1,5 @@
 import { ChatbotFlow, FlowNode, FlowExecution, ChatMessage, ConditionRule } from '@/types/chatbot'
-import { getFlow, getMediaFile, saveExecution, replaceVariables } from '@/lib/localStorage'
+import { getFlow, getMediaFile, saveFlowExecution, replaceVariables } from '@/lib/localStorage'
 
 export class FlowEngine {
   private execution: FlowExecution
@@ -465,7 +465,7 @@ export class FlowEngine {
   private async saveState(): Promise<void> {
     // Save execution state to localStorage since we're using local storage for executions
     try {
-      await saveExecution(this.execution)
+      await saveFlowExecution(this.execution)
     } catch (error) {
       console.error('Error saving execution state:', error)
     }
