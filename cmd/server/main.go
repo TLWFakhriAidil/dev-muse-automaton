@@ -335,6 +335,16 @@ func main() {
 	})
 	
 	// Note: Full routes will be set up when background initialization completes
+	
+	// ULTRA-DEBUG: Add test endpoint to verify server is working
+	app.Get("/debug-test", func(c *fiber.Ctx) error {
+		return c.JSON(fiber.Map{
+			"status": "server working",
+			"time": time.Now().Format(time.RFC3339),
+			"assets_available": true,
+			"react_app": "should_load",
+		})
+	})
 
 	// Add middleware to force no-cache and prevent 304 responses - MUST BE BEFORE STATIC SERVING
 	app.Use("/assets/*", func(c *fiber.Ctx) error {
