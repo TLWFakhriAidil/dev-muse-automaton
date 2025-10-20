@@ -100,37 +100,34 @@ func Initialize(cfg *config.Config) (*sql.DB, error) {
 		return nil, fmt.Errorf("Failed to initialize Supabase database - check your connection settings")
 	}
 
-	// Force Go to prefer IPv4 for Railway compatibility
+	// RAILWAY CRITICAL FIX: Force IPv4-only networking
 	os.Setenv("GODEBUG", "netdns=go+1")
 	
-	logrus.Info("🚀 Initializing Supabase PostgreSQL database connection for production (IPv4-only mode for Railway)")
+	logrus.Info("🚀 Initializing Supabase PostgreSQL database connection for production (Railway IPv4-only mode)")
 	
 	// Build PostgreSQL connection string from Supabase URL
-	// Supabase URL format: https://project-ref.supabase.co
 	projectRef := extractProjectRef(cfg.SupabaseURL)
 	logrus.WithField("project_ref", projectRef).Debug("Extracted project reference")
 	
-	// FORCE IPv4 for Railway compatibility - use postgresql:// URI format with explicit IPv4
+	// RAILWAY ULTRA-FIX: Try multiple connection strategies to bypass IPv6 issues
 	hostname := fmt.Sprintf("db.%s.supabase.co", projectRef)
 	
-	// Initialize connection string variable - use postgresql:// URI format for better control
+	// Strategy 1: Try to resolve IPv4 first and use hostaddr to bypass DNS
 	var connStr string
-	
-	// Try to resolve IPv4 first for direct connection
 	ipv4Address, err := resolveIPv4(hostname)
 	if err == nil {
-		// Use IPv4 address directly in URI format to force IPv4
-		logrus.WithField("ipv4", ipv4Address).Info("Using IPv4 address directly for Railway compatibility")
-		connStr = fmt.Sprintf("postgresql://postgres:%s@%s:5432/postgres?sslmode=prefer&connect_timeout=120",
-			cfg.SupabaseDBPassword, ipv4Address)
+		// Use hostaddr to force IPv4 and bypass Railway's DNS issues
+		logrus.WithField("ipv4", ipv4Address).Info("Using IPv4 address with hostaddr to bypass Railway DNS")
+		connStr = fmt.Sprintf("hostaddr=%s host=%s port=5432 user=postgres dbname=postgres password=%s sslmode=require connect_timeout=15 application_name=railway-ipv4",
+			ipv4Address, hostname, cfg.SupabaseDBPassword)
 	} else {
-		// Fallback to hostname but still try to hint IPv4
-		logrus.WithError(err).Warn("Failed to resolve IPv4, using hostname with prefer IPv4 settings")
-		connStr = fmt.Sprintf("postgresql://postgres:%s@%s:5432/postgres?sslmode=prefer&connect_timeout=120",
-			cfg.SupabaseDBPassword, hostname)
+		// Fallback: Use hostname with Railway-optimized settings
+		logrus.WithError(err).Warn("IPv4 resolution failed, using hostname with Railway settings")
+		connStr = fmt.Sprintf("host=%s port=5432 user=postgres dbname=postgres password=%s sslmode=require connect_timeout=15 application_name=railway-fallback",
+			hostname, cfg.SupabaseDBPassword)
 	}
 	
-	logrus.WithField("connection_string", strings.ReplaceAll(connStr, cfg.SupabaseDBPassword, "***")).Debug("Using connection string with IPv4 enforcement")
+	logrus.WithField("connection_string", strings.ReplaceAll(connStr, cfg.SupabaseDBPassword, "***")).Debug("Using Railway-optimized connection string")
 	
 	// Open PostgreSQL connection
 	logrus.WithField("hostname", hostname).Info("Connecting to Supabase with IPv4-only configuration")
