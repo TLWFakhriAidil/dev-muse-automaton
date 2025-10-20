@@ -32,14 +32,15 @@ export const useDeviceSettings = () => {
 
     try {
       setIsLoading(true);
+      // Use type assertion until Supabase types regenerate
       const { data, error } = await supabase
-        .from('device_setting_nodepath')
+        .from('device_setting_nodepath' as any)
         .select('*')
         .order('created_at', { ascending: false });
 
       if (error) throw error;
 
-      setDevices(data || []);
+      setDevices((data || []) as unknown as DeviceSettings[]);
       setError(null);
     } catch (err: any) {
       console.error('Error fetching devices:', err);
@@ -55,8 +56,9 @@ export const useDeviceSettings = () => {
     }
 
     try {
+      // Use type assertion until Supabase types regenerate
       const { data, error } = await supabase
-        .from('device_setting_nodepath')
+        .from('device_setting_nodepath' as any)
         .insert([device])
         .select()
         .single();
@@ -77,8 +79,9 @@ export const useDeviceSettings = () => {
     }
 
     try {
+      // Use type assertion until Supabase types regenerate
       const { data, error } = await supabase
-        .from('device_setting_nodepath')
+        .from('device_setting_nodepath' as any)
         .update(updates)
         .eq('id', id)
         .select()
@@ -100,8 +103,9 @@ export const useDeviceSettings = () => {
     }
 
     try {
+      // Use type assertion until Supabase types regenerate
       const { error } = await supabase
-        .from('device_setting_nodepath')
+        .from('device_setting_nodepath' as any)
         .delete()
         .eq('id', id);
 
