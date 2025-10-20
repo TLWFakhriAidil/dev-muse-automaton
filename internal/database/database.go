@@ -106,29 +106,24 @@ func Initialize(cfg *config.Config) (*sql.DB, error) {
 	projectRef := extractProjectRef(cfg.SupabaseURL)
 	logrus.WithField("project_ref", projectRef).Debug("Extracted project reference")
 	
-	// FORCE IPv4 for Railway compatibility - this is critical to avoid IPv6 issues
+	// FORCE IPv4 for Railway compatibility - use postgresql:// URI format with explicit IPv4
 	hostname := fmt.Sprintf("db.%s.supabase.co", projectRef)
 	
-	// Initialize connection string variable
+	// Initialize connection string variable - use postgresql:// URI format for better control
 	var connStr string
 	
-	// Always use hostaddr parameter to force IPv4 connection
+	// Try to resolve IPv4 first for direct connection
 	ipv4Address, err := resolveIPv4(hostname)
 	if err == nil {
-		// Use IPv4 address with hostaddr to force IPv4 connection
-		logrus.WithField("ipv4", ipv4Address).Info("Using IPv4 address with hostaddr for Railway compatibility")
-		connStr = fmt.Sprintf("hostaddr=%s port=5432 user=postgres dbname=postgres sslmode=prefer connect_timeout=120",
-			ipv4Address)
+		// Use IPv4 address directly in URI format to force IPv4
+		logrus.WithField("ipv4", ipv4Address).Info("Using IPv4 address directly for Railway compatibility")
+		connStr = fmt.Sprintf("postgresql://postgres:%s@%s:5432/postgres?sslmode=prefer&connect_timeout=120",
+			cfg.SupabaseDBPassword, ipv4Address)
 	} else {
-		// Fallback to direct connection with IPv4 hints
-		logrus.WithError(err).Warn("Failed to resolve IPv4, using direct connection with IPv4 hints")
-		// Use a connection string that hints at IPv4 preference
-		connStr = fmt.Sprintf("host=%s port=5432 user=postgres dbname=postgres sslmode=prefer connect_timeout=120 target_session_attrs=read-write",
-			hostname)
-	}
-	
-	if cfg.SupabaseDBPassword != "" {
-		connStr += fmt.Sprintf(" password=%s", cfg.SupabaseDBPassword)
+		// Fallback to hostname but still try to hint IPv4
+		logrus.WithError(err).Warn("Failed to resolve IPv4, using hostname with prefer IPv4 settings")
+		connStr = fmt.Sprintf("postgresql://postgres:%s@%s:5432/postgres?sslmode=prefer&connect_timeout=120",
+			cfg.SupabaseDBPassword, hostname)
 	}
 	
 	logrus.WithField("connection_string", strings.ReplaceAll(connStr, cfg.SupabaseDBPassword, "***")).Debug("Using connection string")
