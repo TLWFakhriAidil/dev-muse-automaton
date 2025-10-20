@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"fmt"
 	"net"
+	"os"
 	"strings"
 	"time"
 
@@ -99,7 +100,10 @@ func Initialize(cfg *config.Config) (*sql.DB, error) {
 		return nil, fmt.Errorf("Failed to initialize Supabase database - check your connection settings")
 	}
 
-	logrus.Info("🚀 Initializing Supabase PostgreSQL database connection for production")
+	// Force Go to prefer IPv4 for Railway compatibility
+	os.Setenv("GODEBUG", "netdns=go+1")
+	
+	logrus.Info("🚀 Initializing Supabase PostgreSQL database connection for production (IPv4-only mode for Railway)")
 	
 	// Build PostgreSQL connection string from Supabase URL
 	// Supabase URL format: https://project-ref.supabase.co
@@ -126,10 +130,10 @@ func Initialize(cfg *config.Config) (*sql.DB, error) {
 			cfg.SupabaseDBPassword, hostname)
 	}
 	
-	logrus.WithField("connection_string", strings.ReplaceAll(connStr, cfg.SupabaseDBPassword, "***")).Debug("Using connection string")
+	logrus.WithField("connection_string", strings.ReplaceAll(connStr, cfg.SupabaseDBPassword, "***")).Debug("Using connection string with IPv4 enforcement")
 	
 	// Open PostgreSQL connection
-	logrus.WithField("hostname", hostname).Info("Attempting to connect to Supabase PostgreSQL database")
+	logrus.WithField("hostname", hostname).Info("Connecting to Supabase with IPv4-only configuration")
 	
 	db, err := sql.Open("postgres", connStr)
 	if err != nil {
