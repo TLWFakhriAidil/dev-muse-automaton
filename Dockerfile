@@ -23,6 +23,10 @@ COPY eslint.config.js ./
 # Copy build timestamp for cache invalidation
 COPY BUILD_TIMESTAMP ./
 
+# AGGRESSIVE CACHE BUSTING: Use timestamp as ARG to invalidate Docker cache
+ARG CACHE_BUST=unknown
+RUN echo "Cache bust timestamp: ${CACHE_BUST}" && cat BUILD_TIMESTAMP
+
 # Clean any existing build and node cache AGGRESSIVELY
 RUN rm -rf dist/ node_modules/.vite node_modules/.cache .vite/
 
