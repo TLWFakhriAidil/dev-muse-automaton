@@ -113,20 +113,21 @@ func Initialize(cfg *config.Config) (*sql.DB, error) {
 	var connStr string
 	hostname := fmt.Sprintf("db.%s.supabase.co", projectRef)
 	
-	// STRATEGY 1: Try Connection Pooler (IPv6 compatible with fallback)
-	// Supabase pooler uses aws-0-[region].pooler.supabase.com
+	// STRATEGY 1: Try Connection Pooler (better IPv4/IPv6 compatibility)
+	// Supabase uses Supavisor pooler with format: postgres.[PROJECT_REF]
+	// Transaction mode (6543) is recommended for serverless/Railway
 	poolerStrategies := []struct {
 		name string
 		connStr string
 	}{
 		{
-			name: "POOLER-SESSION",
-			connStr: fmt.Sprintf("postgresql://postgres.%s:%s@aws-0-us-west-1.pooler.supabase.com:5432/postgres?sslmode=require&connect_timeout=10",
+			name: "POOLER-TRANSACTION-6543",
+			connStr: fmt.Sprintf("postgres://postgres.%s:%s@aws-0-us-west-1.pooler.supabase.com:6543/postgres",
 				projectRef, cfg.SupabaseDBPassword),
 		},
 		{
-			name: "POOLER-TRANSACTION",
-			connStr: fmt.Sprintf("postgresql://postgres.%s:%s@aws-0-us-west-1.pooler.supabase.com:6543/postgres?sslmode=require&connect_timeout=10",
+			name: "POOLER-SESSION-5432",
+			connStr: fmt.Sprintf("postgres://postgres.%s:%s@aws-0-us-west-1.pooler.supabase.com:5432/postgres",
 				projectRef, cfg.SupabaseDBPassword),
 		},
 	}
