@@ -48,9 +48,17 @@ func (s *FlowService) CreateFlow(ctx context.Context, userID string, req *models
 		}, nil
 	}
 
-	// Create flow using the device's UUID id (not device_id field)
+	// Create flow using the user-friendly device identifier
+	// Try IDDevice first, fallback to DeviceID, then to ID as last resort
+	deviceIdentifier := req.IDDevice // Use what user provided
+	if device.IDDevice != nil && *device.IDDevice != "" {
+		deviceIdentifier = *device.IDDevice
+	} else if device.DeviceID != nil && *device.DeviceID != "" {
+		deviceIdentifier = *device.DeviceID
+	}
+
 	flow := &models.ChatbotFlow{
-		IDDevice: device.ID, // Use the UUID id from the device
+		IDDevice: deviceIdentifier, // Use the user-friendly identifier
 		Name:     req.Name,
 		Niche:    req.Niche,
 		Nodes:    req.Nodes,
