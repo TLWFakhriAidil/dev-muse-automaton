@@ -9,6 +9,23 @@ export default defineConfig(({ mode }) => ({
     react(),
     mode === 'development' && componentTagger(),
   ].filter(Boolean),
+  // Ensure assets are served from /assets/ directory
+  base: '/',
+  build: {
+    outDir: 'dist',
+    assetsDir: 'assets',
+    // Generate manifest for asset tracking
+    manifest: false,
+    // Ensure consistent hashing
+    rollupOptions: {
+      output: {
+        // Ensure JS and CSS go to assets/ directory
+        entryFileNames: 'assets/[name]-[hash].js',
+        chunkFileNames: 'assets/[name]-[hash].js',
+        assetFileNames: 'assets/[name]-[hash].[ext]'
+      }
+    }
+  },
   server: {
     host: "::",
     port: 8080,

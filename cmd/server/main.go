@@ -415,47 +415,53 @@ func main() {
 	})
 
 	// CRITICAL FIX: Static asset routes BEFORE catch-all to ensure proper MIME types
-	
-	// Serve static assets with proper MIME types
+
+	// Serve static assets with proper MIME types and caching
 	app.Static("/assets", "./dist/assets", fiber.Static{
-		CacheDuration: 0, // No cache for development
-		MaxAge:        0, // No browser cache
+		Compress:      true,
+		ByteRange:     true,
 		Browse:        false,
 		Index:         "",
+		CacheDuration: 0, // Disable server-side cache for fresh deploys
+		MaxAge:        0, // Disable browser cache during debugging
 	})
-	
-	// Serve other static files (favicon, robots.txt, etc.)
+
+	// Serve root-level static files (index.html will be handled by SPA catch-all)
 	app.Static("/", "./dist", fiber.Static{
-		CacheDuration: 0, // No cache
-		MaxAge:        0, // No browser cache
+		Compress:      true,
+		ByteRange:     true,
 		Browse:        false,
-		Index:         "index.html",
+		Index:         "", // Don't auto-serve index.html here
+		CacheDuration: 0,
+		MaxAge:        0,
 	})
-	
+
 	// Keep for backward compatibility
 	app.Static("/static", "./static")
 
-	// Catch-all route for React Router (SPA) - ONLY for non-asset paths
+	// Catch-all route for React Router (SPA)
+	// This must be LAST and only catches non-static-file routes
 	app.Get("/*", func(c *fiber.Ctx) error {
 		path := c.Path()
-		
-		// Don't catch asset files - let them 404 if not found
-		if strings.HasPrefix(path, "/assets/") || 
-		   strings.HasSuffix(path, ".js") || 
-		   strings.HasSuffix(path, ".css") || 
-		   strings.HasSuffix(path, ".map") || 
-		   strings.HasSuffix(path, ".ico") ||
-		   strings.HasSuffix(path, ".png") ||
-		   strings.HasSuffix(path, ".svg") {
-			return fiber.NewError(404, "Asset not found")
+
+		// If it's a file extension, it's likely a static asset that wasn't found
+		// Return 404 instead of serving index.html
+		if strings.Contains(path, ".") {
+			// Check if it's a known static file extension
+			ext := path[strings.LastIndex(path, "."):]
+			staticExtensions := []string{".js", ".css", ".map", ".ico", ".png", ".svg", ".jpg", ".jpeg", ".gif", ".webp", ".woff", ".woff2", ".ttf", ".eot"}
+			for _, staticExt := range staticExtensions {
+				if ext == staticExt {
+					return fiber.NewError(404, "Asset not found: "+path)
+				}
+			}
 		}
-		
-		// Serve React app for SPA routes
+
+		// Not a static file - serve React SPA
+		c.Set("Content-Type", "text/html; charset=utf-8")
 		c.Set("Cache-Control", "no-cache, no-store, must-revalidate")
 		c.Set("Pragma", "no-cache")
 		c.Set("Expires", "0")
-		c.Set("Last-Modified", time.Now().Format(http.TimeFormat))
-		c.Set("ETag", fmt.Sprintf("\"%d\"", time.Now().Unix()))
 		return c.SendFile("./dist/index.html")
 	})
 
