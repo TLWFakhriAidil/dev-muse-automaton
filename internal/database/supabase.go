@@ -125,8 +125,18 @@ func (s *SupabaseClient) insertWithKey(table string, data interface{}, apiKey st
 	return body, nil
 }
 
-// Update updates a record in a table
+// Update updates a record in a table (uses anon key, RLS applies)
 func (s *SupabaseClient) Update(table string, filter map[string]string, data interface{}) ([]byte, error) {
+	return s.updateWithKey(table, filter, data, s.AnonKey)
+}
+
+// UpdateAsAdmin updates a record using service role key (bypasses RLS)
+func (s *SupabaseClient) UpdateAsAdmin(table string, filter map[string]string, data interface{}) ([]byte, error) {
+	return s.updateWithKey(table, filter, data, s.ServiceKey)
+}
+
+// updateWithKey updates a record with a specific API key
+func (s *SupabaseClient) updateWithKey(table string, filter map[string]string, data interface{}, apiKey string) ([]byte, error) {
 	url := fmt.Sprintf("%s/rest/v1/%s", s.URL, table)
 
 	jsonData, err := json.Marshal(data)
@@ -146,8 +156,8 @@ func (s *SupabaseClient) Update(table string, filter map[string]string, data int
 	}
 	req.URL.RawQuery = q.Encode()
 
-	req.Header.Set("apikey", s.AnonKey)
-	req.Header.Set("Authorization", "Bearer "+s.AnonKey)
+	req.Header.Set("apikey", apiKey)
+	req.Header.Set("Authorization", "Bearer "+apiKey)
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Prefer", "return=representation")
 

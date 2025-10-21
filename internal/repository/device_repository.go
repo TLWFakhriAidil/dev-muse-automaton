@@ -96,7 +96,7 @@ func (r *DeviceRepository) UpdateDevice(ctx context.Context, deviceID string, up
 	// Add updated_at timestamp
 	updates["updated_at"] = time.Now()
 
-	_, err := r.supabase.Update("device_setting", map[string]string{
+	_, err := r.supabase.UpdateAsAdmin("device_setting", map[string]string{
 		"id": deviceID,
 	}, updates)
 
