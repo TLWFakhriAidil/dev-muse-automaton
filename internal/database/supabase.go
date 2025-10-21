@@ -184,8 +184,8 @@ func (s *SupabaseClient) Delete(table string, filter map[string]string) error {
 
 // TestConnection tests the connection to Supabase
 func (s *SupabaseClient) TestConnection() error {
-	// Try to query the users table (should exist after schema execution)
-	_, err := s.Query("users", map[string]string{
+	// Try to query the user table (should exist after schema execution)
+	_, err := s.Query("user", map[string]string{
 		"select": "id",
 		"limit":  "1",
 	})

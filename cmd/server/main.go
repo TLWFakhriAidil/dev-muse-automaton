@@ -79,8 +79,8 @@ func main() {
 
 	// Test database endpoint
 	api.Get("/db/test", func(c *fiber.Ctx) error {
-		// Query users table
-		data, err := supabase.Query("users", map[string]string{
+		// Query user table
+		data, err := supabase.Query("user", map[string]string{
 			"select": "*",
 			"limit":  "5",
 		})
