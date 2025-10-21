@@ -108,8 +108,8 @@ func (s *FlowService) GetFlow(ctx context.Context, userID, flowID string) (*mode
 			}, nil
 		}
 
-		// Get flows for this device
-		flows, err := s.flowRepo.GetFlowsByDeviceID(ctx, device.ID)
+		// Get flows for this device using the device identifier, not UUID
+		flows, err := s.flowRepo.GetFlowsByDeviceID(ctx, flowID)
 		if err != nil || len(flows) == 0 {
 			return &models.FlowResponse{
 				Success: false,
@@ -259,8 +259,8 @@ func (s *FlowService) UpdateFlow(ctx context.Context, userID, flowID string, req
 			}, nil
 		}
 
-		// Get first flow for this device
-		flows, err := s.flowRepo.GetFlowsByDeviceID(ctx, device.ID)
+		// Get first flow for this device using the device identifier, not UUID
+		flows, err := s.flowRepo.GetFlowsByDeviceID(ctx, flowID)
 		if err != nil || len(flows) == 0 {
 			return &models.FlowResponse{
 				Success: false,
@@ -361,8 +361,8 @@ func (s *FlowService) DeleteFlow(ctx context.Context, userID, flowID string) (*m
 			}, nil
 		}
 
-		// Get first flow for this device
-		flows, err := s.flowRepo.GetFlowsByDeviceID(ctx, device.ID)
+		// Get first flow for this device using the device identifier, not UUID
+		flows, err := s.flowRepo.GetFlowsByDeviceID(ctx, flowID)
 		if err != nil || len(flows) == 0 {
 			return &models.FlowResponse{
 				Success: false,
