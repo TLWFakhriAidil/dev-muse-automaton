@@ -120,8 +120,9 @@ func (r *DeviceRepository) DeleteDevice(ctx context.Context, deviceID string) er
 	return nil
 }
 
-// GetDeviceByDeviceID retrieves a device by device_id field
+// GetDeviceByDeviceID retrieves a device by device_id field or id_device field
 func (r *DeviceRepository) GetDeviceByDeviceID(ctx context.Context, deviceID string) (*models.DeviceSetting, error) {
+	// Try device_id field first
 	data, err := r.supabase.QueryAsAdmin("device_setting", map[string]string{
 		"select":    "*",
 		"device_id": fmt.Sprintf("eq.%s", deviceID),
@@ -136,8 +137,26 @@ func (r *DeviceRepository) GetDeviceByDeviceID(ctx context.Context, deviceID str
 		return nil, fmt.Errorf("failed to parse device: %w", err)
 	}
 
+	if len(devices) > 0 {
+		return &devices[0], nil
+	}
+
+	// If not found by device_id, try id_device field
+	data, err = r.supabase.QueryAsAdmin("device_setting", map[string]string{
+		"select":    "*",
+		"id_device": fmt.Sprintf("eq.%s", deviceID),
+		"limit":     "1",
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to get device by id_device: %w", err)
+	}
+
+	if err := json.Unmarshal(data, &devices); err != nil {
+		return nil, fmt.Errorf("failed to parse device: %w", err)
+	}
+
 	if len(devices) == 0 {
-		return nil, nil // Device not found, return nil without error
+		return nil, nil // Device not found in either field, return nil without error
 	}
 
 	return &devices[0], nil
