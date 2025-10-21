@@ -28,12 +28,16 @@ RUN rm -rf dist/ node_modules/.vite node_modules/.cache
 
 # Set build arguments for Vite environment variables
 # These will be passed from Railway environment variables during build
-ARG VITE_SUPABASE_URL
-ARG VITE_SUPABASE_ANON_KEY
+# Default to production values if not provided
+ARG VITE_SUPABASE_URL=https://bjnjucwpwdzgsnqmpmff.supabase.co
+ARG VITE_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJqbmp1Y3dwd2R6Z3NucW1wbWZmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjA0OTk1MzksImV4cCI6MjA3NjA3NTUzOX0.vw1rOUqYWFkPNDwTdEgIfsCO9pyvTsFKaXHq3RcRTNU
 
 # Export as environment variables for Vite build
 ENV VITE_SUPABASE_URL=$VITE_SUPABASE_URL
 ENV VITE_SUPABASE_ANON_KEY=$VITE_SUPABASE_ANON_KEY
+
+# Debug: Print environment variables to verify they're set
+RUN echo "Building frontend with VITE_SUPABASE_URL=$VITE_SUPABASE_URL"
 
 # Build the React application with environment variables
 RUN npm run build
