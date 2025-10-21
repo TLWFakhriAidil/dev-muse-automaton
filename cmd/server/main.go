@@ -106,28 +106,32 @@ func main() {
 	go func() {
 		logrus.Info("🔄 Background: Starting heavy services initialization...")
 
-		// RAILWAY FIX: Try REST API first (no IPv6 issues)
-		logrus.Info("🚀 Attempting Supabase REST API connection (Railway IPv4 compatible)")
-		restClient, restErr := database.NewSupabaseRestClient(cfg)
-		if restErr == nil {
-			// Test REST API connection
+		// RAILWAY FIX: Use Supabase SDK (JavaScript-like pattern, no IPv6 issues)
+		logrus.Info("🚀 Initializing Supabase SDK (REST API - Railway IPv4 compatible)")
+		supabaseSDK, sdkErr := database.NewSupabaseSDK(cfg)
+		if sdkErr == nil {
+			// Test connection by querying chatbot_flows table
 			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-			pingErr := restClient.Ping(ctx)
+			var testResult []map[string]interface{}
+			testErr := supabaseSDK.From("chatbot_flows").Select("id").Execute(ctx, &testResult)
 			cancel()
 
-			if pingErr == nil {
-				logrus.Info("✅ Supabase REST API connected successfully - using HTTP API")
-				logrus.Warn("⚠️ PostgreSQL migrations SKIPPED - using REST API mode")
+			if testErr == nil {
+				logrus.Info("✅ Supabase SDK connected successfully - using HTTP REST API")
+				logrus.Warn("⚠️ PostgreSQL direct connection SKIPPED - using REST API mode")
 				logrus.Info("💡 Database schema must be managed via Supabase Dashboard")
+				logrus.Info("💡 This solves Railway IPv6 issue - no IPv4 addon needed!")
 				db = nil // Force REST API usage
 			} else {
-				logrus.WithError(pingErr).Warn("REST API ping failed, falling back to PostgreSQL")
+				logrus.WithError(testErr).Warn("Supabase SDK test query failed, falling back to PostgreSQL")
 			}
+		} else {
+			logrus.WithError(sdkErr).Warn("Failed to initialize Supabase SDK, falling back to PostgreSQL")
 		}
 
 		// Fallback to PostgreSQL if REST API fails
 		var err error
-		if db == nil && restErr != nil {
+		if db == nil && sdkErr != nil {
 			logrus.Info("🔄 REST API unavailable, attempting PostgreSQL connection...")
 			db, err = database.Initialize(cfg)
 			if err != nil {
