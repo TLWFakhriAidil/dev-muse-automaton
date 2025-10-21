@@ -76,19 +76,69 @@ func (s *FlowService) CreateFlow(ctx context.Context, userID string, req *models
 	}, nil
 }
 
-// GetFlow retrieves a flow by ID
+// GetFlow retrieves a flow by ID or device identifier
+// If flowID looks like a device identifier, gets the first flow for that device
 func (s *FlowService) GetFlow(ctx context.Context, userID, flowID string) (*models.FlowResponse, error) {
+	// Try to get flow by UUID first
 	flow, err := s.flowRepo.GetFlowByID(ctx, flowID)
+
+	// If not found by UUID, try as device identifier
 	if err != nil {
+		// Look up device to verify ownership
+		device, err := s.deviceRepo.GetDeviceByDeviceID(ctx, flowID)
+		if err != nil {
+			return nil, fmt.Errorf("failed to lookup device: %w", err)
+		}
+
+		if device == nil {
+			device, err = s.deviceRepo.GetDeviceByID(ctx, flowID)
+			if err != nil {
+				return &models.FlowResponse{
+					Success: false,
+					Message: "Flow not found",
+				}, nil
+			}
+		}
+
+		// Verify ownership
+		if device.UserID == nil || *device.UserID != userID {
+			return &models.FlowResponse{
+				Success: false,
+				Message: "Access denied",
+			}, nil
+		}
+
+		// Get flows for this device
+		flows, err := s.flowRepo.GetFlowsByDeviceID(ctx, device.ID)
+		if err != nil || len(flows) == 0 {
+			return &models.FlowResponse{
+				Success: false,
+				Message: "Flow not found",
+			}, nil
+		}
+
+		// Return first flow
 		return &models.FlowResponse{
-			Success: false,
-			Message: "Flow not found",
+			Success: true,
+			Flow:    &flows[0],
 		}, nil
 	}
 
-	// Verify device ownership
-	device, err := s.deviceRepo.GetDeviceByID(ctx, flow.IDDevice)
-	if err != nil || device.UserID == nil || *device.UserID != userID {
+	// Flow found by UUID, verify device ownership
+	device, err := s.deviceRepo.GetDeviceByDeviceID(ctx, flow.IDDevice)
+	if err != nil {
+		return nil, fmt.Errorf("failed to lookup device: %w", err)
+	}
+
+	if device == nil {
+		device, err = s.deviceRepo.GetDeviceByID(ctx, flow.IDDevice)
+		if err != nil || device.UserID == nil || *device.UserID != userID {
+			return &models.FlowResponse{
+				Success: false,
+				Message: "Access denied",
+			}, nil
+		}
+	} else if device.UserID == nil || *device.UserID != userID {
 		return &models.FlowResponse{
 			Success: false,
 			Message: "Access denied",
@@ -178,24 +228,68 @@ func (s *FlowService) GetAllUserFlows(ctx context.Context, userID string) (*mode
 	}, nil
 }
 
-// UpdateFlow updates a flow
+// UpdateFlow updates a flow by UUID or device identifier
 func (s *FlowService) UpdateFlow(ctx context.Context, userID, flowID string, req *models.UpdateFlowRequest) (*models.FlowResponse, error) {
-	// Get flow and verify ownership
+	// Try to get flow by UUID first
 	flow, err := s.flowRepo.GetFlowByID(ctx, flowID)
-	if err != nil {
-		return &models.FlowResponse{
-			Success: false,
-			Message: "Flow not found",
-		}, nil
-	}
 
-	// Verify device ownership
-	device, err := s.deviceRepo.GetDeviceByID(ctx, flow.IDDevice)
-	if err != nil || device.UserID == nil || *device.UserID != userID {
-		return &models.FlowResponse{
-			Success: false,
-			Message: "Access denied",
-		}, nil
+	// If not found by UUID, try as device identifier
+	if err != nil {
+		// Look up device
+		device, err := s.deviceRepo.GetDeviceByDeviceID(ctx, flowID)
+		if err != nil {
+			return nil, fmt.Errorf("failed to lookup device: %w", err)
+		}
+
+		if device == nil {
+			device, err = s.deviceRepo.GetDeviceByID(ctx, flowID)
+			if err != nil {
+				return &models.FlowResponse{
+					Success: false,
+					Message: "Flow not found",
+				}, nil
+			}
+		}
+
+		// Verify ownership
+		if device.UserID == nil || *device.UserID != userID {
+			return &models.FlowResponse{
+				Success: false,
+				Message: "Access denied",
+			}, nil
+		}
+
+		// Get first flow for this device
+		flows, err := s.flowRepo.GetFlowsByDeviceID(ctx, device.ID)
+		if err != nil || len(flows) == 0 {
+			return &models.FlowResponse{
+				Success: false,
+				Message: "Flow not found",
+			}, nil
+		}
+
+		flow = &flows[0]
+	} else {
+		// Flow found by UUID, verify device ownership
+		device, err := s.deviceRepo.GetDeviceByDeviceID(ctx, flow.IDDevice)
+		if err != nil {
+			return nil, fmt.Errorf("failed to lookup device: %w", err)
+		}
+
+		if device == nil {
+			device, err = s.deviceRepo.GetDeviceByID(ctx, flow.IDDevice)
+			if err != nil || device.UserID == nil || *device.UserID != userID {
+				return &models.FlowResponse{
+					Success: false,
+					Message: "Access denied",
+				}, nil
+			}
+		} else if device.UserID == nil || *device.UserID != userID {
+			return &models.FlowResponse{
+				Success: false,
+				Message: "Access denied",
+			}, nil
+		}
 	}
 
 	// Build update map
@@ -221,12 +315,13 @@ func (s *FlowService) UpdateFlow(ctx context.Context, userID, flowID string, req
 		}, nil
 	}
 
-	if err := s.flowRepo.UpdateFlow(ctx, flowID, updates); err != nil {
+	// Update using the flow's actual UUID
+	if err := s.flowRepo.UpdateFlow(ctx, flow.ID, updates); err != nil {
 		return nil, fmt.Errorf("failed to update flow: %w", err)
 	}
 
 	// Get updated flow
-	updatedFlow, _ := s.flowRepo.GetFlowByID(ctx, flowID)
+	updatedFlow, _ := s.flowRepo.GetFlowByID(ctx, flow.ID)
 
 	return &models.FlowResponse{
 		Success: true,
@@ -235,27 +330,72 @@ func (s *FlowService) UpdateFlow(ctx context.Context, userID, flowID string, req
 	}, nil
 }
 
-// DeleteFlow deletes a flow
+// DeleteFlow deletes a flow by UUID or device identifier
 func (s *FlowService) DeleteFlow(ctx context.Context, userID, flowID string) (*models.FlowResponse, error) {
-	// Get flow and verify ownership
+	// Try to get flow by UUID first
 	flow, err := s.flowRepo.GetFlowByID(ctx, flowID)
+
+	// If not found by UUID, try as device identifier
 	if err != nil {
-		return &models.FlowResponse{
-			Success: false,
-			Message: "Flow not found",
-		}, nil
+		// Look up device
+		device, err := s.deviceRepo.GetDeviceByDeviceID(ctx, flowID)
+		if err != nil {
+			return nil, fmt.Errorf("failed to lookup device: %w", err)
+		}
+
+		if device == nil {
+			device, err = s.deviceRepo.GetDeviceByID(ctx, flowID)
+			if err != nil {
+				return &models.FlowResponse{
+					Success: false,
+					Message: "Flow not found",
+				}, nil
+			}
+		}
+
+		// Verify ownership
+		if device.UserID == nil || *device.UserID != userID {
+			return &models.FlowResponse{
+				Success: false,
+				Message: "Access denied",
+			}, nil
+		}
+
+		// Get first flow for this device
+		flows, err := s.flowRepo.GetFlowsByDeviceID(ctx, device.ID)
+		if err != nil || len(flows) == 0 {
+			return &models.FlowResponse{
+				Success: false,
+				Message: "Flow not found",
+			}, nil
+		}
+
+		flow = &flows[0]
+	} else {
+		// Flow found by UUID, verify device ownership
+		device, err := s.deviceRepo.GetDeviceByDeviceID(ctx, flow.IDDevice)
+		if err != nil {
+			return nil, fmt.Errorf("failed to lookup device: %w", err)
+		}
+
+		if device == nil {
+			device, err = s.deviceRepo.GetDeviceByID(ctx, flow.IDDevice)
+			if err != nil || device.UserID == nil || *device.UserID != userID {
+				return &models.FlowResponse{
+					Success: false,
+					Message: "Access denied",
+				}, nil
+			}
+		} else if device.UserID == nil || *device.UserID != userID {
+			return &models.FlowResponse{
+				Success: false,
+				Message: "Access denied",
+			}, nil
+		}
 	}
 
-	// Verify device ownership
-	device, err := s.deviceRepo.GetDeviceByID(ctx, flow.IDDevice)
-	if err != nil || device.UserID == nil || *device.UserID != userID {
-		return &models.FlowResponse{
-			Success: false,
-			Message: "Access denied",
-		}, nil
-	}
-
-	if err := s.flowRepo.DeleteFlow(ctx, flowID); err != nil {
+	// Delete using the flow's actual UUID
+	if err := s.flowRepo.DeleteFlow(ctx, flow.ID); err != nil {
 		return nil, fmt.Errorf("failed to delete flow: %w", err)
 	}
 
