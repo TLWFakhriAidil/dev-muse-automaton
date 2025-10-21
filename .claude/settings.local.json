@@ -5,7 +5,14 @@
       "Bash(npm create:*)",
       "Bash(npm install)",
       "Bash(npm run build:*)",
-      "Bash(CGO_ENABLED=0 go build:*)"
+      "Bash(CGO_ENABLED=0 go build:*)",
+      "Bash(go mod tidy:*)",
+      "Bash(git ls-tree:*)",
+      "Bash(go get:*)",
+      "Bash(npm --version:*)",
+      "Bash(npm install:*)",
+      "Bash(node migrate-db.js:*)",
+      "Bash(node migrate-db.cjs:*)"
     ],
     "deny": [],
     "ask": []

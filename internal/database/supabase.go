@@ -1,0 +1,193 @@
+package database
+
+import (
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"io"
+	"net/http"
+	"time"
+)
+
+// SupabaseClient provides access to Supabase REST API
+type SupabaseClient struct {
+	URL        string
+	AnonKey    string
+	ServiceKey string
+	HTTPClient *http.Client
+}
+
+// NewSupabaseClient creates a new Supabase client
+func NewSupabaseClient(url, anonKey, serviceKey string) *SupabaseClient {
+	return &SupabaseClient{
+		URL:        url,
+		AnonKey:    anonKey,
+		ServiceKey: serviceKey,
+		HTTPClient: &http.Client{
+			Timeout: 10 * time.Second,
+		},
+	}
+}
+
+// Query executes a SELECT query on a table
+func (s *SupabaseClient) Query(table string, params map[string]string) ([]byte, error) {
+	url := fmt.Sprintf("%s/rest/v1/%s", s.URL, table)
+
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	// Add query parameters
+	q := req.URL.Query()
+	for key, value := range params {
+		q.Add(key, value)
+	}
+	req.URL.RawQuery = q.Encode()
+
+	// Add headers
+	req.Header.Set("apikey", s.AnonKey)
+	req.Header.Set("Authorization", "Bearer "+s.AnonKey)
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := s.HTTPClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	if resp.StatusCode >= 400 {
+		return nil, fmt.Errorf("supabase error: %s - %s", resp.Status, string(body))
+	}
+
+	return body, nil
+}
+
+// Insert inserts a new record into a table
+func (s *SupabaseClient) Insert(table string, data interface{}) ([]byte, error) {
+	url := fmt.Sprintf("%s/rest/v1/%s", s.URL, table)
+
+	jsonData, err := json.Marshal(data)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("POST", url, bytes.NewBuffer(jsonData))
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Set("apikey", s.AnonKey)
+	req.Header.Set("Authorization", "Bearer "+s.AnonKey)
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Prefer", "return=representation")
+
+	resp, err := s.HTTPClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	if resp.StatusCode >= 400 {
+		return nil, fmt.Errorf("supabase error: %s - %s", resp.Status, string(body))
+	}
+
+	return body, nil
+}
+
+// Update updates a record in a table
+func (s *SupabaseClient) Update(table string, filter map[string]string, data interface{}) ([]byte, error) {
+	url := fmt.Sprintf("%s/rest/v1/%s", s.URL, table)
+
+	jsonData, err := json.Marshal(data)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("PATCH", url, bytes.NewBuffer(jsonData))
+	if err != nil {
+		return nil, err
+	}
+
+	// Add filter parameters
+	q := req.URL.Query()
+	for key, value := range filter {
+		q.Add(key, fmt.Sprintf("eq.%s", value))
+	}
+	req.URL.RawQuery = q.Encode()
+
+	req.Header.Set("apikey", s.AnonKey)
+	req.Header.Set("Authorization", "Bearer "+s.AnonKey)
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Prefer", "return=representation")
+
+	resp, err := s.HTTPClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	if resp.StatusCode >= 400 {
+		return nil, fmt.Errorf("supabase error: %s - %s", resp.Status, string(body))
+	}
+
+	return body, nil
+}
+
+// Delete deletes a record from a table
+func (s *SupabaseClient) Delete(table string, filter map[string]string) error {
+	url := fmt.Sprintf("%s/rest/v1/%s", s.URL, table)
+
+	req, err := http.NewRequest("DELETE", url, nil)
+	if err != nil {
+		return err
+	}
+
+	// Add filter parameters
+	q := req.URL.Query()
+	for key, value := range filter {
+		q.Add(key, fmt.Sprintf("eq.%s", value))
+	}
+	req.URL.RawQuery = q.Encode()
+
+	req.Header.Set("apikey", s.AnonKey)
+	req.Header.Set("Authorization", "Bearer "+s.AnonKey)
+
+	resp, err := s.HTTPClient.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode >= 400 {
+		body, _ := io.ReadAll(resp.Body)
+		return fmt.Errorf("supabase error: %s - %s", resp.Status, string(body))
+	}
+
+	return nil
+}
+
+// TestConnection tests the connection to Supabase
+func (s *SupabaseClient) TestConnection() error {
+	// Try to query the users table (should exist after schema execution)
+	_, err := s.Query("users", map[string]string{
+		"select": "id",
+		"limit":  "1",
+	})
+	return err
+}

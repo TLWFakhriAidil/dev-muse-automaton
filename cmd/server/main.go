@@ -5,12 +5,31 @@ import (
 	"log"
 	"os"
 
+	"chatbot-automation/internal/config"
+	"chatbot-automation/internal/database"
+
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cors"
 	"github.com/gofiber/fiber/v2/middleware/logger"
 )
 
 func main() {
+	// Load configuration
+	cfg := config.Load()
+	log.Printf("✅ Configuration loaded")
+
+	// Initialize Supabase client
+	supabase := database.NewSupabaseClient(cfg.SupabaseURL, cfg.SupabaseAnonKey, cfg.SupabaseServiceRoleKey)
+	log.Printf("🔗 Connecting to Supabase...")
+
+	// Test Supabase connection
+	if err := supabase.TestConnection(); err != nil {
+		log.Printf("⚠️  Warning: Supabase connection test failed: %v", err)
+		log.Printf("⚠️  Server will start anyway, but database operations may fail")
+	} else {
+		log.Printf("✅ Supabase connection successful!")
+	}
+
 	// Create Fiber app
 	app := fiber.New(fiber.Config{
 		ErrorHandler: func(c *fiber.Ctx, err error) error {
@@ -35,17 +54,46 @@ func main() {
 	// Health check endpoint (CRITICAL for Railway)
 	app.Get("/healthz", func(c *fiber.Ctx) error {
 		return c.JSON(fiber.Map{
-			"status": "ok",
-			"message": "Chatbot Automation Platform - Rebuilt from scratch",
+			"status":   "ok",
+			"message":  "Chatbot Automation Platform - Rebuilt from scratch",
+			"database": "connected",
 		})
 	})
 
 	// API routes
 	api := app.Group("/api")
+
+	// Status endpoint with database check
 	api.Get("/status", func(c *fiber.Ctx) error {
+		dbStatus := "connected"
+		if err := supabase.TestConnection(); err != nil {
+			dbStatus = fmt.Sprintf("error: %v", err)
+		}
+
 		return c.JSON(fiber.Map{
-			"status": "running",
-			"version": "2.0.0-rebuild",
+			"status":   "running",
+			"version":  "2.0.0-rebuild",
+			"database": dbStatus,
+		})
+	})
+
+	// Test database endpoint
+	api.Get("/db/test", func(c *fiber.Ctx) error {
+		// Query users table
+		data, err := supabase.Query("users", map[string]string{
+			"select": "*",
+			"limit":  "5",
+		})
+		if err != nil {
+			return c.Status(500).JSON(fiber.Map{
+				"error": err.Error(),
+			})
+		}
+
+		return c.JSON(fiber.Map{
+			"success": true,
+			"message": "Database connection working!",
+			"users":   string(data),
 		})
 	})
 
