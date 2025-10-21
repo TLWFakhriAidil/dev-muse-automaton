@@ -45,6 +45,7 @@ func main() {
 	flowService := service.NewFlowService(flowRepo, deviceRepo)
 	conversationService := service.NewConversationService(conversationRepo, deviceRepo)
 	aiService := service.NewAIService(deviceRepo)
+	flowExecutionService := service.NewFlowExecutionService(flowRepo, conversationRepo, deviceRepo, aiService)
 
 	// Initialize handlers
 	authHandler := handler.NewAuthHandler(authService)
@@ -52,11 +53,13 @@ func main() {
 	flowHandler := handler.NewFlowHandler(flowService, authService)
 	conversationHandler := handler.NewConversationHandler(conversationService, authService)
 	aiHandler := handler.NewAIHandler(aiService, authService)
+	webhookHandler := handler.NewWebhookHandler(flowExecutionService, deviceService)
 	log.Printf("✅ Authentication system initialized")
 	log.Printf("✅ Device management system initialized")
 	log.Printf("✅ Flow builder system initialized")
 	log.Printf("✅ Conversation management system initialized")
 	log.Printf("✅ AI integration system initialized (OpenAI + Anthropic)")
+	log.Printf("✅ Flow execution engine initialized")
 
 	// Create Fiber app
 	app := fiber.New(fiber.Config{
@@ -130,6 +133,14 @@ func main() {
 	ai.Post("/completion", aiHandler.GenerateCompletion)
 	ai.Post("/chat", aiHandler.SimpleChat)
 	ai.Post("/test", aiHandler.TestConnection)
+
+	// Webhook routes (public - no authentication required)
+	webhook := api.Group("/webhook")
+	webhook.Post("/whatsapp/:deviceId", webhookHandler.HandleWhatsAppWebhook)
+	webhook.Post("/waha/:deviceId", webhookHandler.HandleWahaWebhook)
+	webhook.Post("/wablas/:deviceId", webhookHandler.HandleWablasWebhook)
+	webhook.Post("/whacenter/:deviceId", webhookHandler.HandleWhacenterWebhook)
+	webhook.Post("/start-flow", webhookHandler.StartFlow)
 
 	// Status endpoint with database check
 	api.Get("/status", func(c *fiber.Ctx) error {
