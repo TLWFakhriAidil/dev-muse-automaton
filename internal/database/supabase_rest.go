@@ -233,3 +233,43 @@ func (c *SupabaseRestClient) Ping(ctx context.Context) error {
 	logrus.Info("✅ Supabase REST API connection successful")
 	return nil
 }
+
+// ExecuteRPC executes a Supabase stored procedure/function via RPC
+func (c *SupabaseRestClient) ExecuteRPC(ctx context.Context, functionName string, params map[string]interface{}, result interface{}) error {
+	url := fmt.Sprintf("%s/rpc/%s", c.BaseURL, functionName)
+
+	jsonData, err := json.Marshal(params)
+	if err != nil {
+		return fmt.Errorf("failed to marshal RPC params: %w", err)
+	}
+
+	req, err := http.NewRequestWithContext(ctx, "POST", url, bytes.NewBuffer(jsonData))
+	if err != nil {
+		return fmt.Errorf("failed to create RPC request: %w", err)
+	}
+
+	// Add required headers
+	req.Header.Set("apikey", c.APIKey)
+	req.Header.Set("Authorization", "Bearer "+c.APIKey)
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Prefer", "return=representation")
+
+	resp, err := c.HTTPClient.Do(req)
+	if err != nil {
+		return fmt.Errorf("RPC request failed: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		return fmt.Errorf("RPC failed with status %d: %s", resp.StatusCode, string(body))
+	}
+
+	if result != nil {
+		if err := json.NewDecoder(resp.Body).Decode(result); err != nil {
+			return fmt.Errorf("failed to decode RPC response: %w", err)
+		}
+	}
+
+	return nil
+}
