@@ -33,7 +33,7 @@ func (r *UserRepository) CreateUser(ctx context.Context, user *models.User) erro
 	user.Status = "Trial"
 
 	// Insert using service role (bypasses RLS)
-	data, err := r.supabase.Insert("user", user)
+	data, err := r.supabase.InsertAsAdmin("user", user)
 	if err != nil {
 		return fmt.Errorf("failed to create user: %w", err)
 	}
@@ -123,8 +123,8 @@ func (r *UserRepository) CreateSession(ctx context.Context, session *models.User
 	session.CreatedAt = time.Now()
 	session.ExpiresAt = time.Now().Add(24 * time.Hour * 7) // 7 days
 
-	// Insert using service role
-	_, err := r.supabase.Insert("user_sessions", session)
+	// Insert using service role (bypasses RLS)
+	_, err := r.supabase.InsertAsAdmin("user_sessions", session)
 	if err != nil {
 		return fmt.Errorf("failed to create session: %w", err)
 	}

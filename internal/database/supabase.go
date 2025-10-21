@@ -78,8 +78,18 @@ func (s *SupabaseClient) queryWithKey(table string, params map[string]string, ap
 	return body, nil
 }
 
-// Insert inserts a new record into a table
+// Insert inserts a new record into a table (uses anon key, RLS applies)
 func (s *SupabaseClient) Insert(table string, data interface{}) ([]byte, error) {
+	return s.insertWithKey(table, data, s.AnonKey)
+}
+
+// InsertAsAdmin inserts a new record using service role key (bypasses RLS)
+func (s *SupabaseClient) InsertAsAdmin(table string, data interface{}) ([]byte, error) {
+	return s.insertWithKey(table, data, s.ServiceKey)
+}
+
+// insertWithKey inserts a new record with a specific API key
+func (s *SupabaseClient) insertWithKey(table string, data interface{}, apiKey string) ([]byte, error) {
 	url := fmt.Sprintf("%s/rest/v1/%s", s.URL, table)
 
 	jsonData, err := json.Marshal(data)
@@ -92,8 +102,8 @@ func (s *SupabaseClient) Insert(table string, data interface{}) ([]byte, error) 
 		return nil, err
 	}
 
-	req.Header.Set("apikey", s.AnonKey)
-	req.Header.Set("Authorization", "Bearer "+s.AnonKey)
+	req.Header.Set("apikey", apiKey)
+	req.Header.Set("Authorization", "Bearer "+apiKey)
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Prefer", "return=representation")
 
