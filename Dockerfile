@@ -23,8 +23,8 @@ COPY eslint.config.js ./
 # Copy build timestamp for cache invalidation
 COPY BUILD_TIMESTAMP ./
 
-# Clean any existing build and node cache
-RUN rm -rf dist/ node_modules/.vite node_modules/.cache
+# Clean any existing build and node cache AGGRESSIVELY
+RUN rm -rf dist/ node_modules/.vite node_modules/.cache .vite/
 
 # Set build arguments for Vite environment variables
 # These will be passed from Railway environment variables during build

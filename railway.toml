@@ -13,9 +13,9 @@
   startupTimeout = 180
   restartPolicyType = "on_failure"
   restartPolicyMaxRetries = 10
-  
-  # Repository snapshot optimization
-  skipCache = false
+
+  # Force fresh build without Docker layer caching to fix stale frontend
+  skipCache = true
   numReplicas = 1
 
 # Phases setup not needed when using Dockerfile
