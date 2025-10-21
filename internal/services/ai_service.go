@@ -400,8 +400,8 @@ func (s *AIService) makeOpenRouterRequest(request models.OpenRouterRequest, apiK
 	// Set headers
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Authorization", "Bearer "+apiKey)
-	req.Header.Set("HTTP-Referer", "https://nodepath-chat.railway.app")
-	req.Header.Set("X-Title", "NodePath Chat")
+	req.Header.Set("HTTP-Referer", "https://chatbot-automation-production.up.railway.app")
+	req.Header.Set("X-Title", "NodePath Chatbot Automation")
 
 	// Make request
 	resp, err := s.httpClient.Do(req)
