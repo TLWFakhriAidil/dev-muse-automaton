@@ -36,16 +36,20 @@ func main() {
 	// Initialize repositories
 	userRepo := repository.NewUserRepository(supabase)
 	deviceRepo := repository.NewDeviceRepository(supabase)
+	flowRepo := repository.NewFlowRepository(supabase)
 
 	// Initialize services
 	authService := service.NewAuthService(userRepo, cfg.JWTSecret)
 	deviceService := service.NewDeviceService(deviceRepo)
+	flowService := service.NewFlowService(flowRepo, deviceRepo)
 
 	// Initialize handlers
 	authHandler := handler.NewAuthHandler(authService)
 	deviceHandler := handler.NewDeviceHandler(deviceService, authService)
+	flowHandler := handler.NewFlowHandler(flowService, authService)
 	log.Printf("✅ Authentication system initialized")
 	log.Printf("✅ Device management system initialized")
+	log.Printf("✅ Flow builder system initialized")
 
 	// Create Fiber app
 	app := fiber.New(fiber.Config{
@@ -93,6 +97,15 @@ func main() {
 	devices.Get("/:id", deviceHandler.GetDevice)
 	devices.Put("/:id", deviceHandler.UpdateDevice)
 	devices.Delete("/:id", deviceHandler.DeleteDevice)
+
+	// Flow builder routes (requires authentication)
+	flows := api.Group("/flows")
+	flows.Post("/", flowHandler.CreateFlow)
+	flows.Get("/", flowHandler.GetAllUserFlows)
+	flows.Get("/device/:deviceId", flowHandler.GetFlowsByDevice)
+	flows.Get("/:id", flowHandler.GetFlow)
+	flows.Put("/:id", flowHandler.UpdateFlow)
+	flows.Delete("/:id", flowHandler.DeleteFlow)
 
 	// Status endpoint with database check
 	api.Get("/status", func(c *fiber.Ctx) error {
