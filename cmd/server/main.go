@@ -109,6 +109,8 @@ func main() {
 		// RAILWAY FIX: Use Supabase SDK (JavaScript-like pattern, no IPv6 issues)
 		logrus.Info("🚀 Initializing Supabase SDK (REST API - Railway IPv4 compatible)")
 		supabaseSDK, sdkErr := database.NewSupabaseSDK(cfg)
+		var useSupabase bool = false
+
 		if sdkErr == nil {
 			// Test connection by querying chatbot_flows table
 			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
@@ -121,6 +123,7 @@ func main() {
 				logrus.Warn("⚠️ PostgreSQL direct connection SKIPPED - using REST API mode")
 				logrus.Info("💡 Database schema must be managed via Supabase Dashboard")
 				logrus.Info("💡 This solves Railway IPv6 issue - no IPv4 addon needed!")
+				useSupabase = true
 				db = nil // Force REST API usage
 			} else {
 				logrus.WithError(testErr).Warn("Supabase SDK test query failed, falling back to PostgreSQL")
@@ -131,7 +134,7 @@ func main() {
 
 		// Fallback to PostgreSQL if REST API fails
 		var err error
-		if db == nil && sdkErr != nil {
+		if !useSupabase {
 			logrus.Info("🔄 REST API unavailable, attempting PostgreSQL connection...")
 			db, err = database.Initialize(cfg)
 			if err != nil {
@@ -168,10 +171,35 @@ func main() {
 		}
 
 		// Initialize repositories first (before services)
-		aiWhatsappRepo := repository.NewAIWhatsappRepository(db)
-		deviceSettingsRepo := repository.NewDeviceSettingsRepository(db)
-		wasapBotRepo := repository.NewWasapBotRepository(db)
-		logrus.Info("Background: Repositories initialized successfully")
+		// Use Supabase repositories if SDK is available, otherwise use SQL repositories
+		var aiWhatsappRepo repository.AIWhatsappRepository
+		var deviceSettingsRepo repository.DeviceSettingsRepository
+		var wasapBotRepo repository.WasapBotRepository
+		var executionProcessRepo repository.ExecutionProcessRepository
+		var orderRepo repository.OrderRepository
+
+		if useSupabase && supabaseSDK != nil {
+			logrus.Info("🔄 Using Supabase REST API repositories (Railway IPv4 compatible)")
+			aiWhatsappRepo = repository.NewAIWhatsappRepositorySupabase(supabaseSDK)
+			deviceSettingsRepo = repository.NewDeviceSettingsRepositorySupabase(supabaseSDK)
+			wasapBotRepo = repository.NewWasapBotRepositorySupabase(supabaseSDK)
+			executionProcessRepo = repository.NewExecutionProcessRepositorySupabase(supabaseSDK)
+			orderRepo = repository.NewOrderRepositorySupabase(supabaseSDK)
+			logrus.Info("✅ All Supabase repositories initialized successfully (5/6 repositories)")
+			logrus.Info("💡 StageSetValueRepository not yet migrated - using SQL fallback for this repo")
+		} else {
+			logrus.Info("🔄 Using traditional SQL repositories")
+			aiWhatsappRepo = repository.NewAIWhatsappRepository(db)
+			deviceSettingsRepo = repository.NewDeviceSettingsRepository(db)
+			wasapBotRepo = repository.NewWasapBotRepository(db)
+			executionProcessRepo = repository.NewExecutionProcessRepository(db)
+			orderRepo = repository.NewOrderRepository(db)
+			logrus.Info("✅ SQL repositories initialized successfully")
+		}
+
+		// Suppress unused variable warnings for repos not yet wired to services
+		_ = executionProcessRepo
+		_ = orderRepo
 
 		flowService := services.NewFlowService(db, concreteRedisClient)
 		aiService := services.NewAIService(cfg, deviceSettingsRepo)
