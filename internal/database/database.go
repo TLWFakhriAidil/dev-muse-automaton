@@ -136,17 +136,28 @@ func Initialize(cfg *config.Config) (*sql.DB, error) {
 		logrus.WithField("strategy", strategy.name).Info("🔄 Attempting Supabase pooler connection")
 
 		testDB, err := sql.Open("postgres", strategy.connStr)
-		if err == nil {
-			ctx, cancel := context.WithTimeout(context.Background(), 8*time.Second)
-			err = testDB.PingContext(ctx)
-			cancel()
-			testDB.Close()
+		if err != nil {
+			logrus.WithFields(logrus.Fields{
+				"strategy": strategy.name,
+				"error": err.Error(),
+			}).Warn("❌ Failed to open pooler connection")
+			continue
+		}
 
-			if err == nil {
-				logrus.WithField("strategy", strategy.name).Info("✅ Pooler connection successful!")
-				connStr = strategy.connStr
-				break
-			}
+		ctx, cancel := context.WithTimeout(context.Background(), 8*time.Second)
+		err = testDB.PingContext(ctx)
+		cancel()
+		testDB.Close()
+
+		if err == nil {
+			logrus.WithField("strategy", strategy.name).Info("✅ Pooler connection successful!")
+			connStr = strategy.connStr
+			break
+		} else {
+			logrus.WithFields(logrus.Fields{
+				"strategy": strategy.name,
+				"error": err.Error(),
+			}).Warn("❌ Pooler ping failed")
 		}
 	}
 
