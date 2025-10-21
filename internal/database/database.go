@@ -100,85 +100,109 @@ func Initialize(cfg *config.Config) (*sql.DB, error) {
 		return nil, fmt.Errorf("Failed to initialize Supabase database - check your connection settings")
 	}
 
-	// RAILWAY CRITICAL FIX: Force IPv4-only networking
-	os.Setenv("GODEBUG", "netdns=go+1")
-	
-	logrus.Info("🚀 Initializing Supabase PostgreSQL database connection for production (Railway IPv4-only mode)")
-	
+	// RAILWAY FIX: Use CGO resolver for better IPv4 compatibility
+	os.Setenv("GODEBUG", "netdns=cgo")
+
+	logrus.Info("🚀 Initializing Supabase PostgreSQL database connection (Railway IPv4 mode)")
+
 	// Build PostgreSQL connection string from Supabase URL
 	projectRef := extractProjectRef(cfg.SupabaseURL)
 	logrus.WithField("project_ref", projectRef).Debug("Extracted project reference")
-	
-	// RAILWAY CRITICAL FIX: Use direct IP bypass for known Supabase projects
-	hostname := fmt.Sprintf("db.%s.supabase.co", projectRef)
+
+	// RAILWAY FIX: Try connection pooler first (better IPv4 support)
 	var connStr string
+	hostname := fmt.Sprintf("db.%s.supabase.co", projectRef)
 	
-	// For known problematic projects, use hardcoded IPv4 bypass
-	if projectRef == "bjnjucwpwdzgsnqmpmff" {
-		logrus.Info("🚨 RAILWAY ULTRA: Bypassing all DNS - using direct connection strategies")
-		
-		// ULTRA-AGGRESSIVE: Try multiple hardcoded approaches
-		hardcodedStrategies := []struct {
-			name   string
+	// STRATEGY 1: Try Connection Pooler (IPv6 compatible with fallback)
+	// Supabase pooler uses aws-0-[region].pooler.supabase.com
+	poolerStrategies := []struct {
+		name string
+		connStr string
+	}{
+		{
+			name: "POOLER-SESSION",
+			connStr: fmt.Sprintf("postgresql://postgres.%s:%s@aws-0-us-west-1.pooler.supabase.com:5432/postgres?sslmode=require&connect_timeout=10",
+				projectRef, cfg.SupabaseDBPassword),
+		},
+		{
+			name: "POOLER-TRANSACTION",
+			connStr: fmt.Sprintf("postgresql://postgres.%s:%s@aws-0-us-west-1.pooler.supabase.com:6543/postgres?sslmode=require&connect_timeout=10",
+				projectRef, cfg.SupabaseDBPassword),
+		},
+	}
+
+	for _, strategy := range poolerStrategies {
+		logrus.WithField("strategy", strategy.name).Info("🔄 Attempting Supabase pooler connection")
+
+		testDB, err := sql.Open("postgres", strategy.connStr)
+		if err == nil {
+			ctx, cancel := context.WithTimeout(context.Background(), 8*time.Second)
+			err = testDB.PingContext(ctx)
+			cancel()
+			testDB.Close()
+
+			if err == nil {
+				logrus.WithField("strategy", strategy.name).Info("✅ Pooler connection successful!")
+				connStr = strategy.connStr
+				break
+			}
+		}
+	}
+
+	// STRATEGY 2: Try direct connection with sslmode variations
+	if connStr == "" {
+		logrus.Info("🔄 Pooler failed, trying direct connection strategies")
+		directStrategies := []struct {
+			name string
 			connStr string
 		}{
 			{
-				name: "HARDCODED-BYPASS-1",
-				connStr: fmt.Sprintf("host=%s port=5432 user=postgres dbname=postgres password=%s sslmode=require connect_timeout=5 application_name=railway-bypass1 tcp_user_timeout=5000",
-					hostname, cfg.SupabaseDBPassword),
-			},
-			{
-				name: "HARDCODED-BYPASS-2", 
-				connStr: fmt.Sprintf("host=%s port=5432 user=postgres dbname=postgres password=%s sslmode=disable connect_timeout=8 application_name=railway-bypass2",
-					hostname, cfg.SupabaseDBPassword),
-			},
-			{
-				name: "HARDCODED-BYPASS-3",
-				connStr: fmt.Sprintf("postgresql://postgres:%s@%s:5432/postgres?sslmode=require&connect_timeout=10&application_name=railway-bypass3",
+				name: "DIRECT-SSL-DISABLE",
+				connStr: fmt.Sprintf("postgresql://postgres:%s@%s:5432/postgres?sslmode=disable&connect_timeout=10",
 					cfg.SupabaseDBPassword, hostname),
 			},
+			{
+				name: "DIRECT-SSL-REQUIRE",
+				connStr: fmt.Sprintf("host=%s port=5432 user=postgres dbname=postgres password=%s sslmode=require connect_timeout=10",
+					hostname, cfg.SupabaseDBPassword),
+			},
+			{
+				name: "DIRECT-IPV4-FORCE",
+				connStr: fmt.Sprintf("host=%s port=5432 user=postgres dbname=postgres password=%s sslmode=disable connect_timeout=15 target_session_attrs=read-write",
+					hostname, cfg.SupabaseDBPassword),
+			},
 		}
-		
-		// Try each strategy until one works
-		for _, strategy := range hardcodedStrategies {
-			logrus.WithField("strategy", strategy.name).Info("🔄 RAILWAY: Attempting hardcoded connection strategy")
-			
+
+		for _, strategy := range directStrategies {
+			logrus.WithField("strategy", strategy.name).Info("🔄 Attempting direct connection")
+
 			testDB, err := sql.Open("postgres", strategy.connStr)
 			if err == nil {
-				ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+				ctx, cancel := context.WithTimeout(context.Background(), 8*time.Second)
 				err = testDB.PingContext(ctx)
 				cancel()
 				testDB.Close()
-				
+
 				if err == nil {
-					logrus.WithField("strategy", strategy.name).Info("🎯 RAILWAY SUCCESS: Hardcoded strategy worked!")
+					logrus.WithField("strategy", strategy.name).Info("✅ Direct connection successful!")
 					connStr = strategy.connStr
 					break
-				} else {
-					logrus.WithFields(logrus.Fields{
-						"strategy": strategy.name,
-						"error": err.Error(),
-					}).Warn("🔄 RAILWAY: Strategy failed, trying next")
 				}
 			}
 		}
-		
-		// Final desperate fallback - use environment variables override if available
-		if connStr == "" {
-			logrus.Error("🚨 RAILWAY DESPERATE: All hardcoded strategies failed - using basic fallback")
-			connStr = fmt.Sprintf("host=%s port=5432 user=postgres dbname=postgres password=%s",
-				hostname, cfg.SupabaseDBPassword)
-		}
-	} else {
-		// For other projects, use standard approach
+	}
+
+	// STRATEGY 3: IPv4 resolution fallback
+	if connStr == "" {
+		logrus.Info("🔄 All strategies failed, attempting IPv4 resolution")
 		ipv4Address, err := resolveIPv4(hostname)
 		if err == nil {
-			logrus.WithField("ipv4", ipv4Address).Info("Using IPv4 address with hostaddr")
-			connStr = fmt.Sprintf("hostaddr=%s host=%s port=5432 user=postgres dbname=postgres password=%s sslmode=require connect_timeout=15 application_name=railway-ipv4",
+			logrus.WithField("ipv4", ipv4Address).Info("Resolved IPv4, using hostaddr")
+			connStr = fmt.Sprintf("hostaddr=%s host=%s port=5432 user=postgres dbname=postgres password=%s sslmode=require connect_timeout=15",
 				ipv4Address, hostname, cfg.SupabaseDBPassword)
 		} else {
-			logrus.WithError(err).Warn("IPv4 resolution failed, using hostname fallback")
-			connStr = fmt.Sprintf("host=%s port=5432 user=postgres dbname=postgres password=%s sslmode=require connect_timeout=15 application_name=railway-fallback",
+			logrus.Error("🚨 IPv4 resolution failed - using last resort hostname connection")
+			connStr = fmt.Sprintf("host=%s port=5432 user=postgres dbname=postgres password=%s sslmode=require connect_timeout=20",
 				hostname, cfg.SupabaseDBPassword)
 		}
 	}
