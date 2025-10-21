@@ -51,7 +51,7 @@ const Login: React.FC = () => {
             <Bot className="w-8 h-8 text-white" />
           </div>
           <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-            NodePath
+            Chatbot Automation
           </h1>
           <p className="text-slate-600 dark:text-slate-400 mt-2">
             Sign in to your account
@@ -150,7 +150,7 @@ const Login: React.FC = () => {
         {/* Footer */}
         <div className="text-center mt-8">
           <p className="text-sm text-slate-500 dark:text-slate-400">
-            © 2024 NodePath. All rights reserved.
+            © 2024 Chatbot Automation. All rights reserved.
           </p>
         </div>
       </div>
