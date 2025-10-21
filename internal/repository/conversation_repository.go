@@ -1,0 +1,244 @@
+package repository
+
+import (
+	"chatbot-automation/internal/database"
+	"chatbot-automation/internal/models"
+	"context"
+	"encoding/json"
+	"fmt"
+	"time"
+
+	"github.com/google/uuid"
+)
+
+// ConversationRepository handles conversation data operations
+type ConversationRepository struct {
+	supabase *database.SupabaseClient
+}
+
+// NewConversationRepository creates a new conversation repository
+func NewConversationRepository(supabase *database.SupabaseClient) *ConversationRepository {
+	return &ConversationRepository{
+		supabase: supabase,
+	}
+}
+
+// CreateConversation creates a new conversation
+func (r *ConversationRepository) CreateConversation(ctx context.Context, conversation *models.AIWhatsapp) error {
+	// Generate UUID for new conversation
+	conversation.IDProspect = uuid.New().String()
+	conversation.CreatedAt = time.Now()
+	conversation.UpdatedAt = time.Now()
+	conversation.IsActive = true
+	conversation.Status = "active"
+
+	// Initialize empty conversation history if not provided
+	if conversation.ConversationHistory == nil {
+		conversation.ConversationHistory = make(map[string]interface{})
+		conversation.ConversationHistory["messages"] = []interface{}{}
+	}
+
+	// Insert using service role (bypasses RLS)
+	data, err := r.supabase.InsertAsAdmin("ai_whatsapp", conversation)
+	if err != nil {
+		return fmt.Errorf("failed to create conversation: %w", err)
+	}
+
+	// Parse response to get created conversation
+	var conversations []models.AIWhatsapp
+	if err := json.Unmarshal(data, &conversations); err != nil {
+		return fmt.Errorf("failed to parse created conversation: %w", err)
+	}
+
+	if len(conversations) > 0 {
+		*conversation = conversations[0]
+	}
+
+	return nil
+}
+
+// GetConversationByID retrieves a conversation by prospect ID
+func (r *ConversationRepository) GetConversationByID(ctx context.Context, prospectID string) (*models.AIWhatsapp, error) {
+	data, err := r.supabase.QueryAsAdmin("ai_whatsapp", map[string]string{
+		"select":      "*",
+		"id_prospect": fmt.Sprintf("eq.%s", prospectID),
+		"limit":       "1",
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to get conversation: %w", err)
+	}
+
+	var conversations []models.AIWhatsapp
+	if err := json.Unmarshal(data, &conversations); err != nil {
+		return nil, fmt.Errorf("failed to parse conversation: %w", err)
+	}
+
+	if len(conversations) == 0 {
+		return nil, fmt.Errorf("conversation not found")
+	}
+
+	return &conversations[0], nil
+}
+
+// GetConversationByProspectNum retrieves a conversation by prospect phone number and device
+func (r *ConversationRepository) GetConversationByProspectNum(ctx context.Context, prospectNum, deviceID string) (*models.AIWhatsapp, error) {
+	data, err := r.supabase.QueryAsAdmin("ai_whatsapp", map[string]string{
+		"select":       "*",
+		"prospect_num": fmt.Sprintf("eq.%s", prospectNum),
+		"id_device":    fmt.Sprintf("eq.%s", deviceID),
+		"limit":        "1",
+		"order":        "created_at.desc",
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to get conversation: %w", err)
+	}
+
+	var conversations []models.AIWhatsapp
+	if err := json.Unmarshal(data, &conversations); err != nil {
+		return nil, fmt.Errorf("failed to parse conversation: %w", err)
+	}
+
+	if len(conversations) == 0 {
+		return nil, nil // Not found, return nil without error
+	}
+
+	return &conversations[0], nil
+}
+
+// GetConversationsByDevice retrieves all conversations for a device
+func (r *ConversationRepository) GetConversationsByDevice(ctx context.Context, deviceID string, limit int) ([]models.AIWhatsapp, error) {
+	params := map[string]string{
+		"select":    "*",
+		"id_device": fmt.Sprintf("eq.%s", deviceID),
+		"order":     "created_at.desc",
+	}
+
+	if limit > 0 {
+		params["limit"] = fmt.Sprintf("%d", limit)
+	}
+
+	data, err := r.supabase.QueryAsAdmin("ai_whatsapp", params)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get conversations: %w", err)
+	}
+
+	var conversations []models.AIWhatsapp
+	if err := json.Unmarshal(data, &conversations); err != nil {
+		return nil, fmt.Errorf("failed to parse conversations: %w", err)
+	}
+
+	return conversations, nil
+}
+
+// GetActiveConversationsByDevice retrieves all active conversations for a device
+func (r *ConversationRepository) GetActiveConversationsByDevice(ctx context.Context, deviceID string) ([]models.AIWhatsapp, error) {
+	data, err := r.supabase.QueryAsAdmin("ai_whatsapp", map[string]string{
+		"select":    "*",
+		"id_device": fmt.Sprintf("eq.%s", deviceID),
+		"is_active": "eq.true",
+		"status":    "eq.active",
+		"order":     "last_interaction.desc",
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to get active conversations: %w", err)
+	}
+
+	var conversations []models.AIWhatsapp
+	if err := json.Unmarshal(data, &conversations); err != nil {
+		return nil, fmt.Errorf("failed to parse conversations: %w", err)
+	}
+
+	return conversations, nil
+}
+
+// UpdateConversation updates a conversation
+func (r *ConversationRepository) UpdateConversation(ctx context.Context, prospectID string, updates map[string]interface{}) error {
+	// Add updated_at timestamp
+	updates["updated_at"] = time.Now()
+
+	_, err := r.supabase.UpdateAsAdmin("ai_whatsapp", map[string]string{
+		"id_prospect": prospectID,
+	}, updates)
+
+	if err != nil {
+		return fmt.Errorf("failed to update conversation: %w", err)
+	}
+
+	return nil
+}
+
+// UpdateLastInteraction updates the last interaction timestamp
+func (r *ConversationRepository) UpdateLastInteraction(ctx context.Context, prospectID string) error {
+	now := time.Now()
+	updates := map[string]interface{}{
+		"last_interaction": now,
+		"updated_at":       now,
+	}
+
+	_, err := r.supabase.UpdateAsAdmin("ai_whatsapp", map[string]string{
+		"id_prospect": prospectID,
+	}, updates)
+
+	if err != nil {
+		return fmt.Errorf("failed to update last interaction: %w", err)
+	}
+
+	return nil
+}
+
+// DeleteConversation deletes a conversation
+func (r *ConversationRepository) DeleteConversation(ctx context.Context, prospectID string) error {
+	err := r.supabase.Delete("ai_whatsapp", map[string]string{
+		"id_prospect": prospectID,
+	})
+
+	if err != nil {
+		return fmt.Errorf("failed to delete conversation: %w", err)
+	}
+
+	return nil
+}
+
+// GetConversationStats retrieves conversation statistics for a device
+func (r *ConversationRepository) GetConversationStats(ctx context.Context, deviceID string) (*models.ConversationStats, error) {
+	// Get all conversations for the device
+	conversations, err := r.GetConversationsByDevice(ctx, deviceID, 0)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get conversations for stats: %w", err)
+	}
+
+	stats := &models.ConversationStats{
+		TotalConversations: len(conversations),
+		ByStage:            make(map[string]int),
+		ByNiche:            make(map[string]int),
+		ByDevice:           make(map[string]int),
+	}
+
+	// Calculate statistics
+	for _, conv := range conversations {
+		// Count by status
+		switch conv.Status {
+		case "active":
+			stats.ActiveConversations++
+		case "completed":
+			stats.CompletedConversations++
+		case "abandoned":
+			stats.AbandonedConversations++
+		}
+
+		// Count by stage
+		if conv.Stage != nil {
+			stats.ByStage[*conv.Stage]++
+		}
+
+		// Count by niche
+		if conv.Niche != nil {
+			stats.ByNiche[*conv.Niche]++
+		}
+
+		// Count by device
+		stats.ByDevice[conv.IDDevice]++
+	}
+
+	return stats, nil
+}

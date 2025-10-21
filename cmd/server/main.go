@@ -37,19 +37,23 @@ func main() {
 	userRepo := repository.NewUserRepository(supabase)
 	deviceRepo := repository.NewDeviceRepository(supabase)
 	flowRepo := repository.NewFlowRepository(supabase)
+	conversationRepo := repository.NewConversationRepository(supabase)
 
 	// Initialize services
 	authService := service.NewAuthService(userRepo, cfg.JWTSecret)
 	deviceService := service.NewDeviceService(deviceRepo)
 	flowService := service.NewFlowService(flowRepo, deviceRepo)
+	conversationService := service.NewConversationService(conversationRepo, deviceRepo)
 
 	// Initialize handlers
 	authHandler := handler.NewAuthHandler(authService)
 	deviceHandler := handler.NewDeviceHandler(deviceService, authService)
 	flowHandler := handler.NewFlowHandler(flowService, authService)
+	conversationHandler := handler.NewConversationHandler(conversationService, authService)
 	log.Printf("✅ Authentication system initialized")
 	log.Printf("✅ Device management system initialized")
 	log.Printf("✅ Flow builder system initialized")
+	log.Printf("✅ Conversation management system initialized")
 
 	// Create Fiber app
 	app := fiber.New(fiber.Config{
@@ -106,6 +110,17 @@ func main() {
 	flows.Get("/:id", flowHandler.GetFlow)
 	flows.Put("/:id", flowHandler.UpdateFlow)
 	flows.Delete("/:id", flowHandler.DeleteFlow)
+
+	// Conversation management routes (requires authentication)
+	conversations := api.Group("/conversations")
+	conversations.Post("/", conversationHandler.CreateConversation)
+	conversations.Get("/:id", conversationHandler.GetConversation)
+	conversations.Put("/:id", conversationHandler.UpdateConversation)
+	conversations.Delete("/:id", conversationHandler.DeleteConversation)
+	conversations.Post("/:id/messages", conversationHandler.AddMessage)
+	conversations.Get("/device/:deviceId", conversationHandler.GetConversationsByDevice)
+	conversations.Get("/device/:deviceId/active", conversationHandler.GetActiveConversations)
+	conversations.Get("/device/:deviceId/stats", conversationHandler.GetConversationStats)
 
 	// Status endpoint with database check
 	api.Get("/status", func(c *fiber.Ctx) error {
