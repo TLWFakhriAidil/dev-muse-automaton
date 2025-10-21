@@ -38,6 +38,7 @@ func main() {
 	deviceRepo := repository.NewDeviceRepository(supabase)
 	flowRepo := repository.NewFlowRepository(supabase)
 	conversationRepo := repository.NewConversationRepository(supabase)
+	analyticsRepo := repository.NewAnalyticsRepository(supabase)
 
 	// Initialize services
 	authService := service.NewAuthService(userRepo, cfg.JWTSecret)
@@ -47,6 +48,7 @@ func main() {
 	aiService := service.NewAIService(deviceRepo)
 	whatsappService := service.NewWhatsAppService(deviceRepo)
 	flowExecutionService := service.NewFlowExecutionService(flowRepo, conversationRepo, deviceRepo, aiService)
+	analyticsService := service.NewAnalyticsService(analyticsRepo, deviceRepo)
 
 	// Initialize handlers
 	authHandler := handler.NewAuthHandler(authService)
@@ -55,6 +57,7 @@ func main() {
 	conversationHandler := handler.NewConversationHandler(conversationService, authService)
 	aiHandler := handler.NewAIHandler(aiService, authService)
 	webhookHandler := handler.NewWebhookHandler(flowExecutionService, deviceService, whatsappService)
+	analyticsHandler := handler.NewAnalyticsHandler(analyticsService, authService)
 	log.Printf("✅ Authentication system initialized")
 	log.Printf("✅ Device management system initialized")
 	log.Printf("✅ Flow builder system initialized")
@@ -62,6 +65,7 @@ func main() {
 	log.Printf("✅ AI integration system initialized (OpenAI + Anthropic)")
 	log.Printf("✅ WhatsApp messaging service initialized")
 	log.Printf("✅ Flow execution engine initialized")
+	log.Printf("✅ Analytics & reporting system initialized")
 
 	// Create Fiber app
 	app := fiber.New(fiber.Config{
@@ -143,6 +147,13 @@ func main() {
 	webhook.Post("/wablas/:deviceId", webhookHandler.HandleWablasWebhook)
 	webhook.Post("/whacenter/:deviceId", webhookHandler.HandleWhacenterWebhook)
 	webhook.Post("/start-flow", webhookHandler.StartFlow)
+
+	// Analytics routes (requires authentication)
+	analytics := api.Group("/analytics")
+	analytics.Get("/dashboard", analyticsHandler.GetDashboard)
+	analytics.Get("/conversations", analyticsHandler.GetConversationAnalytics)
+	analytics.Get("/flows/:flowId", analyticsHandler.GetFlowAnalytics)
+	analytics.Post("/export", analyticsHandler.ExportAnalytics)
 
 	// Status endpoint with database check
 	api.Get("/status", func(c *fiber.Ctx) error {
