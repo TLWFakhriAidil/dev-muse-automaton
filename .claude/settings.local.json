@@ -6,7 +6,8 @@
       "Bash(dir app.exe)",
       "Bash(git add:*)",
       "Bash(git commit -m \"$(cat <<''EOF''\nFix Railway IPv6 Supabase connection issue with multi-strategy approach\n\nThis commit addresses the \"network unreachable\" IPv6 connection issue when deploying to Railway.\n\nChanges:\n1. Database Connection (internal/database/database.go):\n   - Changed GODEBUG from netdns=go+1 to netdns=cgo for better compatibility\n   - Added STRATEGY 1: Supabase Connection Pooler (aws-0-us-west-1.pooler.supabase.com)\n     - Tries port 5432 (session mode) and 6543 (transaction mode)\n   - Added STRATEGY 2: Direct connection with SSL variations\n     - sslmode=disable, sslmode=require, IPv4 force options\n   - Added STRATEGY 3: IPv4 resolution fallback\n   - Removed hardcoded project-specific bypass (bjnjucwpwdzgsnqmpmff)\n   - Each strategy tests connection with 8-second timeout before moving to next\n\n2. Frontend Configuration (src/integrations/supabase/client.ts):\n   - Changed from hardcoded credentials to environment variables\n   - Uses import.meta.env.VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY\n   - Keeps fallback values for local development\n   - Now respects Railway environment variables during build\n\nTechnical Details:\n- Connection Pooler provides better IPv4/IPv6 compatibility\n- Multiple SSL modes handle different network configurations\n- CGO resolver works better in containerized environments\n- Build tested with CGO_ENABLED=0 for static binary\n\nTesting:\n- ✅ Local build successful (CGO disabled)\n- ✅ Binary created without errors\n- Ready for Railway deployment\n\n🤖 Generated with Claude Code\n\nCo-Authored-By: Claude <noreply@anthropic.com>\nEOF\n)\")",
-      "Bash(git push:*)"
+      "Bash(git push:*)",
+      "Bash(nslookup:*)"
     ],
     "deny": [],
     "ask": []

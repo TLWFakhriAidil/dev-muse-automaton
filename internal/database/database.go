@@ -95,7 +95,12 @@ func resolveIPv4(hostname string) (string, error) {
 }
 
 // Initialize creates and returns a PostgreSQL database connection
+// NOTE: This function is DEPRECATED for Railway deployment
+// Use InitializeREST() instead which uses Supabase REST API (no IPv6 issues)
 func Initialize(cfg *config.Config) (*sql.DB, error) {
+	logrus.Warn("⚠️ WARNING: PostgreSQL direct connection is deprecated due to Railway IPv6 issues")
+	logrus.Info("💡 Recommended: Use Supabase REST API client instead")
+
 	// RAILWAY FIX: Use CGO resolver for better IPv4 compatibility
 	os.Setenv("GODEBUG", "netdns=cgo")
 
@@ -105,7 +110,7 @@ func Initialize(cfg *config.Config) (*sql.DB, error) {
 		return initializeFromDatabaseURL(cfg.DatabaseURL)
 	}
 
-	// Otherwise, try Supabase connection
+	// Otherwise, try Supabase connection (will likely fail on Railway due to IPv6)
 	if cfg.SupabaseURL == "" || cfg.SupabaseDBPassword == "" {
 		return nil, fmt.Errorf("No DATABASE_URL and Supabase credentials incomplete - check Railway environment variables")
 	}

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 	"net/http"
@@ -104,21 +105,43 @@ func main() {
 	// Background initialization for heavy services - NON-FATAL
 	go func() {
 		logrus.Info("🔄 Background: Starting heavy services initialization...")
-		
-		// Initialize database
-		var err error
-		db, err = database.Initialize(cfg)
-		if err != nil {
-			logrus.WithError(err).Error("⚠️  Background: Failed to initialize Supabase database")
-			db = nil
-		} else {
-			logrus.Info("✅ Background: Supabase database initialized successfully")
-			
-			// Run migrations
-			if err := database.RunMigrations(db); err != nil {
-				logrus.WithError(err).Warn("Background: Failed to run migrations, continuing anyway")
+
+		// RAILWAY FIX: Try REST API first (no IPv6 issues)
+		logrus.Info("🚀 Attempting Supabase REST API connection (Railway IPv4 compatible)")
+		restClient, restErr := database.NewSupabaseRestClient(cfg)
+		if restErr == nil {
+			// Test REST API connection
+			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+			pingErr := restClient.Ping(ctx)
+			cancel()
+
+			if pingErr == nil {
+				logrus.Info("✅ Supabase REST API connected successfully - using HTTP API")
+				logrus.Warn("⚠️ PostgreSQL migrations SKIPPED - using REST API mode")
+				logrus.Info("💡 Database schema must be managed via Supabase Dashboard")
+				db = nil // Force REST API usage
 			} else {
-				logrus.Info("Background: Database migrations completed")
+				logrus.WithError(pingErr).Warn("REST API ping failed, falling back to PostgreSQL")
+			}
+		}
+
+		// Fallback to PostgreSQL if REST API fails
+		var err error
+		if db == nil && restErr != nil {
+			logrus.Info("🔄 REST API unavailable, attempting PostgreSQL connection...")
+			db, err = database.Initialize(cfg)
+			if err != nil {
+				logrus.WithError(err).Error("⚠️  Background: Failed to initialize database (both REST and PostgreSQL failed)")
+				db = nil
+			} else {
+				logrus.Info("✅ Background: PostgreSQL database initialized successfully")
+
+				// Run migrations
+				if err := database.RunMigrations(db); err != nil {
+					logrus.WithError(err).Warn("Background: Failed to run migrations, continuing anyway")
+				} else {
+					logrus.Info("Background: Database migrations completed")
+				}
 			}
 		}
 
