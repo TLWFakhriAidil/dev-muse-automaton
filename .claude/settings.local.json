@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(go mod init:*)",
+      "Bash(npm create:*)",
+      "Bash(npm install)",
+      "Bash(npm run build:*)",
+      "Bash(CGO_ENABLED=0 go build:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}
