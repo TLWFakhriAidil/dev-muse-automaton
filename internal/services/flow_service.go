@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	"nodepath-chat/internal/models"
+	"chatbot-automation/internal/models"
 
 	"github.com/google/uuid"
 	"github.com/redis/go-redis/v9"

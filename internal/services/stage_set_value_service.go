@@ -3,8 +3,8 @@ package services
 import (
 	"database/sql"
 	"fmt"
-	"nodepath-chat/internal/models"
-	"nodepath-chat/internal/repository"
+	"chatbot-automation/internal/models"
+	"chatbot-automation/internal/repository"
 )
 
 type StageSetValueService struct {

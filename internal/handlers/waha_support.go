@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/sirupsen/logrus"
-	"nodepath-chat/internal/models"
+	"chatbot-automation/internal/models"
 )
 
 // sendWahaTextMessage sends text message via WAHA API - NO RETRY

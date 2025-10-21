@@ -96,7 +96,7 @@ const getCurrentMonthDateRange = () => {
 
 /**
  * WhatsApp Bot component for managing WasapBot Exama flow data
- * Uses wasapBot_nodepath database table
+ * Uses wasapBot database table
  */
 const WhatsAppBot = () => {
   const { has_devices, device_ids } = useDevice();

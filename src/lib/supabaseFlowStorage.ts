@@ -24,7 +24,7 @@ export const saveFlow = async (flow: ChatbotFlow): Promise<void> => {
 
     // Upsert the flow
     const { error } = await supabase
-      .from('chatbot_flows_nodepath')
+      .from('chatbot_flows')
       .upsert([flowData]);
 
     if (error) {
@@ -47,7 +47,7 @@ export const getFlows = async (): Promise<ChatbotFlow[]> => {
     }
 
     const { data, error } = await supabase
-      .from('chatbot_flows_nodepath')
+      .from('chatbot_flows')
       .select('*')
       .order('updated_at', { ascending: false });
 
@@ -81,7 +81,7 @@ export const getFlow = async (id: string): Promise<ChatbotFlow | null> => {
     }
 
     const { data, error } = await supabase
-      .from('chatbot_flows_nodepath')
+      .from('chatbot_flows')
       .select('*')
       .eq('id', id)
       .single();
@@ -118,7 +118,7 @@ export const deleteFlow = async (id: string): Promise<void> => {
     }
 
     const { error } = await supabase
-      .from('chatbot_flows_nodepath')
+      .from('chatbot_flows')
       .delete()
       .eq('id', id);
 

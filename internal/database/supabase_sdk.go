@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"nodepath-chat/internal/config"
+	"chatbot-automation/internal/config"
 	"github.com/sirupsen/logrus"
 )
 

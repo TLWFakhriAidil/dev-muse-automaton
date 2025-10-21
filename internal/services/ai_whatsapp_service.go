@@ -15,10 +15,10 @@ import (
 
 	"github.com/sirupsen/logrus"
 
-	"nodepath-chat/internal/config"
-	"nodepath-chat/internal/models"
-	"nodepath-chat/internal/repository"
-	"nodepath-chat/internal/utils"
+	"chatbot-automation/internal/config"
+	"chatbot-automation/internal/models"
+	"chatbot-automation/internal/repository"
+	"chatbot-automation/internal/utils"
 )
 
 // min returns the minimum of two integers

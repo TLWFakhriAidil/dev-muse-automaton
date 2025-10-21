@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	"nodepath-chat/internal/services"
+	"chatbot-automation/internal/services"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/sirupsen/logrus"

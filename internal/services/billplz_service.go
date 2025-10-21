@@ -9,7 +9,7 @@ import (
 	"net/http"
 	"strconv"
 
-	"nodepath-chat/internal/models"
+	"chatbot-automation/internal/models"
 
 	"github.com/sirupsen/logrus"
 )

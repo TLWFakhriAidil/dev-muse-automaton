@@ -8,10 +8,10 @@ import (
 	"sync"
 	"time"
 
-	"nodepath-chat/internal/config"
-	"nodepath-chat/internal/models"
-	"nodepath-chat/internal/services"
-	"nodepath-chat/internal/utils"
+	"chatbot-automation/internal/config"
+	"chatbot-automation/internal/models"
+	"chatbot-automation/internal/services"
+	"chatbot-automation/internal/utils"
 
 	"github.com/sirupsen/logrus"
 )

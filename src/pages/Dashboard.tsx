@@ -338,7 +338,7 @@ const Dashboard = () => {
                     AI WhatsApp Stage Distribution
                   </CardTitle>
                   <CardDescription>
-                    Conversation stages from ai_whatsapp_nodepath
+                    Conversation stages from ai_whatsapp
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -400,7 +400,7 @@ const Dashboard = () => {
                     WasapBot Stage Breakdown
                   </CardTitle>
                   <CardDescription>
-                    Prospect stages from wasapBot_nodepath
+                    Prospect stages from wasapBot
                   </CardDescription>
                 </CardHeader>
                 <CardContent>

@@ -9,8 +9,8 @@ import (
 	"io"
 	"net/http"
 	"net/url"
-	"nodepath-chat/internal/models"
-	"nodepath-chat/internal/services"
+	"chatbot-automation/internal/models"
+	"chatbot-automation/internal/services"
 	"path/filepath"
 	"regexp"
 

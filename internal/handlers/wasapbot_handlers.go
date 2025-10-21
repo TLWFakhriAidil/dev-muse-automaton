@@ -1,7 +1,7 @@
 package handlers
 
 import (
-	"nodepath-chat/internal/repository"
+	"chatbot-automation/internal/repository"
 	"strconv"
 
 	"github.com/gofiber/fiber/v2"

@@ -7,8 +7,8 @@ import (
 	"strings"
 	"time"
 
-	"nodepath-chat/internal/models"
-	"nodepath-chat/internal/utils"
+	"chatbot-automation/internal/models"
+	"chatbot-automation/internal/utils"
 
 	"github.com/sirupsen/logrus"
 )

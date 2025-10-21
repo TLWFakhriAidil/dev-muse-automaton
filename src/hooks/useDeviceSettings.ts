@@ -34,7 +34,7 @@ export const useDeviceSettings = () => {
       setIsLoading(true);
       // Use type assertion until Supabase types regenerate
       const { data, error } = await supabase
-        .from('device_setting_nodepath' as any)
+        .from('device_setting' as any)
         .select('*')
         .order('created_at', { ascending: false });
 
@@ -58,7 +58,7 @@ export const useDeviceSettings = () => {
     try {
       // Use type assertion until Supabase types regenerate
       const { data, error } = await supabase
-        .from('device_setting_nodepath' as any)
+        .from('device_setting' as any)
         .insert([device])
         .select()
         .single();
@@ -81,7 +81,7 @@ export const useDeviceSettings = () => {
     try {
       // Use type assertion until Supabase types regenerate
       const { data, error } = await supabase
-        .from('device_setting_nodepath' as any)
+        .from('device_setting' as any)
         .update(updates)
         .eq('id', id)
         .select()
@@ -105,7 +105,7 @@ export const useDeviceSettings = () => {
     try {
       // Use type assertion until Supabase types regenerate
       const { error } = await supabase
-        .from('device_setting_nodepath' as any)
+        .from('device_setting' as any)
         .delete()
         .eq('id', id);
 

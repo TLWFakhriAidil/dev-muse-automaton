@@ -14,7 +14,7 @@ export type Database = {
   }
   public: {
     Tables: {
-      chatbot_flows_nodepath: {
+      chatbot_flows: {
         Row: {
           created_at: string | null
           edges: Json | null
@@ -47,7 +47,7 @@ export type Database = {
         }
         Relationships: []
       }
-      device_setting_nodepath: {
+      device_setting: {
         Row: {
           api_key: string | null
           api_key_option: string | null

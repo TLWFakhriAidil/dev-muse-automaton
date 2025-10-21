@@ -22,12 +22,12 @@ import (
 	"github.com/redis/go-redis/v9"
 	"github.com/sirupsen/logrus"
 
-	"nodepath-chat/internal/config"
-	"nodepath-chat/internal/database"
-	"nodepath-chat/internal/handlers"
-	"nodepath-chat/internal/repository"
-	"nodepath-chat/internal/services"
-	"nodepath-chat/internal/whatsapp"
+	"chatbot-automation/internal/config"
+	"chatbot-automation/internal/database"
+	"chatbot-automation/internal/handlers"
+	"chatbot-automation/internal/repository"
+	"chatbot-automation/internal/services"
+	"chatbot-automation/internal/whatsapp"
 )
 
 func main() {

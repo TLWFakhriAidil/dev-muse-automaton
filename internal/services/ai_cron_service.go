@@ -15,8 +15,8 @@ import (
 	"sync"
 	"time"
 
-	"nodepath-chat/internal/models"
-	"nodepath-chat/internal/repository"
+	"chatbot-automation/internal/models"
+	"chatbot-automation/internal/repository"
 
 	"github.com/robfig/cron/v3"
 	"github.com/sirupsen/logrus"

@@ -13,9 +13,9 @@ import (
 	"sync"
 	"time"
 
-	"nodepath-chat/internal/config"
-	"nodepath-chat/internal/models"
-	"nodepath-chat/internal/repository"
+	"chatbot-automation/internal/config"
+	"chatbot-automation/internal/models"
+	"chatbot-automation/internal/repository"
 
 	"github.com/sirupsen/logrus"
 )

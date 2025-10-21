@@ -3,7 +3,7 @@ package services
 import (
 	"fmt"
 	"github.com/sirupsen/logrus"
-	"nodepath-chat/internal/models"
+	"chatbot-automation/internal/models"
 	"strconv"
 	"strings"
 )

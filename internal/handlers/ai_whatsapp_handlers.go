@@ -8,9 +8,9 @@ import (
 	"strings"
 	"time"
 
-	"nodepath-chat/internal/models"
-	"nodepath-chat/internal/repository"
-	"nodepath-chat/internal/services"
+	"chatbot-automation/internal/models"
+	"chatbot-automation/internal/repository"
+	"chatbot-automation/internal/services"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/sirupsen/logrus"

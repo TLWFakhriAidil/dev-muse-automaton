@@ -2,7 +2,7 @@ package handlers
 
 import (
 	"database/sql"
-	"nodepath-chat/internal/models"
+	"chatbot-automation/internal/models"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/sirupsen/logrus"

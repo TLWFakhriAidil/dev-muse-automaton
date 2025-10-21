@@ -4,7 +4,7 @@ import (
 	"database/sql"
 	"time"
 
-	"nodepath-chat/internal/models"
+	"chatbot-automation/internal/models"
 
 	"github.com/sirupsen/logrus"
 )

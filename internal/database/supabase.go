@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"time"
 
-	"nodepath-chat/internal/config"
+	"chatbot-automation/internal/config"
 
 	_ "github.com/lib/pq" // PostgreSQL driver
 	"github.com/sirupsen/logrus"

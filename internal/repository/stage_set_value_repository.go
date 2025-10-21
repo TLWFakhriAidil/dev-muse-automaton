@@ -3,7 +3,7 @@ package repository
 import (
 	"database/sql"
 	"fmt"
-	"nodepath-chat/internal/models"
+	"chatbot-automation/internal/models"
 )
 
 type StageSetValueRepository struct {

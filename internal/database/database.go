@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	"nodepath-chat/internal/config"
+	"chatbot-automation/internal/config"
 	_ "github.com/lib/pq" // PostgreSQL driver for Supabase
 	"github.com/sirupsen/logrus"
 )

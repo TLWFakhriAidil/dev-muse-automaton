@@ -4,7 +4,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
-	"nodepath-chat/internal/models"
+	"chatbot-automation/internal/models"
 	"strconv"
 	"strings"
 	"time"

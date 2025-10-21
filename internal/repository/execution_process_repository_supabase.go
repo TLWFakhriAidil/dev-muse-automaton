@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"time"
 
-	"nodepath-chat/internal/database"
-	"nodepath-chat/internal/models"
+	"chatbot-automation/internal/database"
+	"chatbot-automation/internal/models"
 
 	"github.com/sirupsen/logrus"
 )

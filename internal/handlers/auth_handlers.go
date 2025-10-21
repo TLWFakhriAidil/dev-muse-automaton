@@ -8,7 +8,7 @@ import (
 	"hash/fnv"
 	"time"
 
-	"nodepath-chat/internal/models"
+	"chatbot-automation/internal/models"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/sirupsen/logrus"
@@ -702,9 +702,9 @@ func (ah *AuthHandlers) loginWithFallback(c *fiber.Ctx) error {
 	// Fallback credentials for development when database is unavailable
 	// In production, this should be removed or use environment variables
 	fallbackCredentials := map[string]string{
-		"admin@nodepath.com": "admin123",
-		"test@nodepath.com":  "test123",
-		"demo@nodepath.com":  "demo123",
+		"admin@chatbot-automation.com": "admin123",
+		"test@chatbot-automation.com":  "test123",
+		"demo@chatbot-automation.com":  "demo123",
 	}
 
 	// Check fallback credentials

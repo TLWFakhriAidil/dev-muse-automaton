@@ -1,4 +1,4 @@
-module nodepath-chat
+module chatbot-automation
 
 go 1.23.0
 

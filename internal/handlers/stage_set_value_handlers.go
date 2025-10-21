@@ -2,8 +2,8 @@ package handlers
 
 import (
 	"database/sql"
-	"nodepath-chat/internal/models"
-	"nodepath-chat/internal/services"
+	"chatbot-automation/internal/models"
+	"chatbot-automation/internal/services"
 	"strconv"
 
 	"github.com/gofiber/fiber/v2"

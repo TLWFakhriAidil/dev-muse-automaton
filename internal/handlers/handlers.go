@@ -4,11 +4,11 @@ import (
 	"context"
 	"database/sql"
 
-	"nodepath-chat/internal/config"
-	"nodepath-chat/internal/models"
-	"nodepath-chat/internal/repository"
-	"nodepath-chat/internal/services"
-	"nodepath-chat/internal/whatsapp"
+	"chatbot-automation/internal/config"
+	"chatbot-automation/internal/models"
+	"chatbot-automation/internal/repository"
+	"chatbot-automation/internal/services"
+	"chatbot-automation/internal/whatsapp"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/sirupsen/logrus"

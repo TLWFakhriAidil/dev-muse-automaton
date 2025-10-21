@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"time"
 
-	"nodepath-chat/internal/database"
-	"nodepath-chat/internal/models"
+	"chatbot-automation/internal/database"
+	"chatbot-automation/internal/models"
 )
 
 // StageSetValueRepositorySupabase implements stage set value repository using Supabase SDK
