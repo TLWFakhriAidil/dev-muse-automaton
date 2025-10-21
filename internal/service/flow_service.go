@@ -23,15 +23,24 @@ func NewFlowService(flowRepo *repository.FlowRepository, deviceRepo *repository.
 
 // CreateFlow creates a new flow for a device
 func (s *FlowService) CreateFlow(ctx context.Context, userID string, req *models.CreateFlowRequest) (*models.FlowResponse, error) {
-	// Verify device ownership
-	device, err := s.deviceRepo.GetDeviceByID(ctx, req.IDDevice)
+	// Try to find device by device_id field first, then by UUID id
+	device, err := s.deviceRepo.GetDeviceByDeviceID(ctx, req.IDDevice)
 	if err != nil {
-		return &models.FlowResponse{
-			Success: false,
-			Message: "Device not found",
-		}, nil
+		return nil, fmt.Errorf("failed to lookup device: %w", err)
 	}
 
+	// If not found by device_id, try by UUID id
+	if device == nil {
+		device, err = s.deviceRepo.GetDeviceByID(ctx, req.IDDevice)
+		if err != nil {
+			return &models.FlowResponse{
+				Success: false,
+				Message: "Device not found",
+			}, nil
+		}
+	}
+
+	// Verify ownership
 	if device.UserID == nil || *device.UserID != userID {
 		return &models.FlowResponse{
 			Success: false,
@@ -39,9 +48,9 @@ func (s *FlowService) CreateFlow(ctx context.Context, userID string, req *models
 		}, nil
 	}
 
-	// Create flow
+	// Create flow using the device's UUID id (not device_id field)
 	flow := &models.ChatbotFlow{
-		IDDevice: req.IDDevice,
+		IDDevice: device.ID, // Use the UUID id from the device
 		Name:     req.Name,
 		Niche:    req.Niche,
 		Nodes:    req.Nodes,
@@ -86,15 +95,24 @@ func (s *FlowService) GetFlow(ctx context.Context, userID, flowID string) (*mode
 
 // GetFlowsByDevice retrieves all flows for a specific device
 func (s *FlowService) GetFlowsByDevice(ctx context.Context, userID, deviceID string) (*models.FlowResponse, error) {
-	// Verify device ownership
-	device, err := s.deviceRepo.GetDeviceByID(ctx, deviceID)
+	// Try to find device by device_id field first, then by UUID id
+	device, err := s.deviceRepo.GetDeviceByDeviceID(ctx, deviceID)
 	if err != nil {
-		return &models.FlowResponse{
-			Success: false,
-			Message: "Device not found",
-		}, nil
+		return nil, fmt.Errorf("failed to lookup device: %w", err)
 	}
 
+	// If not found by device_id, try by UUID id
+	if device == nil {
+		device, err = s.deviceRepo.GetDeviceByID(ctx, deviceID)
+		if err != nil {
+			return &models.FlowResponse{
+				Success: false,
+				Message: "Device not found",
+			}, nil
+		}
+	}
+
+	// Verify ownership
 	if device.UserID == nil || *device.UserID != userID {
 		return &models.FlowResponse{
 			Success: false,
@@ -102,7 +120,8 @@ func (s *FlowService) GetFlowsByDevice(ctx context.Context, userID, deviceID str
 		}, nil
 	}
 
-	flows, err := s.flowRepo.GetFlowsByDeviceID(ctx, deviceID)
+	// Get flows using the device's UUID id
+	flows, err := s.flowRepo.GetFlowsByDeviceID(ctx, device.ID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get flows: %w", err)
 	}
