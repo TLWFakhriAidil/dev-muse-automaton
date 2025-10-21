@@ -1,0 +1,48 @@
+package models
+
+import "time"
+
+// DeviceSetting represents a WhatsApp device configuration
+type DeviceSetting struct {
+	ID           string     `json:"id"`
+	DeviceID     *string    `json:"device_id,omitempty"`
+	Instance     *string    `json:"instance,omitempty"`
+	WebhookID    *string    `json:"webhook_id,omitempty"`
+	Provider     string     `json:"provider"` // waha, wablas, whacenter
+	APIKeyOption string     `json:"api_key_option"` // openai/gpt-4.1, etc.
+	APIKey       *string    `json:"api_key,omitempty"`
+	IDDevice     *string    `json:"id_device,omitempty"`
+	IDERP        *string    `json:"id_erp,omitempty"`
+	IDAdmin      *string    `json:"id_admin,omitempty"`
+	PhoneNumber  *string    `json:"phone_number,omitempty"`
+	CreatedAt    time.Time  `json:"created_at"`
+	UpdatedAt    time.Time  `json:"updated_at"`
+	UserID       *string    `json:"user_id,omitempty"`
+}
+
+// CreateDeviceRequest is the request body for creating a device
+type CreateDeviceRequest struct {
+	DeviceID     string  `json:"device_id" validate:"required"`
+	Provider     string  `json:"provider" validate:"required,oneof=waha wablas whacenter"`
+	APIKeyOption string  `json:"api_key_option" validate:"required"`
+	APIKey       *string `json:"api_key,omitempty"`
+	PhoneNumber  string  `json:"phone_number" validate:"required"`
+	Instance     *string `json:"instance,omitempty"`
+}
+
+// UpdateDeviceRequest is the request body for updating a device
+type UpdateDeviceRequest struct {
+	Provider     *string `json:"provider,omitempty"`
+	APIKeyOption *string `json:"api_key_option,omitempty"`
+	APIKey       *string `json:"api_key,omitempty"`
+	PhoneNumber  *string `json:"phone_number,omitempty"`
+	Instance     *string `json:"instance,omitempty"`
+}
+
+// DeviceResponse is the response for device operations
+type DeviceResponse struct {
+	Success bool           `json:"success"`
+	Message string         `json:"message"`
+	Device  *DeviceSetting `json:"device,omitempty"`
+	Devices []DeviceSetting `json:"devices,omitempty"`
+}

@@ -35,13 +35,17 @@ func main() {
 
 	// Initialize repositories
 	userRepo := repository.NewUserRepository(supabase)
+	deviceRepo := repository.NewDeviceRepository(supabase)
 
 	// Initialize services
 	authService := service.NewAuthService(userRepo, cfg.JWTSecret)
+	deviceService := service.NewDeviceService(deviceRepo)
 
 	// Initialize handlers
 	authHandler := handler.NewAuthHandler(authService)
+	deviceHandler := handler.NewDeviceHandler(deviceService, authService)
 	log.Printf("✅ Authentication system initialized")
+	log.Printf("✅ Device management system initialized")
 
 	// Create Fiber app
 	app := fiber.New(fiber.Config{
@@ -81,6 +85,14 @@ func main() {
 	auth.Post("/register", authHandler.Register)
 	auth.Post("/login", authHandler.Login)
 	auth.Get("/profile", authHandler.GetProfile)
+
+	// Device management routes (requires authentication)
+	devices := api.Group("/devices")
+	devices.Post("/", deviceHandler.CreateDevice)
+	devices.Get("/", deviceHandler.GetUserDevices)
+	devices.Get("/:id", deviceHandler.GetDevice)
+	devices.Put("/:id", deviceHandler.UpdateDevice)
+	devices.Delete("/:id", deviceHandler.DeleteDevice)
 
 	// Status endpoint with database check
 	api.Get("/status", func(c *fiber.Ctx) error {
