@@ -17,6 +17,7 @@ const (
 	NodeTypeDelay     NodeType = "delay"
 	NodeTypeStage     NodeType = "stage"
 	NodeTypePrompt    NodeType = "prompt"
+	NodeTypeUserReply NodeType = "user_reply"
 	NodeTypeEnd       NodeType = "end"
 	NodeTypeAPI       NodeType = "api"
 )

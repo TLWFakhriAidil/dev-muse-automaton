@@ -51,6 +51,7 @@ func (s *FlowExecutionService) registerProcessors() {
 	s.processors[models.NodeTypeDelay] = &DelayNodeProcessor{}
 	s.processors[models.NodeTypeStage] = &StageNodeProcessor{}
 	s.processors[models.NodeTypePrompt] = &PromptNodeProcessor{}
+	s.processors[models.NodeTypeUserReply] = &UserReplyNodeProcessor{}
 	s.processors[models.NodeTypeEnd] = &EndNodeProcessor{}
 }
 

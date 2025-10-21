@@ -732,3 +732,158 @@ func (p *PromptNodeProcessor) ProcessNode(ctx *models.ExecutionContext, node *mo
 func (p *PromptNodeProcessor) GetNodeType() models.NodeType {
 	return models.NodeTypePrompt
 }
+
+// UserReplyNodeProcessor processes user_reply nodes (wait for user input with timeout)
+type UserReplyNodeProcessor struct{}
+
+func (p *UserReplyNodeProcessor) ProcessNode(ctx *models.ExecutionContext, node *models.FlowNode, edges []models.FlowEdge) (*models.ExecutionResult, error) {
+	// Get configuration from node data
+	message, _ := node.Data["message"].(string)
+	if message == "" {
+		message, _ = node.Data["prompt"].(string)
+	}
+	if message == "" {
+		message = "Please provide your response:"
+	}
+
+	variableName, _ := node.Data["variable"].(string)
+	if variableName == "" {
+		variableName, _ = node.Data["variableName"].(string)
+	}
+	if variableName == "" {
+		variableName = "user_reply"
+	}
+
+	// Get timeout configuration (in seconds)
+	timeoutSeconds := 300 // Default 5 minutes
+	if timeoutVal, ok := node.Data["timeout"].(float64); ok {
+		timeoutSeconds = int(timeoutVal)
+	} else if timeoutStr, ok := node.Data["timeout"].(string); ok {
+		if val, err := strconv.Atoi(timeoutStr); err == nil {
+			timeoutSeconds = val
+		}
+	}
+
+	// Replace variables in message
+	if ctx.Variables != nil {
+		for key, value := range ctx.Variables {
+			placeholder := fmt.Sprintf("{{%s}}", key)
+			valueStr := fmt.Sprintf("%v", value)
+			message = strings.ReplaceAll(message, placeholder, valueStr)
+		}
+	}
+
+	// Initialize variables if needed
+	if ctx.Variables == nil {
+		ctx.Variables = make(map[string]interface{})
+	}
+
+	// Tracking keys
+	replySentKey := "_user_reply_sent_" + node.ID
+	replyTimestampKey := "_user_reply_timestamp_" + node.ID
+
+	// Check if we've already sent the prompt
+	replySent, alreadySent := ctx.Variables[replySentKey].(bool)
+
+	if !alreadySent || !replySent {
+		// First time - send the prompt and wait
+		ctx.Variables[replySentKey] = true
+		ctx.Variables[replyTimestampKey] = time.Now().Unix()
+
+		return &models.ExecutionResult{
+			Success:       true,
+			Message:       "Waiting for user reply",
+			NextNodeID:    node.ID, // Stay on this node
+			Response:      message,
+			ShouldReply:   true,
+			Variables:     ctx.Variables,
+			CompletedFlow: false,
+		}, nil
+	}
+
+	// Check timeout
+	if timestamp, ok := ctx.Variables[replyTimestampKey].(int64); ok {
+		elapsedSeconds := time.Now().Unix() - timestamp
+
+		if elapsedSeconds > int64(timeoutSeconds) {
+			// Timeout occurred - take timeout path
+			ctx.Variables[variableName] = "" // Empty response
+			ctx.Variables["_timeout_occurred"] = true
+			delete(ctx.Variables, replySentKey)
+			delete(ctx.Variables, replyTimestampKey)
+
+			// Find timeout edge (handle labeled "timeout" or "no")
+			timeoutNodeID := ""
+			normalNodeID := ""
+
+			for _, edge := range edges {
+				if edge.Source == node.ID {
+					if edge.Label == "timeout" || edge.SourceHandle == "timeout" ||
+					   edge.Label == "no" || edge.SourceHandle == "no" {
+						timeoutNodeID = edge.Target
+					} else if edge.Label == "success" || edge.SourceHandle == "success" ||
+					          edge.Label == "yes" || edge.SourceHandle == "yes" {
+						normalNodeID = edge.Target
+					} else if normalNodeID == "" {
+						normalNodeID = edge.Target // Fallback to first edge
+					}
+				}
+			}
+
+			nextNodeID := timeoutNodeID
+			if nextNodeID == "" {
+				nextNodeID = normalNodeID // No timeout edge, use normal path
+			}
+
+			return &models.ExecutionResult{
+				Success:       true,
+				Message:       fmt.Sprintf("User reply timeout after %d seconds", timeoutSeconds),
+				NextNodeID:    nextNodeID,
+				ShouldReply:   false,
+				Variables:     ctx.Variables,
+				CompletedFlow: nextNodeID == "",
+			}, nil
+		}
+	}
+
+	// User responded in time - store their reply
+	ctx.Variables[variableName] = ctx.UserMessage
+	ctx.Variables["_timeout_occurred"] = false
+	delete(ctx.Variables, replySentKey)
+	delete(ctx.Variables, replyTimestampKey)
+
+	// Find success edge (handle labeled "success" or "yes")
+	successNodeID := ""
+	for _, edge := range edges {
+		if edge.Source == node.ID {
+			if edge.Label == "success" || edge.SourceHandle == "success" ||
+			   edge.Label == "yes" || edge.SourceHandle == "yes" {
+				successNodeID = edge.Target
+				break
+			}
+		}
+	}
+
+	// If no success edge found, take first available edge
+	if successNodeID == "" {
+		for _, edge := range edges {
+			if edge.Source == node.ID {
+				successNodeID = edge.Target
+				break
+			}
+		}
+	}
+
+	return &models.ExecutionResult{
+		Success:       true,
+		Message:       fmt.Sprintf("User reply stored in variable: %s", variableName),
+		NextNodeID:    successNodeID,
+		ShouldReply:   false,
+		Variables:     ctx.Variables,
+		CompletedFlow: successNodeID == "",
+	}, nil
+}
+
+func (p *UserReplyNodeProcessor) GetNodeType() models.NodeType {
+	return models.NodeTypeUserReply
+}
