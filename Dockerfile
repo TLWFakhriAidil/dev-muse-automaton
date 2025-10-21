@@ -26,7 +26,16 @@ COPY BUILD_TIMESTAMP ./
 # Clean any existing build and node cache
 RUN rm -rf dist/ node_modules/.vite node_modules/.cache
 
-# Build the React application
+# Set build arguments for Vite environment variables
+# These will be passed from Railway environment variables during build
+ARG VITE_SUPABASE_URL
+ARG VITE_SUPABASE_ANON_KEY
+
+# Export as environment variables for Vite build
+ENV VITE_SUPABASE_URL=$VITE_SUPABASE_URL
+ENV VITE_SUPABASE_ANON_KEY=$VITE_SUPABASE_ANON_KEY
+
+# Build the React application with environment variables
 RUN npm run build
 
 # Backend build stage - Using Go 1.23 which is the latest stable version available in Docker Hub

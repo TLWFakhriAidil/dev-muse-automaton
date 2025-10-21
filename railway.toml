@@ -1,9 +1,9 @@
 [build]
   builder = "DOCKERFILE"
-  # Use optimized build process
-  buildCommand = "chmod +x ./railway-production-deploy.sh && ./railway-production-deploy.sh"
+  # Dockerfile handles both frontend (npm build) and backend (go build) properly
+  # No custom buildCommand needed - let Docker do the work
   # Optimize build performance
-  watchPatterns = ["cmd/**/*.go", "internal/**/*.go", "Dockerfile"]
+  watchPatterns = ["cmd/**/*.go", "internal/**/*.go", "src/**/*.tsx", "src/**/*.ts", "Dockerfile"]
   nixPacksConfigPath = "railway.toml"
 
 [deploy]
