@@ -29,8 +29,18 @@ func NewSupabaseClient(url, anonKey, serviceKey string) *SupabaseClient {
 	}
 }
 
-// Query executes a SELECT query on a table
+// Query executes a SELECT query on a table (uses anon key, RLS applies)
 func (s *SupabaseClient) Query(table string, params map[string]string) ([]byte, error) {
+	return s.queryWithKey(table, params, s.AnonKey)
+}
+
+// QueryAsAdmin executes a SELECT query on a table using service role key (bypasses RLS)
+func (s *SupabaseClient) QueryAsAdmin(table string, params map[string]string) ([]byte, error) {
+	return s.queryWithKey(table, params, s.ServiceKey)
+}
+
+// queryWithKey executes a SELECT query with a specific API key
+func (s *SupabaseClient) queryWithKey(table string, params map[string]string, apiKey string) ([]byte, error) {
 	url := fmt.Sprintf("%s/rest/v1/%s", s.URL, table)
 
 	req, err := http.NewRequest("GET", url, nil)
@@ -46,8 +56,8 @@ func (s *SupabaseClient) Query(table string, params map[string]string) ([]byte, 
 	req.URL.RawQuery = q.Encode()
 
 	// Add headers
-	req.Header.Set("apikey", s.AnonKey)
-	req.Header.Set("Authorization", "Bearer "+s.AnonKey)
+	req.Header.Set("apikey", apiKey)
+	req.Header.Set("Authorization", "Bearer "+apiKey)
 	req.Header.Set("Content-Type", "application/json")
 
 	resp, err := s.HTTPClient.Do(req)

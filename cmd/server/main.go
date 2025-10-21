@@ -77,10 +77,10 @@ func main() {
 		})
 	})
 
-	// Test database endpoint
+	// Test database endpoint (uses service role to bypass RLS)
 	api.Get("/db/test", func(c *fiber.Ctx) error {
-		// Query user table
-		data, err := supabase.Query("user", map[string]string{
+		// Query user table as admin (bypasses RLS)
+		data, err := supabase.QueryAsAdmin("user", map[string]string{
 			"select": "*",
 			"limit":  "5",
 		})
