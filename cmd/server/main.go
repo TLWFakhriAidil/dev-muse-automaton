@@ -44,16 +44,19 @@ func main() {
 	deviceService := service.NewDeviceService(deviceRepo)
 	flowService := service.NewFlowService(flowRepo, deviceRepo)
 	conversationService := service.NewConversationService(conversationRepo, deviceRepo)
+	aiService := service.NewAIService(deviceRepo)
 
 	// Initialize handlers
 	authHandler := handler.NewAuthHandler(authService)
 	deviceHandler := handler.NewDeviceHandler(deviceService, authService)
 	flowHandler := handler.NewFlowHandler(flowService, authService)
 	conversationHandler := handler.NewConversationHandler(conversationService, authService)
+	aiHandler := handler.NewAIHandler(aiService, authService)
 	log.Printf("✅ Authentication system initialized")
 	log.Printf("✅ Device management system initialized")
 	log.Printf("✅ Flow builder system initialized")
 	log.Printf("✅ Conversation management system initialized")
+	log.Printf("✅ AI integration system initialized (OpenAI + Anthropic)")
 
 	// Create Fiber app
 	app := fiber.New(fiber.Config{
@@ -121,6 +124,12 @@ func main() {
 	conversations.Get("/device/:deviceId", conversationHandler.GetConversationsByDevice)
 	conversations.Get("/device/:deviceId/active", conversationHandler.GetActiveConversations)
 	conversations.Get("/device/:deviceId/stats", conversationHandler.GetConversationStats)
+
+	// AI integration routes (requires authentication)
+	ai := api.Group("/ai")
+	ai.Post("/completion", aiHandler.GenerateCompletion)
+	ai.Post("/chat", aiHandler.SimpleChat)
+	ai.Post("/test", aiHandler.TestConnection)
 
 	// Status endpoint with database check
 	api.Get("/status", func(c *fiber.Ctx) error {
