@@ -94,14 +94,21 @@ func resolveIPv4(hostname string) (string, error) {
 	return "", fmt.Errorf("no IPv4 address found for hostname: %s after trying multiple methods", hostname)
 }
 
-// Initialize creates and returns a Supabase PostgreSQL database connection
+// Initialize creates and returns a PostgreSQL database connection
 func Initialize(cfg *config.Config) (*sql.DB, error) {
-	if cfg.SupabaseURL == "" || cfg.SupabaseDBPassword == "" {
-		return nil, fmt.Errorf("Failed to initialize Supabase database - check your connection settings")
-	}
-
 	// RAILWAY FIX: Use CGO resolver for better IPv4 compatibility
 	os.Setenv("GODEBUG", "netdns=cgo")
+
+	// CRITICAL FIX: If DATABASE_URL exists (Railway PostgreSQL addon), use it directly
+	if cfg.DatabaseURL != "" {
+		logrus.Info("🔄 Found DATABASE_URL - using Railway PostgreSQL addon (IPv4 native)")
+		return initializeFromDatabaseURL(cfg.DatabaseURL)
+	}
+
+	// Otherwise, try Supabase connection
+	if cfg.SupabaseURL == "" || cfg.SupabaseDBPassword == "" {
+		return nil, fmt.Errorf("No DATABASE_URL and Supabase credentials incomplete - check Railway environment variables")
+	}
 
 	logrus.Info("🚀 Initializing Supabase PostgreSQL database connection (Railway IPv4 mode)")
 
@@ -113,21 +120,26 @@ func Initialize(cfg *config.Config) (*sql.DB, error) {
 	var connStr string
 	hostname := fmt.Sprintf("db.%s.supabase.co", projectRef)
 	
-	// STRATEGY 1: Try Connection Pooler (better IPv4/IPv6 compatibility)
-	// Supabase uses Supavisor pooler with format: postgres.[PROJECT_REF]
-	// Transaction mode (6543) is recommended for serverless/Railway
+	// STRATEGY 1: Try Connection Pooler with multiple regions
+	// Supabase pooler format: postgres.[PROJECT_REF]
+	// Try all possible AWS regions where Supabase operates
 	poolerStrategies := []struct {
 		name string
 		connStr string
 	}{
 		{
-			name: "POOLER-TRANSACTION-6543",
+			name: "POOLER-US-EAST-1-TRANSACTION",
+			connStr: fmt.Sprintf("postgres://postgres.%s:%s@aws-0-us-east-1.pooler.supabase.com:6543/postgres",
+				projectRef, cfg.SupabaseDBPassword),
+		},
+		{
+			name: "POOLER-US-WEST-1-TRANSACTION",
 			connStr: fmt.Sprintf("postgres://postgres.%s:%s@aws-0-us-west-1.pooler.supabase.com:6543/postgres",
 				projectRef, cfg.SupabaseDBPassword),
 		},
 		{
-			name: "POOLER-SESSION-5432",
-			connStr: fmt.Sprintf("postgres://postgres.%s:%s@aws-0-us-west-1.pooler.supabase.com:5432/postgres",
+			name: "POOLER-AP-SOUTHEAST-1-TRANSACTION",
+			connStr: fmt.Sprintf("postgres://postgres.%s:%s@aws-0-ap-southeast-1.pooler.supabase.com:6543/postgres",
 				projectRef, cfg.SupabaseDBPassword),
 		},
 	}
@@ -381,19 +393,56 @@ func Initialize(cfg *config.Config) (*sql.DB, error) {
 	return db, nil
 }
 
+// initializeFromDatabaseURL creates a database connection from Railway DATABASE_URL
+func initializeFromDatabaseURL(databaseURL string) (*sql.DB, error) {
+	logrus.WithField("url_prefix", databaseURL[:20]+"...").Info("Connecting to Railway PostgreSQL addon")
+
+	db, err := sql.Open("postgres", databaseURL)
+	if err != nil {
+		return nil, fmt.Errorf("failed to open Railway PostgreSQL connection: %w", err)
+	}
+
+	// Configure connection pool for high concurrency
+	db.SetMaxOpenConns(500)
+	db.SetMaxIdleConns(100)
+	db.SetConnMaxLifetime(60 * time.Minute)
+	db.SetConnMaxIdleTime(15 * time.Minute)
+
+	// Test connection with retry
+	var pingErr error
+	for i := 0; i < 3; i++ {
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		pingErr = db.PingContext(ctx)
+		cancel()
+
+		if pingErr == nil {
+			logrus.Info("✅ Railway PostgreSQL connection established successfully")
+			return db, nil
+		}
+
+		logrus.WithFields(logrus.Fields{
+			"attempt": i + 1,
+			"error": pingErr.Error(),
+		}).Warn("Railway PostgreSQL ping failed, retrying...")
+		time.Sleep(2 * time.Second)
+	}
+
+	return nil, fmt.Errorf("failed to ping Railway PostgreSQL after 3 attempts: %w", pingErr)
+}
+
 // extractProjectRef extracts the project reference from Supabase URL
 // Example: https://abcdefghijklmnop.supabase.co -> abcdefghijklmnop
 func extractProjectRef(supabaseURL string) string {
 	// Remove protocol
 	url := strings.TrimPrefix(supabaseURL, "https://")
 	url = strings.TrimPrefix(url, "http://")
-	
+
 	// Extract project reference (everything before .supabase.co)
 	parts := strings.Split(url, ".")
 	if len(parts) > 0 {
 		return parts[0]
 	}
-	
+
 	return url
 }
 

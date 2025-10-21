@@ -12,11 +12,12 @@ type Config struct {
 	Port   int
 	AppEnv string
 
-	// Database configuration - Supabase ONLY
-	SupabaseURL        string // Supabase project URL (REQUIRED)
-	SupabaseAnonKey    string // Supabase anonymous key (REQUIRED)
-	SupabaseServiceKey string // Supabase service role key (REQUIRED)
-	SupabaseDBPassword string // Supabase database password (REQUIRED)
+	// Database configuration - Supabase OR Railway PostgreSQL
+	SupabaseURL        string // Supabase project URL (OPTIONAL - falls back to DATABASE_URL)
+	SupabaseAnonKey    string // Supabase anonymous key (REQUIRED for frontend)
+	SupabaseServiceKey string // Supabase service role key (OPTIONAL)
+	SupabaseDBPassword string // Supabase database password (OPTIONAL)
+	DatabaseURL        string // Railway DATABASE_URL (fallback if Supabase unavailable)
 
 	// Redis configuration
 	RedisURL          string
@@ -50,11 +51,12 @@ func Load() *Config {
 		Port:   getEnvAsInt("PORT", 8080),
 		AppEnv: getEnv("APP_ENV", "development"),
 
-		// Supabase configuration (REQUIRED for Railway deployment)
+		// Database configuration - try Supabase first, fallback to Railway PostgreSQL
 		SupabaseURL:        getEnv("SUPABASE_URL", ""),
 		SupabaseAnonKey:    getEnv("SUPABASE_ANON_KEY", ""),
 		SupabaseServiceKey: getEnv("SUPABASE_SERVICE_KEY", ""),
 		SupabaseDBPassword: getEnv("SUPABASE_DB_PASSWORD", ""),
+		DatabaseURL:        getEnv("DATABASE_URL", ""), // Railway PostgreSQL fallback
 
 		// Redis configuration with clustering support
 		RedisURL:          getEnv("REDIS_URL", ""),
