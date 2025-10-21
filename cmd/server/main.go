@@ -45,6 +45,7 @@ func main() {
 	flowService := service.NewFlowService(flowRepo, deviceRepo)
 	conversationService := service.NewConversationService(conversationRepo, deviceRepo)
 	aiService := service.NewAIService(deviceRepo)
+	whatsappService := service.NewWhatsAppService(deviceRepo)
 	flowExecutionService := service.NewFlowExecutionService(flowRepo, conversationRepo, deviceRepo, aiService)
 
 	// Initialize handlers
@@ -53,12 +54,13 @@ func main() {
 	flowHandler := handler.NewFlowHandler(flowService, authService)
 	conversationHandler := handler.NewConversationHandler(conversationService, authService)
 	aiHandler := handler.NewAIHandler(aiService, authService)
-	webhookHandler := handler.NewWebhookHandler(flowExecutionService, deviceService)
+	webhookHandler := handler.NewWebhookHandler(flowExecutionService, deviceService, whatsappService)
 	log.Printf("✅ Authentication system initialized")
 	log.Printf("✅ Device management system initialized")
 	log.Printf("✅ Flow builder system initialized")
 	log.Printf("✅ Conversation management system initialized")
 	log.Printf("✅ AI integration system initialized (OpenAI + Anthropic)")
+	log.Printf("✅ WhatsApp messaging service initialized")
 	log.Printf("✅ Flow execution engine initialized")
 
 	// Create Fiber app

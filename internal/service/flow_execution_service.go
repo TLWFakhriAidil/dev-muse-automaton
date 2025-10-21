@@ -42,9 +42,15 @@ func NewFlowExecutionService(
 func (s *FlowExecutionService) registerProcessors() {
 	s.processors[models.NodeTypeStart] = &StartNodeProcessor{}
 	s.processors[models.NodeTypeMessage] = &MessageNodeProcessor{}
+	s.processors[models.NodeTypeImage] = &ImageNodeProcessor{}
+	s.processors[models.NodeTypeAudio] = &AudioNodeProcessor{}
+	s.processors[models.NodeTypeVideo] = &VideoNodeProcessor{}
+	s.processors[models.NodeTypeDocument] = &DocumentNodeProcessor{}
 	s.processors[models.NodeTypeAI] = &AINodeProcessor{aiService: s.aiService}
 	s.processors[models.NodeTypeCondition] = &ConditionNodeProcessor{}
 	s.processors[models.NodeTypeDelay] = &DelayNodeProcessor{}
+	s.processors[models.NodeTypeStage] = &StageNodeProcessor{}
+	s.processors[models.NodeTypePrompt] = &PromptNodeProcessor{}
 	s.processors[models.NodeTypeEnd] = &EndNodeProcessor{}
 }
 

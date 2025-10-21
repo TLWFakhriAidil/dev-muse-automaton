@@ -8,9 +8,15 @@ type NodeType string
 const (
 	NodeTypeStart     NodeType = "start"
 	NodeTypeMessage   NodeType = "message"
+	NodeTypeImage     NodeType = "image"
+	NodeTypeAudio     NodeType = "audio"
+	NodeTypeVideo     NodeType = "video"
+	NodeTypeDocument  NodeType = "document"
 	NodeTypeAI        NodeType = "ai"
 	NodeTypeCondition NodeType = "condition"
 	NodeTypeDelay     NodeType = "delay"
+	NodeTypeStage     NodeType = "stage"
+	NodeTypePrompt    NodeType = "prompt"
 	NodeTypeEnd       NodeType = "end"
 	NodeTypeAPI       NodeType = "api"
 )

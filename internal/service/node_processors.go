@@ -346,3 +346,389 @@ func (p *EndNodeProcessor) ProcessNode(ctx *models.ExecutionContext, node *model
 func (p *EndNodeProcessor) GetNodeType() models.NodeType {
 	return models.NodeTypeEnd
 }
+
+// ImageNodeProcessor processes image nodes
+type ImageNodeProcessor struct{}
+
+func (p *ImageNodeProcessor) ProcessNode(ctx *models.ExecutionContext, node *models.FlowNode, edges []models.FlowEdge) (*models.ExecutionResult, error) {
+	// Get image URL and caption from node data
+	imageURL, _ := node.Data["imageUrl"].(string)
+	if imageURL == "" {
+		imageURL, _ = node.Data["url"].(string)
+	}
+
+	caption, _ := node.Data["caption"].(string)
+	if caption == "" {
+		caption, _ = node.Data["message"].(string)
+	}
+
+	// Replace variables in caption
+	if caption != "" && ctx.Variables != nil {
+		for key, value := range ctx.Variables {
+			placeholder := fmt.Sprintf("{{%s}}", key)
+			valueStr := fmt.Sprintf("%v", value)
+			caption = strings.ReplaceAll(caption, placeholder, valueStr)
+		}
+	}
+
+	if imageURL == "" {
+		return &models.ExecutionResult{
+			Success: false,
+			Message: "Image URL is required",
+			Error:   "No image URL provided in node data",
+		}, nil
+	}
+
+	// Store media info in variables for webhook handler to process
+	if ctx.Variables == nil {
+		ctx.Variables = make(map[string]interface{})
+	}
+	ctx.Variables["_media_type"] = "image"
+	ctx.Variables["_media_url"] = imageURL
+	ctx.Variables["_media_caption"] = caption
+
+	// Find next node
+	nextNodeID := ""
+	for _, edge := range edges {
+		if edge.Source == node.ID {
+			nextNodeID = edge.Target
+			break
+		}
+	}
+
+	// Construct response message for logging
+	response := fmt.Sprintf("[Image: %s]", imageURL)
+	if caption != "" {
+		response = fmt.Sprintf("[Image: %s] %s", imageURL, caption)
+	}
+
+	return &models.ExecutionResult{
+		Success:       true,
+		Message:       "Image message prepared",
+		NextNodeID:    nextNodeID,
+		Response:      response,
+		ShouldReply:   true,
+		Variables:     ctx.Variables,
+		CompletedFlow: nextNodeID == "",
+	}, nil
+}
+
+func (p *ImageNodeProcessor) GetNodeType() models.NodeType {
+	return models.NodeTypeImage
+}
+
+// AudioNodeProcessor processes audio nodes
+type AudioNodeProcessor struct{}
+
+func (p *AudioNodeProcessor) ProcessNode(ctx *models.ExecutionContext, node *models.FlowNode, edges []models.FlowEdge) (*models.ExecutionResult, error) {
+	// Get audio URL from node data
+	audioURL, _ := node.Data["audioUrl"].(string)
+	if audioURL == "" {
+		audioURL, _ = node.Data["url"].(string)
+	}
+
+	if audioURL == "" {
+		return &models.ExecutionResult{
+			Success: false,
+			Message: "Audio URL is required",
+			Error:   "No audio URL provided in node data",
+		}, nil
+	}
+
+	// Store media info in variables
+	if ctx.Variables == nil {
+		ctx.Variables = make(map[string]interface{})
+	}
+	ctx.Variables["_media_type"] = "audio"
+	ctx.Variables["_media_url"] = audioURL
+
+	// Find next node
+	nextNodeID := ""
+	for _, edge := range edges {
+		if edge.Source == node.ID {
+			nextNodeID = edge.Target
+			break
+		}
+	}
+
+	return &models.ExecutionResult{
+		Success:       true,
+		Message:       "Audio message prepared",
+		NextNodeID:    nextNodeID,
+		Response:      fmt.Sprintf("[Audio: %s]", audioURL),
+		ShouldReply:   true,
+		Variables:     ctx.Variables,
+		CompletedFlow: nextNodeID == "",
+	}, nil
+}
+
+func (p *AudioNodeProcessor) GetNodeType() models.NodeType {
+	return models.NodeTypeAudio
+}
+
+// VideoNodeProcessor processes video nodes
+type VideoNodeProcessor struct{}
+
+func (p *VideoNodeProcessor) ProcessNode(ctx *models.ExecutionContext, node *models.FlowNode, edges []models.FlowEdge) (*models.ExecutionResult, error) {
+	// Get video URL and caption from node data
+	videoURL, _ := node.Data["videoUrl"].(string)
+	if videoURL == "" {
+		videoURL, _ = node.Data["url"].(string)
+	}
+
+	caption, _ := node.Data["caption"].(string)
+	if caption == "" {
+		caption, _ = node.Data["message"].(string)
+	}
+
+	// Replace variables in caption
+	if caption != "" && ctx.Variables != nil {
+		for key, value := range ctx.Variables {
+			placeholder := fmt.Sprintf("{{%s}}", key)
+			valueStr := fmt.Sprintf("%v", value)
+			caption = strings.ReplaceAll(caption, placeholder, valueStr)
+		}
+	}
+
+	if videoURL == "" {
+		return &models.ExecutionResult{
+			Success: false,
+			Message: "Video URL is required",
+			Error:   "No video URL provided in node data",
+		}, nil
+	}
+
+	// Store media info in variables
+	if ctx.Variables == nil {
+		ctx.Variables = make(map[string]interface{})
+	}
+	ctx.Variables["_media_type"] = "video"
+	ctx.Variables["_media_url"] = videoURL
+	ctx.Variables["_media_caption"] = caption
+
+	// Find next node
+	nextNodeID := ""
+	for _, edge := range edges {
+		if edge.Source == node.ID {
+			nextNodeID = edge.Target
+			break
+		}
+	}
+
+	response := fmt.Sprintf("[Video: %s]", videoURL)
+	if caption != "" {
+		response = fmt.Sprintf("[Video: %s] %s", videoURL, caption)
+	}
+
+	return &models.ExecutionResult{
+		Success:       true,
+		Message:       "Video message prepared",
+		NextNodeID:    nextNodeID,
+		Response:      response,
+		ShouldReply:   true,
+		Variables:     ctx.Variables,
+		CompletedFlow: nextNodeID == "",
+	}, nil
+}
+
+func (p *VideoNodeProcessor) GetNodeType() models.NodeType {
+	return models.NodeTypeVideo
+}
+
+// DocumentNodeProcessor processes document nodes
+type DocumentNodeProcessor struct{}
+
+func (p *DocumentNodeProcessor) ProcessNode(ctx *models.ExecutionContext, node *models.FlowNode, edges []models.FlowEdge) (*models.ExecutionResult, error) {
+	// Get document URL and filename from node data
+	documentURL, _ := node.Data["documentUrl"].(string)
+	if documentURL == "" {
+		documentURL, _ = node.Data["url"].(string)
+	}
+
+	filename, _ := node.Data["filename"].(string)
+	caption, _ := node.Data["caption"].(string)
+	if caption == "" {
+		caption, _ = node.Data["message"].(string)
+	}
+
+	// Replace variables in caption
+	if caption != "" && ctx.Variables != nil {
+		for key, value := range ctx.Variables {
+			placeholder := fmt.Sprintf("{{%s}}", key)
+			valueStr := fmt.Sprintf("%v", value)
+			caption = strings.ReplaceAll(caption, placeholder, valueStr)
+		}
+	}
+
+	if documentURL == "" {
+		return &models.ExecutionResult{
+			Success: false,
+			Message: "Document URL is required",
+			Error:   "No document URL provided in node data",
+		}, nil
+	}
+
+	// Store media info in variables
+	if ctx.Variables == nil {
+		ctx.Variables = make(map[string]interface{})
+	}
+	ctx.Variables["_media_type"] = "document"
+	ctx.Variables["_media_url"] = documentURL
+	ctx.Variables["_media_filename"] = filename
+	ctx.Variables["_media_caption"] = caption
+
+	// Find next node
+	nextNodeID := ""
+	for _, edge := range edges {
+		if edge.Source == node.ID {
+			nextNodeID = edge.Target
+			break
+		}
+	}
+
+	response := fmt.Sprintf("[Document: %s]", documentURL)
+	if filename != "" {
+		response = fmt.Sprintf("[Document: %s (%s)]", filename, documentURL)
+	}
+	if caption != "" {
+		response += " " + caption
+	}
+
+	return &models.ExecutionResult{
+		Success:       true,
+		Message:       "Document message prepared",
+		NextNodeID:    nextNodeID,
+		Response:      response,
+		ShouldReply:   true,
+		Variables:     ctx.Variables,
+		CompletedFlow: nextNodeID == "",
+	}, nil
+}
+
+func (p *DocumentNodeProcessor) GetNodeType() models.NodeType {
+	return models.NodeTypeDocument
+}
+
+// StageNodeProcessor processes stage nodes (for tracking conversation stage)
+type StageNodeProcessor struct{}
+
+func (p *StageNodeProcessor) ProcessNode(ctx *models.ExecutionContext, node *models.FlowNode, edges []models.FlowEdge) (*models.ExecutionResult, error) {
+	// Get stage name from node data
+	stageName, _ := node.Data["stage"].(string)
+	if stageName == "" {
+		stageName, _ = node.Data["name"].(string)
+	}
+
+	if stageName == "" {
+		stageName = "stage_" + node.ID
+	}
+
+	// Store stage in variables
+	if ctx.Variables == nil {
+		ctx.Variables = make(map[string]interface{})
+	}
+	ctx.Variables["_current_stage"] = stageName
+	ctx.Variables["_stage_timestamp"] = time.Now().Unix()
+
+	// Find next node
+	nextNodeID := ""
+	for _, edge := range edges {
+		if edge.Source == node.ID {
+			nextNodeID = edge.Target
+			break
+		}
+	}
+
+	return &models.ExecutionResult{
+		Success:       true,
+		Message:       fmt.Sprintf("Stage set to: %s", stageName),
+		NextNodeID:    nextNodeID,
+		ShouldReply:   false,
+		Variables:     ctx.Variables,
+		CompletedFlow: nextNodeID == "",
+	}, nil
+}
+
+func (p *StageNodeProcessor) GetNodeType() models.NodeType {
+	return models.NodeTypeStage
+}
+
+// PromptNodeProcessor processes prompt nodes (wait for user input and store in variable)
+type PromptNodeProcessor struct{}
+
+func (p *PromptNodeProcessor) ProcessNode(ctx *models.ExecutionContext, node *models.FlowNode, edges []models.FlowEdge) (*models.ExecutionResult, error) {
+	// Get prompt message and variable name from node data
+	promptMessage, _ := node.Data["message"].(string)
+	if promptMessage == "" {
+		promptMessage, _ = node.Data["prompt"].(string)
+	}
+	if promptMessage == "" {
+		promptMessage = "Please provide your input:"
+	}
+
+	variableName, _ := node.Data["variable"].(string)
+	if variableName == "" {
+		variableName, _ = node.Data["variableName"].(string)
+	}
+	if variableName == "" {
+		variableName = "user_input"
+	}
+
+	// Replace variables in prompt message
+	if ctx.Variables != nil {
+		for key, value := range ctx.Variables {
+			placeholder := fmt.Sprintf("{{%s}}", key)
+			valueStr := fmt.Sprintf("%v", value)
+			promptMessage = strings.ReplaceAll(promptMessage, placeholder, valueStr)
+		}
+	}
+
+	// Check if user has already provided input
+	if ctx.Variables == nil {
+		ctx.Variables = make(map[string]interface{})
+	}
+
+	// If this is the first time hitting this node, send the prompt
+	promptSentKey := "_prompt_sent_" + node.ID
+	if _, alreadySent := ctx.Variables[promptSentKey]; !alreadySent {
+		// Mark prompt as sent
+		ctx.Variables[promptSentKey] = true
+
+		// Don't move to next node yet - wait for user response
+		return &models.ExecutionResult{
+			Success:       true,
+			Message:       "Prompt sent, waiting for user input",
+			NextNodeID:    node.ID, // Stay on this node
+			Response:      promptMessage,
+			ShouldReply:   true,
+			Variables:     ctx.Variables,
+			CompletedFlow: false,
+		}, nil
+	}
+
+	// User has responded - store their message in the variable
+	ctx.Variables[variableName] = ctx.UserMessage
+	delete(ctx.Variables, promptSentKey) // Clean up tracking variable
+
+	// Find next node
+	nextNodeID := ""
+	for _, edge := range edges {
+		if edge.Source == node.ID {
+			nextNodeID = edge.Target
+			break
+		}
+	}
+
+	return &models.ExecutionResult{
+		Success:       true,
+		Message:       fmt.Sprintf("User input stored in variable: %s", variableName),
+		NextNodeID:    nextNodeID,
+		ShouldReply:   false,
+		Variables:     ctx.Variables,
+		CompletedFlow: nextNodeID == "",
+	}, nil
+}
+
+func (p *PromptNodeProcessor) GetNodeType() models.NodeType {
+	return models.NodeTypePrompt
+}

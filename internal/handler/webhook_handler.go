@@ -12,13 +12,15 @@ import (
 type WebhookHandler struct {
 	flowExecutionService *service.FlowExecutionService
 	deviceService        *service.DeviceService
+	whatsappService      *service.WhatsAppService
 }
 
 // NewWebhookHandler creates a new webhook handler
-func NewWebhookHandler(flowExecutionService *service.FlowExecutionService, deviceService *service.DeviceService) *WebhookHandler {
+func NewWebhookHandler(flowExecutionService *service.FlowExecutionService, deviceService *service.DeviceService, whatsappService *service.WhatsAppService) *WebhookHandler {
 	return &WebhookHandler{
 		flowExecutionService: flowExecutionService,
 		deviceService:        deviceService,
+		whatsappService:      whatsappService,
 	}
 }
 
@@ -99,6 +101,29 @@ func (h *WebhookHandler) HandleWhatsAppWebhook(c *fiber.Ctx) error {
 	}
 
 	log.Printf("✅ Message processed successfully: %+v", result)
+
+	// Send reply if needed
+	if result.ShouldReply && result.Response != "" {
+		// Check if media is included in variables
+		mediaType := ""
+		mediaURL := ""
+		if result.Variables != nil {
+			if mt, ok := result.Variables["_media_type"].(string); ok {
+				mediaType = mt
+			}
+			if mu, ok := result.Variables["_media_url"].(string); ok {
+				mediaURL = mu
+			}
+		}
+
+		// Send message via WhatsApp
+		if err := h.whatsappService.SendMessage(c.Context(), deviceID, from, result.Response, mediaType, mediaURL); err != nil {
+			log.Printf("⚠️  Failed to send WhatsApp reply: %v", err)
+			// Don't fail the webhook - just log the error
+		} else {
+			log.Printf("📤 Sent reply to %s: %s", from, result.Response)
+		}
+	}
 
 	return c.JSON(fiber.Map{
 		"success":   true,
