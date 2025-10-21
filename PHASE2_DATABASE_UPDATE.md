@@ -3,6 +3,20 @@
 ## Overview
 This document guides you through executing the **FINAL** database schema that matches your existing MySQL structure.
 
+## ✅ POSTGRES-OPTIMIZED SCHEMA
+
+The schema has been **fixed and optimized** for Supabase/PostgreSQL compatibility:
+
+### Key Improvements:
+- ✅ **UUID data type** - Changed from `CHAR(36)` to native `uuid` type
+- ✅ **CITEXT extension** - Case-insensitive email matching
+- ✅ **timestamptz** - Changed from `TIMESTAMP` to `timestamptz` (timezone-aware)
+- ✅ **numeric(10,2)** - Changed from `DECIMAL` to native PostgreSQL `numeric`
+- ✅ **Foreign key constraints** - Added proper FK relationships with CASCADE
+- ✅ **IF NOT EXISTS** - All indexes use IF NOT EXISTS for idempotency
+- ✅ **SELECT auth.uid() wrapper** - RLS policies use SELECT wrapper for plan stability
+- ✅ **Quoted reserved keywords** - "timestamp" column name properly quoted
+
 ## What Changed
 
 ### New Schema (supabase_schema_final.sql)
@@ -35,7 +49,7 @@ This document guides you through executing the **FINAL** database schema that ma
 
 ### Step 2: Copy Schema
 1. Open `supabase_schema_final.sql` from the repository
-2. Copy **ALL 345 lines**
+2. Copy **ALL 366 lines** (Postgres-optimized version)
 
 ### Step 3: Execute
 1. Paste into SQL Editor
