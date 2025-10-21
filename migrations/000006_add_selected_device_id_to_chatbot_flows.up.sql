@@ -1,1 +1,0 @@
-ALTER TABLE chatbot_flows_nodepath ADD COLUMN selected_device_id VARCHAR(255) DEFAULT '';

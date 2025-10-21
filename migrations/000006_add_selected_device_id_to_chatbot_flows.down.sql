@@ -1,1 +1,0 @@
-ALTER TABLE chatbot_flows_nodepath DROP COLUMN selected_device_id;

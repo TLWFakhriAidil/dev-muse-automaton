@@ -1,1 +1,0 @@
--- No-op down migration - tables are handled in migration 000019

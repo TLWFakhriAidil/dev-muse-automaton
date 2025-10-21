@@ -1,53 +1,31 @@
-# Binaries for programs and plugins
+# Dependencies
+node_modules/
+vendor/
+
+# Build outputs
+dist/
+bin/
 *.exe
-*.exe~
-*.dll
-*.so
-*.dylib
-/whatsapp
+server
 
-# Test binary, built with `go test -c`
-*.test
-
-# Output of the go coverage tool
-*.out
-
-# Go vendor
-/vendor/
-
-# Environment files
+# Environment
 .env
 .env.local
-.env.production
 
 # IDE
-.idea/
 .vscode/
+.idea/
 *.swp
 *.swo
-*~
 
 # OS
 .DS_Store
 Thumbs.db
 
-# WhatsApp session data
-/storages/
-*.db
-*.db-shm
-*.db-wal
-
 # Logs
 *.log
+npm-debug.log*
 
-# Temporary files
-tmp/
-temp/
-node_modules
-
-# Build artifacts and binaries
-test-build
-server
-bin/
-*.exe
-*.bin
+# Go
+go.work
+go.work.sum
