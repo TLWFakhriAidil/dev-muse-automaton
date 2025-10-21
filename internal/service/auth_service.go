@@ -1,0 +1,171 @@
+package service
+
+import (
+	"chatbot-automation/internal/models"
+	"chatbot-automation/internal/repository"
+	"chatbot-automation/internal/utils"
+	"context"
+	"fmt"
+)
+
+// AuthService handles authentication business logic
+type AuthService struct {
+	userRepo  *repository.UserRepository
+	jwtSecret string
+}
+
+// NewAuthService creates a new authentication service
+func NewAuthService(userRepo *repository.UserRepository, jwtSecret string) *AuthService {
+	return &AuthService{
+		userRepo:  userRepo,
+		jwtSecret: jwtSecret,
+	}
+}
+
+// Register registers a new user
+func (s *AuthService) Register(ctx context.Context, req *models.RegisterRequest) (*models.AuthResponse, error) {
+	// Check if user already exists
+	existingUser, _ := s.userRepo.GetUserByEmail(ctx, req.Email)
+	if existingUser != nil {
+		return &models.AuthResponse{
+			Success: false,
+			Message: "User with this email already exists",
+		}, nil
+	}
+
+	// Hash password
+	hashedPassword, err := utils.HashPassword(req.Password)
+	if err != nil {
+		return nil, fmt.Errorf("failed to hash password: %w", err)
+	}
+
+	// Create user
+	user := &models.User{
+		Email:    req.Email,
+		FullName: req.FullName,
+		Password: hashedPassword,
+	}
+
+	if err := s.userRepo.CreateUser(ctx, user); err != nil {
+		return nil, fmt.Errorf("failed to create user: %w", err)
+	}
+
+	// Generate JWT token
+	token, err := utils.GenerateJWT(user.ID, user.Email, s.jwtSecret)
+	if err != nil {
+		return nil, fmt.Errorf("failed to generate token: %w", err)
+	}
+
+	// Create session with random token
+	sessionToken, err := utils.GenerateRandomToken()
+	if err != nil {
+		return nil, fmt.Errorf("failed to generate session token: %w", err)
+	}
+
+	session := &models.UserSession{
+		UserID: user.ID,
+		Token:  sessionToken,
+	}
+
+	if err := s.userRepo.CreateSession(ctx, session); err != nil {
+		return nil, fmt.Errorf("failed to create session: %w", err)
+	}
+
+	// Remove password from response
+	user.Password = ""
+
+	return &models.AuthResponse{
+		Success: true,
+		Message: "User registered successfully",
+		Token:   token,
+		User:    user,
+	}, nil
+}
+
+// Login authenticates a user and returns a token
+func (s *AuthService) Login(ctx context.Context, req *models.LoginRequest) (*models.AuthResponse, error) {
+	// Get user by email
+	user, err := s.userRepo.GetUserByEmail(ctx, req.Email)
+	if err != nil {
+		return &models.AuthResponse{
+			Success: false,
+			Message: "Invalid email or password",
+		}, nil
+	}
+
+	// Check if user is active
+	if !user.IsActive {
+		return &models.AuthResponse{
+			Success: false,
+			Message: "Account is disabled",
+		}, nil
+	}
+
+	// Verify password
+	if !utils.CheckPassword(user.Password, req.Password) {
+		return &models.AuthResponse{
+			Success: false,
+			Message: "Invalid email or password",
+		}, nil
+	}
+
+	// Update last login
+	if err := s.userRepo.UpdateLastLogin(ctx, user.ID); err != nil {
+		// Log error but don't fail the login
+		fmt.Printf("Failed to update last login: %v\n", err)
+	}
+
+	// Generate JWT token
+	token, err := utils.GenerateJWT(user.ID, user.Email, s.jwtSecret)
+	if err != nil {
+		return nil, fmt.Errorf("failed to generate token: %w", err)
+	}
+
+	// Create session
+	sessionToken, err := utils.GenerateRandomToken()
+	if err != nil {
+		return nil, fmt.Errorf("failed to generate session token: %w", err)
+	}
+
+	session := &models.UserSession{
+		UserID: user.ID,
+		Token:  sessionToken,
+	}
+
+	if err := s.userRepo.CreateSession(ctx, session); err != nil {
+		return nil, fmt.Errorf("failed to create session: %w", err)
+	}
+
+	// Remove password from response
+	user.Password = ""
+
+	return &models.AuthResponse{
+		Success: true,
+		Message: "Login successful",
+		Token:   token,
+		User:    user,
+	}, nil
+}
+
+// ValidateToken validates a JWT token
+func (s *AuthService) ValidateToken(tokenString string) (*utils.JWTClaims, error) {
+	return utils.ValidateJWT(tokenString, s.jwtSecret)
+}
+
+// GetUserByToken retrieves a user by their JWT token
+func (s *AuthService) GetUserByToken(ctx context.Context, tokenString string) (*models.User, error) {
+	claims, err := s.ValidateToken(tokenString)
+	if err != nil {
+		return nil, fmt.Errorf("invalid token: %w", err)
+	}
+
+	user, err := s.userRepo.GetUserByID(ctx, claims.UserID)
+	if err != nil {
+		return nil, fmt.Errorf("user not found: %w", err)
+	}
+
+	// Remove password from response
+	user.Password = ""
+
+	return user, nil
+}

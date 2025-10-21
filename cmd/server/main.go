@@ -7,6 +7,9 @@ import (
 
 	"chatbot-automation/internal/config"
 	"chatbot-automation/internal/database"
+	"chatbot-automation/internal/handler"
+	"chatbot-automation/internal/repository"
+	"chatbot-automation/internal/service"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cors"
@@ -29,6 +32,16 @@ func main() {
 	} else {
 		log.Printf("✅ Supabase connection successful!")
 	}
+
+	// Initialize repositories
+	userRepo := repository.NewUserRepository(supabase)
+
+	// Initialize services
+	authService := service.NewAuthService(userRepo, cfg.JWTSecret)
+
+	// Initialize handlers
+	authHandler := handler.NewAuthHandler(authService)
+	log.Printf("✅ Authentication system initialized")
 
 	// Create Fiber app
 	app := fiber.New(fiber.Config{
@@ -62,6 +75,12 @@ func main() {
 
 	// API routes
 	api := app.Group("/api")
+
+	// Authentication routes
+	auth := api.Group("/auth")
+	auth.Post("/register", authHandler.Register)
+	auth.Post("/login", authHandler.Login)
+	auth.Get("/profile", authHandler.GetProfile)
 
 	// Status endpoint with database check
 	api.Get("/status", func(c *fiber.Ctx) error {
