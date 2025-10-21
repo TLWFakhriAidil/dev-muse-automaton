@@ -477,7 +477,7 @@ func (h *Handlers) GenerateWhacenterDevice(c *fiber.Ctx) error {
 	}
 
 	// Construct production webhook URL using the actual device_id from API response
-	productionWebhookURL := fmt.Sprintf("https://nodepath-chat-production.up.railway.app/api/webhook/%s/%s", req.IDDevice, deviceID)
+	productionWebhookURL := fmt.Sprintf("https://chatbot-automation-production.up.railway.app/api/webhook/%s/%s", req.IDDevice, deviceID)
 
 	// Set webhook for the created device
 	setWebhookURL := fmt.Sprintf("https://api.whacenter.com/api/setWebhook?device_id=%s&webhook=%s",
@@ -833,7 +833,7 @@ func (h *Handlers) GenerateWablasDevice(c *fiber.Ctx) error {
 	newAuthHeader := fmt.Sprintf("%s.%s", deviceToken, deviceSecret)
 
 	// Use production webhook URL
-	productionWebhookURL := fmt.Sprintf("https://nodepath-chat-production.up.railway.app/api/webhook/%s/%s", req.IDDevice, newAuthHeader)
+	productionWebhookURL := fmt.Sprintf("https://chatbot-automation-production.up.railway.app/api/webhook/%s/%s", req.IDDevice, newAuthHeader)
 
 	// Setup webhook configuration using the correct endpoint
 	webhookFormData := url.Values{}
@@ -2013,7 +2013,7 @@ func (h *Handlers) GenerateWahaDevice(c *fiber.Ctx) error {
 	sessionName := fmt.Sprintf("user_%s", req.IDDevice)
 
 	// Webhook endpoint for incoming WA messages - Use dedicated WAHA endpoint
-	webhook := fmt.Sprintf("https://nodepath-chat-production.up.railway.app/api/ai-whatsapp/webhook/waha/%s", req.IDDevice)
+	webhook := fmt.Sprintf("https://chatbot-automation-production.up.railway.app/api/ai-whatsapp/webhook/waha/%s", req.IDDevice)
 
 	// Create HTTP client with timeout
 	client := &http.Client{
