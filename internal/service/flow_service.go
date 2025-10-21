@@ -1,0 +1,239 @@
+package service
+
+import (
+	"chatbot-automation/internal/models"
+	"chatbot-automation/internal/repository"
+	"context"
+	"fmt"
+)
+
+// FlowService handles flow business logic
+type FlowService struct {
+	flowRepo   *repository.FlowRepository
+	deviceRepo *repository.DeviceRepository
+}
+
+// NewFlowService creates a new flow service
+func NewFlowService(flowRepo *repository.FlowRepository, deviceRepo *repository.DeviceRepository) *FlowService {
+	return &FlowService{
+		flowRepo:   flowRepo,
+		deviceRepo: deviceRepo,
+	}
+}
+
+// CreateFlow creates a new flow for a device
+func (s *FlowService) CreateFlow(ctx context.Context, userID string, req *models.CreateFlowRequest) (*models.FlowResponse, error) {
+	// Verify device ownership
+	device, err := s.deviceRepo.GetDeviceByID(ctx, req.IDDevice)
+	if err != nil {
+		return &models.FlowResponse{
+			Success: false,
+			Message: "Device not found",
+		}, nil
+	}
+
+	if device.UserID == nil || *device.UserID != userID {
+		return &models.FlowResponse{
+			Success: false,
+			Message: "Access denied - device does not belong to you",
+		}, nil
+	}
+
+	// Create flow
+	flow := &models.ChatbotFlow{
+		IDDevice: req.IDDevice,
+		Name:     req.Name,
+		Niche:    req.Niche,
+		Nodes:    req.Nodes,
+		Edges:    req.Edges,
+	}
+
+	if err := s.flowRepo.CreateFlow(ctx, flow); err != nil {
+		return nil, fmt.Errorf("failed to create flow: %w", err)
+	}
+
+	return &models.FlowResponse{
+		Success: true,
+		Message: "Flow created successfully",
+		Flow:    flow,
+	}, nil
+}
+
+// GetFlow retrieves a flow by ID
+func (s *FlowService) GetFlow(ctx context.Context, userID, flowID string) (*models.FlowResponse, error) {
+	flow, err := s.flowRepo.GetFlowByID(ctx, flowID)
+	if err != nil {
+		return &models.FlowResponse{
+			Success: false,
+			Message: "Flow not found",
+		}, nil
+	}
+
+	// Verify device ownership
+	device, err := s.deviceRepo.GetDeviceByID(ctx, flow.IDDevice)
+	if err != nil || device.UserID == nil || *device.UserID != userID {
+		return &models.FlowResponse{
+			Success: false,
+			Message: "Access denied",
+		}, nil
+	}
+
+	return &models.FlowResponse{
+		Success: true,
+		Flow:    flow,
+	}, nil
+}
+
+// GetFlowsByDevice retrieves all flows for a specific device
+func (s *FlowService) GetFlowsByDevice(ctx context.Context, userID, deviceID string) (*models.FlowResponse, error) {
+	// Verify device ownership
+	device, err := s.deviceRepo.GetDeviceByID(ctx, deviceID)
+	if err != nil {
+		return &models.FlowResponse{
+			Success: false,
+			Message: "Device not found",
+		}, nil
+	}
+
+	if device.UserID == nil || *device.UserID != userID {
+		return &models.FlowResponse{
+			Success: false,
+			Message: "Access denied",
+		}, nil
+	}
+
+	flows, err := s.flowRepo.GetFlowsByDeviceID(ctx, deviceID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get flows: %w", err)
+	}
+
+	return &models.FlowResponse{
+		Success: true,
+		Message: fmt.Sprintf("Found %d flows", len(flows)),
+		Flows:   flows,
+	}, nil
+}
+
+// GetAllUserFlows retrieves all flows for all user devices
+func (s *FlowService) GetAllUserFlows(ctx context.Context, userID string) (*models.FlowResponse, error) {
+	// Get all user devices
+	devices, err := s.deviceRepo.GetDevicesByUserID(ctx, userID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get user devices: %w", err)
+	}
+
+	if len(devices) == 0 {
+		return &models.FlowResponse{
+			Success: true,
+			Message: "No devices found",
+			Flows:   []models.ChatbotFlow{},
+		}, nil
+	}
+
+	// Extract device IDs
+	deviceIDs := make([]string, len(devices))
+	for i, device := range devices {
+		if device.IDDevice != nil {
+			deviceIDs[i] = *device.IDDevice
+		}
+	}
+
+	// Get all flows for user devices
+	flows, err := s.flowRepo.GetAllFlowsByUserDevices(ctx, deviceIDs)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get flows: %w", err)
+	}
+
+	return &models.FlowResponse{
+		Success: true,
+		Message: fmt.Sprintf("Found %d flows across %d devices", len(flows), len(devices)),
+		Flows:   flows,
+	}, nil
+}
+
+// UpdateFlow updates a flow
+func (s *FlowService) UpdateFlow(ctx context.Context, userID, flowID string, req *models.UpdateFlowRequest) (*models.FlowResponse, error) {
+	// Get flow and verify ownership
+	flow, err := s.flowRepo.GetFlowByID(ctx, flowID)
+	if err != nil {
+		return &models.FlowResponse{
+			Success: false,
+			Message: "Flow not found",
+		}, nil
+	}
+
+	// Verify device ownership
+	device, err := s.deviceRepo.GetDeviceByID(ctx, flow.IDDevice)
+	if err != nil || device.UserID == nil || *device.UserID != userID {
+		return &models.FlowResponse{
+			Success: false,
+			Message: "Access denied",
+		}, nil
+	}
+
+	// Build update map
+	updates := make(map[string]interface{})
+
+	if req.Name != nil {
+		updates["name"] = *req.Name
+	}
+	if req.Niche != nil {
+		updates["niche"] = *req.Niche
+	}
+	if req.Nodes != nil {
+		updates["nodes"] = req.Nodes
+	}
+	if req.Edges != nil {
+		updates["edges"] = req.Edges
+	}
+
+	if len(updates) == 0 {
+		return &models.FlowResponse{
+			Success: false,
+			Message: "No fields to update",
+		}, nil
+	}
+
+	if err := s.flowRepo.UpdateFlow(ctx, flowID, updates); err != nil {
+		return nil, fmt.Errorf("failed to update flow: %w", err)
+	}
+
+	// Get updated flow
+	updatedFlow, _ := s.flowRepo.GetFlowByID(ctx, flowID)
+
+	return &models.FlowResponse{
+		Success: true,
+		Message: "Flow updated successfully",
+		Flow:    updatedFlow,
+	}, nil
+}
+
+// DeleteFlow deletes a flow
+func (s *FlowService) DeleteFlow(ctx context.Context, userID, flowID string) (*models.FlowResponse, error) {
+	// Get flow and verify ownership
+	flow, err := s.flowRepo.GetFlowByID(ctx, flowID)
+	if err != nil {
+		return &models.FlowResponse{
+			Success: false,
+			Message: "Flow not found",
+		}, nil
+	}
+
+	// Verify device ownership
+	device, err := s.deviceRepo.GetDeviceByID(ctx, flow.IDDevice)
+	if err != nil || device.UserID == nil || *device.UserID != userID {
+		return &models.FlowResponse{
+			Success: false,
+			Message: "Access denied",
+		}, nil
+	}
+
+	if err := s.flowRepo.DeleteFlow(ctx, flowID); err != nil {
+		return nil, fmt.Errorf("failed to delete flow: %w", err)
+	}
+
+	return &models.FlowResponse{
+		Success: true,
+		Message: "Flow deleted successfully",
+	}, nil
+}
