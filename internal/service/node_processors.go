@@ -2,7 +2,10 @@ package service
 
 import (
 	"chatbot-automation/internal/models"
+	"encoding/json"
 	"fmt"
+	"io"
+	"net/http"
 	"strconv"
 	"strings"
 	"time"
@@ -886,4 +889,233 @@ func (p *UserReplyNodeProcessor) ProcessNode(ctx *models.ExecutionContext, node 
 
 func (p *UserReplyNodeProcessor) GetNodeType() models.NodeType {
 	return models.NodeTypeUserReply
+}
+
+// APINodeProcessor processes API nodes (external HTTP calls)
+type APINodeProcessor struct{}
+
+func (p *APINodeProcessor) ProcessNode(ctx *models.ExecutionContext, node *models.FlowNode, edges []models.FlowEdge) (*models.ExecutionResult, error) {
+	// Get API configuration from node data
+	url, _ := node.Data["url"].(string)
+	if url == "" {
+		return &models.ExecutionResult{
+			Success: false,
+			Message: "API URL is required",
+			Error:   "No URL provided in node data",
+		}, nil
+	}
+
+	// Replace variables in URL
+	if ctx.Variables != nil {
+		for key, value := range ctx.Variables {
+			placeholder := fmt.Sprintf("{{%s}}", key)
+			valueStr := fmt.Sprintf("%v", value)
+			url = strings.ReplaceAll(url, placeholder, valueStr)
+		}
+	}
+
+	// Get HTTP method (default: GET)
+	method, _ := node.Data["method"].(string)
+	if method == "" {
+		method = "GET"
+	}
+	method = strings.ToUpper(method)
+
+	// Get response variable name
+	responseVariable, _ := node.Data["responseVariable"].(string)
+	if responseVariable == "" {
+		responseVariable = "api_response"
+	}
+
+	// Get headers
+	headers := make(map[string]string)
+	if headersData, ok := node.Data["headers"].(map[string]interface{}); ok {
+		for key, value := range headersData {
+			if strValue, ok := value.(string); ok {
+				// Replace variables in header values
+				if ctx.Variables != nil {
+					for varKey, varValue := range ctx.Variables {
+						placeholder := fmt.Sprintf("{{%s}}", varKey)
+						valueStr := fmt.Sprintf("%v", varValue)
+						strValue = strings.ReplaceAll(strValue, placeholder, valueStr)
+					}
+				}
+				headers[key] = strValue
+			}
+		}
+	}
+
+	// Get request body
+	var requestBody string
+	if bodyData, ok := node.Data["body"].(string); ok {
+		requestBody = bodyData
+		// Replace variables in body
+		if ctx.Variables != nil {
+			for key, value := range ctx.Variables {
+				placeholder := fmt.Sprintf("{{%s}}", key)
+				valueStr := fmt.Sprintf("%v", value)
+				requestBody = strings.ReplaceAll(requestBody, placeholder, valueStr)
+			}
+		}
+	} else if bodyData, ok := node.Data["body"].(map[string]interface{}); ok {
+		// Convert map to JSON
+		bodyBytes, err := json.Marshal(bodyData)
+		if err == nil {
+			requestBody = string(bodyBytes)
+			// Replace variables
+			if ctx.Variables != nil {
+				for key, value := range ctx.Variables {
+					placeholder := fmt.Sprintf("{{%s}}", key)
+					valueStr := fmt.Sprintf("%v", value)
+					requestBody = strings.ReplaceAll(requestBody, placeholder, valueStr)
+				}
+			}
+		}
+	}
+
+	// Get timeout (default: 30 seconds)
+	timeoutSeconds := 30
+	if timeoutVal, ok := node.Data["timeout"].(float64); ok {
+		timeoutSeconds = int(timeoutVal)
+	}
+
+	// Create HTTP client with timeout
+	client := &http.Client{
+		Timeout: time.Duration(timeoutSeconds) * time.Second,
+	}
+
+	// Create request
+	var req *http.Request
+	var err error
+
+	if requestBody != "" && (method == "POST" || method == "PUT" || method == "PATCH") {
+		req, err = http.NewRequest(method, url, strings.NewReader(requestBody))
+	} else {
+		req, err = http.NewRequest(method, url, nil)
+	}
+
+	if err != nil {
+		return p.handleAPIError(ctx, node, edges, fmt.Sprintf("Failed to create request: %v", err))
+	}
+
+	// Set headers
+	req.Header.Set("Content-Type", "application/json")
+	for key, value := range headers {
+		req.Header.Set(key, value)
+	}
+
+	// Make request
+	resp, err := client.Do(req)
+	if err != nil {
+		return p.handleAPIError(ctx, node, edges, fmt.Sprintf("Request failed: %v", err))
+	}
+	defer resp.Body.Close()
+
+	// Read response
+	bodyBytes, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return p.handleAPIError(ctx, node, edges, fmt.Sprintf("Failed to read response: %v", err))
+	}
+
+	responseBody := string(bodyBytes)
+
+	// Check if response is successful (2xx status code)
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return p.handleAPIError(ctx, node, edges, fmt.Sprintf("HTTP %d: %s", resp.StatusCode, responseBody))
+	}
+
+	// Store response in variables
+	if ctx.Variables == nil {
+		ctx.Variables = make(map[string]interface{})
+	}
+
+	// Try to parse as JSON
+	var jsonResponse interface{}
+	if err := json.Unmarshal(bodyBytes, &jsonResponse); err == nil {
+		ctx.Variables[responseVariable] = jsonResponse
+		ctx.Variables[responseVariable+"_raw"] = responseBody
+	} else {
+		// Not JSON, store as string
+		ctx.Variables[responseVariable] = responseBody
+	}
+
+	// Store status code
+	ctx.Variables[responseVariable+"_status"] = resp.StatusCode
+
+	// Find success edge
+	successNodeID := ""
+	for _, edge := range edges {
+		if edge.Source == node.ID {
+			if edge.Label == "success" || edge.SourceHandle == "success" ||
+			   edge.Label == "yes" || edge.SourceHandle == "yes" {
+				successNodeID = edge.Target
+				break
+			}
+		}
+	}
+
+	// If no success edge, take first edge
+	if successNodeID == "" {
+		for _, edge := range edges {
+			if edge.Source == node.ID {
+				successNodeID = edge.Target
+				break
+			}
+		}
+	}
+
+	return &models.ExecutionResult{
+		Success:       true,
+		Message:       fmt.Sprintf("API call successful: %s %s (HTTP %d)", method, url, resp.StatusCode),
+		NextNodeID:    successNodeID,
+		ShouldReply:   false,
+		Variables:     ctx.Variables,
+		CompletedFlow: successNodeID == "",
+	}, nil
+}
+
+func (p *APINodeProcessor) handleAPIError(ctx *models.ExecutionContext, node *models.FlowNode, edges []models.FlowEdge, errorMsg string) (*models.ExecutionResult, error) {
+	// Store error in variables
+	if ctx.Variables == nil {
+		ctx.Variables = make(map[string]interface{})
+	}
+	ctx.Variables["_api_error"] = errorMsg
+	ctx.Variables["_api_success"] = false
+
+	// Find error edge
+	errorNodeID := ""
+	normalNodeID := ""
+
+	for _, edge := range edges {
+		if edge.Source == node.ID {
+			if edge.Label == "error" || edge.SourceHandle == "error" ||
+			   edge.Label == "no" || edge.SourceHandle == "no" {
+				errorNodeID = edge.Target
+			} else if edge.Label == "success" || edge.SourceHandle == "success" ||
+			          edge.Label == "yes" || edge.SourceHandle == "yes" {
+				normalNodeID = edge.Target
+			} else if normalNodeID == "" {
+				normalNodeID = edge.Target // Fallback
+			}
+		}
+	}
+
+	nextNodeID := errorNodeID
+	if nextNodeID == "" {
+		nextNodeID = normalNodeID // No error edge, use success path
+	}
+
+	return &models.ExecutionResult{
+		Success:       false,
+		Message:       "API call failed",
+		NextNodeID:    nextNodeID,
+		ShouldReply:   false,
+		Variables:     ctx.Variables,
+		Error:         errorMsg,
+		CompletedFlow: nextNodeID == "",
+	}, nil
+}
+
+func (p *APINodeProcessor) GetNodeType() models.NodeType {
+	return models.NodeTypeAPI
 }
