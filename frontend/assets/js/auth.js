@@ -131,8 +131,8 @@ async function handleRegister(event) {
         return;
     }
 
-    if (password.length < 6) {
-        showError('registerForm', 'Password must be at least 6 characters long');
+    if (password.length < 8) {
+        showError('registerForm', 'Password must be at least 8 characters long');
         return;
     }
 
@@ -145,7 +145,7 @@ async function handleRegister(event) {
                 'Content-Type': 'application/json',
             },
             body: JSON.stringify({
-                name: name,
+                full_name: name,
                 email: email,
                 password: password
             })
