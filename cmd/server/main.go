@@ -105,6 +105,7 @@ func main() {
 	auth.Post("/register", authHandler.Register)
 	auth.Post("/login", authHandler.Login)
 	auth.Get("/profile", authHandler.GetProfile)
+	auth.Put("/change-password", authHandler.ChangePassword)
 
 	// Device management routes (requires authentication)
 	devices := api.Group("/devices")

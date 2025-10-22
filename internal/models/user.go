@@ -47,3 +47,9 @@ type AuthResponse struct {
 	Token   string `json:"token,omitempty"`
 	User    *User  `json:"user,omitempty"`
 }
+
+// ChangePasswordRequest is the request body for changing password
+type ChangePasswordRequest struct {
+	CurrentPassword string `json:"current_password" validate:"required"`
+	NewPassword     string `json:"new_password" validate:"required,min=6"`
+}

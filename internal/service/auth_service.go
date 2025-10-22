@@ -174,3 +174,48 @@ func (s *AuthService) GetUserByToken(ctx context.Context, tokenString string) (*
 
 	return user, nil
 }
+
+// ChangePassword changes a user's password
+func (s *AuthService) ChangePassword(ctx context.Context, tokenString string, req *models.ChangePasswordRequest) (*models.AuthResponse, error) {
+	// Validate token and get user
+	claims, err := s.ValidateToken(tokenString)
+	if err != nil {
+		return &models.AuthResponse{
+			Success: false,
+			Message: "Invalid or expired token",
+		}, nil
+	}
+
+	// Get user from database
+	user, err := s.userRepo.GetUserByID(ctx, claims.UserID)
+	if err != nil {
+		return &models.AuthResponse{
+			Success: false,
+			Message: "User not found",
+		}, nil
+	}
+
+	// Verify current password
+	if !utils.CheckPassword(user.Password, req.CurrentPassword) {
+		return &models.AuthResponse{
+			Success: false,
+			Message: "Current password is incorrect",
+		}, nil
+	}
+
+	// Hash new password
+	hashedPassword, err := utils.HashPassword(req.NewPassword)
+	if err != nil {
+		return nil, fmt.Errorf("failed to hash password: %w", err)
+	}
+
+	// Update password in database
+	if err := s.userRepo.UpdatePassword(ctx, user.ID, hashedPassword); err != nil {
+		return nil, fmt.Errorf("failed to update password: %w", err)
+	}
+
+	return &models.AuthResponse{
+		Success: true,
+		Message: "Password changed successfully",
+	}, nil
+}

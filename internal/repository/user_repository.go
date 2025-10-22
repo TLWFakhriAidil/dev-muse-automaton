@@ -159,3 +159,21 @@ func (r *UserRepository) GetSessionByToken(ctx context.Context, token string) (*
 
 	return &sessions[0], nil
 }
+
+// UpdatePassword updates a user's password
+func (r *UserRepository) UpdatePassword(ctx context.Context, userID string, hashedPassword string) error {
+	updateData := map[string]interface{}{
+		"password":   hashedPassword,
+		"updated_at": time.Now(),
+	}
+
+	_, err := r.supabase.UpdateAsAdmin("user", map[string]string{
+		"id": userID,
+	}, updateData)
+
+	if err != nil {
+		return fmt.Errorf("failed to update password: %w", err)
+	}
+
+	return nil
+}

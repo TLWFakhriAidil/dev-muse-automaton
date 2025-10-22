@@ -137,3 +137,65 @@ func (h *AuthHandler) GetProfile(c *fiber.Ctx) error {
 		"user":    user,
 	})
 }
+
+// ChangePassword handles changing user password
+func (h *AuthHandler) ChangePassword(c *fiber.Ctx) error {
+	// Get token from Authorization header
+	authHeader := c.Get("Authorization")
+	if authHeader == "" {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+			"success": false,
+			"message": "Authorization header required",
+		})
+	}
+
+	// Extract token
+	token := authHeader
+	if len(authHeader) > 7 && authHeader[:7] == "Bearer " {
+		token = authHeader[7:]
+	}
+
+	var req models.ChangePasswordRequest
+
+	// Parse request body
+	if err := c.BodyParser(&req); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"success": false,
+			"message": "Invalid request body",
+			"error":   err.Error(),
+		})
+	}
+
+	// Validate required fields
+	if req.CurrentPassword == "" || req.NewPassword == "" {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"success": false,
+			"message": "Current password and new password are required",
+		})
+	}
+
+	// Validate new password length
+	if len(req.NewPassword) < 6 {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"success": false,
+			"message": "New password must be at least 6 characters long",
+		})
+	}
+
+	// Call service
+	resp, err := h.authService.ChangePassword(c.Context(), token, &req)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"success": false,
+			"message": "Failed to change password",
+			"error":   err.Error(),
+		})
+	}
+
+	// If password change failed
+	if !resp.Success {
+		return c.Status(fiber.StatusUnauthorized).JSON(resp)
+	}
+
+	return c.Status(fiber.StatusOK).JSON(resp)
+}
