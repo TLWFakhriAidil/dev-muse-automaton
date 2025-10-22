@@ -881,6 +881,11 @@ function saveNodeConfig(event) {
     if (nodeElement) {
         const nodeBody = nodeElement.querySelector('.node-body');
         nodeBody.innerHTML = '<p style="color: #4CAF50;">✓ Configured</p>';
+
+        // If this is a condition node, update output connectors
+        if (nodeData.type === 'conditions' && config.conditions) {
+            updateConditionNodeConnectors(nodeElement, config.conditions);
+        }
     }
 
     closeNodeConfigModal();
@@ -902,6 +907,46 @@ function closeNodeConfigModal() {
     modal.classList.remove('active');
     document.body.style.overflow = 'auto';
     currentConfigNodeId = null;
+}
+
+// Update condition node connectors based on conditions
+function updateConditionNodeConnectors(nodeElement, conditions) {
+    const nodeId = nodeElement.getAttribute('data-node-id');
+
+    // Remove all existing output connectors
+    const existingOutputs = nodeElement.querySelectorAll('.output-connector');
+    existingOutputs.forEach(output => output.remove());
+
+    // Create output connector for each condition
+    const nodeWidth = nodeElement.offsetWidth;
+    const spacing = nodeWidth / (conditions.length + 1);
+
+    conditions.forEach((condition, index) => {
+        const connector = document.createElement('div');
+        connector.className = 'node-connector output-connector';
+        connector.setAttribute('data-connector-type', 'output');
+        connector.setAttribute('data-node-id', nodeId);
+        connector.setAttribute('data-condition-index', index);
+        connector.setAttribute('data-condition-type', condition.type);
+        connector.style.left = `${spacing * (index + 1)}px`;
+        connector.style.bottom = '-7px';
+        connector.style.transform = 'translateX(-50%)';
+
+        // Add tooltip
+        connector.setAttribute('title', `${condition.type}: ${condition.value || 'any'}`);
+
+        // Add click handler
+        connector.addEventListener('click', (e) => {
+            e.stopPropagation();
+            e.preventDefault();
+            console.log('Condition connector clicked:', condition.type);
+            handleConnectorClick(connector);
+        }, true);
+
+        nodeElement.appendChild(connector);
+    });
+
+    console.log(`✓ Updated condition node ${nodeId} with ${conditions.length} output connectors`);
 }
 
 // Edge Connection Functions
@@ -1126,11 +1171,13 @@ function drawConnections() {
 
         // Add hover effect to both paths
         clickPath.addEventListener('mouseenter', () => {
+            console.log('🎯 Hover ENTER on connection:', conn.from, '->', conn.to);
             path.setAttribute('stroke', '#e50914');
             path.setAttribute('stroke-width', '4');
         });
 
         clickPath.addEventListener('mouseleave', () => {
+            console.log('🎯 Hover LEAVE on connection:', conn.from, '->', conn.to);
             path.setAttribute('stroke', '#ffd700');
             path.setAttribute('stroke-width', '3');
         });
