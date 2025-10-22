@@ -977,6 +977,42 @@ function createConnection(fromNodeId, toNodeId) {
     drawConnections();
 }
 
+function deleteConnection(fromNodeId, toNodeId) {
+    Swal.fire({
+        title: 'Delete Connection?',
+        text: 'Remove this connection line?',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#e50914',
+        cancelButtonColor: '#6c757d',
+        confirmButtonText: 'Yes, delete it!',
+        cancelButtonText: 'Cancel',
+        background: '#141414',
+        color: '#ffffff'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            // Remove connection from data
+            flowData.connections = flowData.connections.filter(
+                c => !(c.from === fromNodeId && c.to === toNodeId)
+            );
+            console.log('✓ Connection deleted:', fromNodeId, '->', toNodeId);
+
+            // Redraw connections
+            drawConnections();
+
+            Swal.fire({
+                title: 'Deleted!',
+                text: 'Connection has been removed',
+                icon: 'success',
+                background: '#141414',
+                color: '#ffffff',
+                confirmButtonColor: '#e50914',
+                timer: 1500
+            });
+        }
+    });
+}
+
 function drawConnections() {
     const svg = document.getElementById('connectionLayer');
     const canvasContainer = document.querySelector('.canvas-container');
@@ -1031,6 +1067,25 @@ function drawConnections() {
         path.setAttribute('stroke', '#ffd700');
         path.setAttribute('stroke-width', '2');
         path.setAttribute('fill', 'none');
+        path.style.cursor = 'pointer';
+        path.style.pointerEvents = 'all';
+
+        // Add click handler to delete connection
+        path.addEventListener('click', (e) => {
+            e.stopPropagation();
+            deleteConnection(conn.from, conn.to);
+        });
+
+        // Add hover effect
+        path.addEventListener('mouseenter', () => {
+            path.setAttribute('stroke', '#e50914');
+            path.setAttribute('stroke-width', '3');
+        });
+
+        path.addEventListener('mouseleave', () => {
+            path.setAttribute('stroke', '#ffd700');
+            path.setAttribute('stroke-width', '2');
+        });
 
         svg.appendChild(path);
     });
@@ -1070,8 +1125,10 @@ function initializeCanvasPan() {
         if (e.button === 1 || (e.button === 0 && isCanvasBackground)) {
             isPanning = true;
             panStart = {
-                x: e.clientX - canvasContainer.scrollLeft,
-                y: e.clientY - canvasContainer.scrollTop
+                x: e.clientX,
+                y: e.clientY,
+                scrollLeft: canvasContainer.scrollLeft,
+                scrollTop: canvasContainer.scrollTop
             };
             canvasContainer.style.cursor = 'grabbing';
             e.preventDefault();
@@ -1082,11 +1139,11 @@ function initializeCanvasPan() {
         if (!isPanning) return;
 
         e.preventDefault();
-        const x = e.clientX - panStart.x;
-        const y = e.clientY - panStart.y;
+        const dx = e.clientX - panStart.x;
+        const dy = e.clientY - panStart.y;
 
-        canvasContainer.scrollLeft = -x;
-        canvasContainer.scrollTop = -y;
+        canvasContainer.scrollLeft = panStart.scrollLeft - dx;
+        canvasContainer.scrollTop = panStart.scrollTop - dy;
     });
 
     canvasContainer.addEventListener('mouseup', (e) => {
