@@ -4,6 +4,7 @@ import (
 	"chatbot-automation/internal/models"
 	"chatbot-automation/internal/repository"
 	"context"
+	"encoding/json"
 	"fmt"
 )
 
@@ -57,12 +58,39 @@ func (s *FlowService) CreateFlow(ctx context.Context, userID string, req *models
 		deviceIdentifier = *device.DeviceID
 	}
 
+	// Check if flow already exists for this device
+	existingFlows, err := s.flowRepo.GetFlowsByDeviceID(ctx, deviceIdentifier)
+	if err == nil && len(existingFlows) > 0 {
+		return &models.FlowResponse{
+			Success: false,
+			Message: "Flow already exists for this device. Please delete the existing flow first or update it instead.",
+		}, nil
+	}
+
+	// Parse NodesData JSON string to extract nodes and edges/connections
+	var flowData map[string]interface{}
+	nodes := map[string]interface{}{}
+	edges := map[string]interface{}{}
+
+	if req.NodesData != "" {
+		if err := json.Unmarshal([]byte(req.NodesData), &flowData); err == nil {
+			// Extract nodes array
+			if nodesArray, ok := flowData["nodes"].([]interface{}); ok {
+				nodes["nodes"] = nodesArray
+			}
+			// Extract connections/edges array
+			if connectionsArray, ok := flowData["connections"].([]interface{}); ok {
+				edges["connections"] = connectionsArray
+			}
+		}
+	}
+
 	flow := &models.ChatbotFlow{
 		IDDevice: deviceIdentifier, // Use the user-friendly identifier
 		Name:     req.FlowName,
 		Niche:    req.Niche,
-		Nodes:    map[string]interface{}{}, // Will parse from NodesData if needed
-		Edges:    map[string]interface{}{}, // Will parse from NodesData if needed
+		Nodes:    nodes, // Parsed from NodesData
+		Edges:    edges, // Parsed from NodesData
 	}
 
 	if err := s.flowRepo.CreateFlow(ctx, flow); err != nil {
