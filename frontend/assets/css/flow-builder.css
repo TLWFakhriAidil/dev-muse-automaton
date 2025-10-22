@@ -241,31 +241,28 @@
     height: 2000px;
     min-width: 100%;
     min-height: 100%;
-    pointer-events: none; /* SVG itself doesn't capture events */
-    z-index: 1;
+    pointer-events: none; /* SVG itself doesn't block */
+    z-index: 5; /* Above nodes (z-index: 2) */
     overflow: visible;
 }
 
-/* Connection lines themselves CAN be clicked */
-.connection-layer * {
-    pointer-events: all;
-}
-
+/* Connection lines - visible golden line */
 .connection-line {
     stroke: var(--netflix-gold);
     stroke-width: 3;
     fill: none;
     filter: drop-shadow(0 0 4px rgba(255, 215, 0, 0.3));
-    cursor: pointer;
-    /* Make lines easier to click with invisible wider stroke */
     stroke-linecap: round;
+    pointer-events: none; /* Visual only, clicks go to wider path below */
 }
 
-/* Add invisible wider stroke for easier clicking */
-.connection-line:hover {
-    stroke: var(--netflix-red);
-    stroke-width: 4;
-    filter: drop-shadow(0 0 8px rgba(229, 9, 20, 0.6));
+/* Connection click areas - almost invisible wide clickable area */
+.connection-click-area {
+    stroke-width: 20;
+    fill: none;
+    cursor: pointer;
+    pointer-events: stroke !important; /* Only stroke area is clickable */
+    opacity: 0.01; /* Almost invisible but still exists */
 }
 
 .connection-line.selected {

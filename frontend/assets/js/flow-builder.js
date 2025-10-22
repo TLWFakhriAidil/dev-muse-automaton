@@ -1187,12 +1187,12 @@ function drawConnections() {
         // Create invisible wider path for easier clicking
         const clickPath = document.createElementNS('http://www.w3.org/2000/svg', 'path');
         clickPath.setAttribute('d', d);
-        clickPath.setAttribute('stroke', 'transparent');
+        clickPath.setAttribute('stroke', 'rgba(255,215,0,0.01)'); // Almost transparent but not fully (so pointer-events works)
         clickPath.setAttribute('stroke-width', '20'); // Much wider for easier clicking
         clickPath.setAttribute('fill', 'none');
         clickPath.setAttribute('class', 'connection-click-area');
         clickPath.style.cursor = 'pointer';
-        clickPath.style.pointerEvents = 'all';
+        clickPath.style.pointerEvents = 'stroke'; // Only stroke responds to events
 
         // Add click handler to the wider invisible path
         clickPath.addEventListener('click', (e) => {
