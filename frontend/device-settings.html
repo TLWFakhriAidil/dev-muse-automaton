@@ -123,31 +123,36 @@
                     </div>
 
                     <div class="form-group">
+                        <label for="phoneNumber">Phone Number</label>
+                        <input type="tel" id="phoneNumber" pattern="[0-9]+" placeholder="Enter phone number (numbers only)" title="Please enter numbers only">
+                    </div>
+
+                    <div class="form-group">
                         <label>API Key Option</label>
                         <div class="radio-group">
                             <label class="radio-label">
-                                <input type="radio" name="apiKeyOption" value="chat-gpt-5o" checked>
-                                <span>Chat GPT 5o</span>
+                                <input type="radio" name="apiKeyOption" value="openai/gpt-4o" checked>
+                                <span>GPT-4o</span>
                             </label>
                             <label class="radio-label">
-                                <input type="radio" name="apiKeyOption" value="chat-gpt-5-mini">
-                                <span>Chat GPT 5 Mini</span>
+                                <input type="radio" name="apiKeyOption" value="openai/gpt-4o-mini">
+                                <span>GPT-4o Mini</span>
                             </label>
                             <label class="radio-label">
-                                <input type="radio" name="apiKeyOption" value="chat-gpt-4o">
-                                <span>Chat GPT 4o</span>
+                                <input type="radio" name="apiKeyOption" value="openai/gpt-4-turbo">
+                                <span>GPT-4 Turbo</span>
                             </label>
                             <label class="radio-label">
-                                <input type="radio" name="apiKeyOption" value="chat-gpt-4.1">
-                                <span>Chat GPT 4.1 (NEW)</span>
+                                <input type="radio" name="apiKeyOption" value="openai/gpt-3.5-turbo">
+                                <span>GPT-3.5 Turbo</span>
                             </label>
                             <label class="radio-label">
-                                <input type="radio" name="apiKeyOption" value="gemini-pro-2.5">
-                                <span>GEMINI PRO 2.5</span>
+                                <input type="radio" name="apiKeyOption" value="anthropic/claude-3.5-sonnet">
+                                <span>Claude 3.5 Sonnet</span>
                             </label>
                             <label class="radio-label">
-                                <input type="radio" name="apiKeyOption" value="gemini-pro-1.5">
-                                <span>GEMINI PRO 1.5</span>
+                                <input type="radio" name="apiKeyOption" value="google/gemini-pro-1.5">
+                                <span>Gemini Pro 1.5</span>
                             </label>
                         </div>
                     </div>
@@ -176,11 +181,6 @@
                     </div>
 
                     <div class="form-row">
-                        <div class="form-group">
-                            <label for="phoneNumber">Phone Number</label>
-                            <input type="tel" id="phoneNumber" pattern="[0-9]+" placeholder="Enter phone number (numbers only)" title="Please enter numbers only">
-                        </div>
-
                         <div class="form-group">
                             <label for="idDevice">ID Device</label>
                             <input type="text" id="idDevice" required placeholder="Enter device ID">

@@ -239,6 +239,11 @@
     gap: 1rem;
 }
 
+/* Full width inputs */
+.form-group input[type="tel"] {
+    width: 100%;
+}
+
 /* Modal Footer */
 .modal-footer {
     display: flex;
