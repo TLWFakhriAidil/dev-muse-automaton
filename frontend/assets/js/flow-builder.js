@@ -451,7 +451,11 @@ async function saveFlow() {
                 icon: 'success',
                 background: '#141414',
                 color: '#ffffff',
-                confirmButtonColor: '#e50914'
+                confirmButtonColor: '#e50914',
+                timer: 2000
+            }).then(() => {
+                // Redirect to Flow Manager
+                window.location.href = 'flow-manager.html';
             });
         } else {
             Swal.fire({
@@ -1327,10 +1331,74 @@ function logout() {
     window.location.href = '/';
 }
 
+// Load flow for editing
+async function loadFlowForEdit(flowId) {
+    const token = localStorage.getItem('auth_token');
+    if (!token) {
+        window.location.href = '/';
+        return;
+    }
+
+    try {
+        const response = await fetch(`${API_BASE_URL}/flows/${flowId}`, {
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        });
+
+        const data = await response.json();
+        console.log('Flow data loaded for edit:', data);
+
+        if (data.success && data.flow) {
+            const flow = data.flow;
+
+            // Set device and flow type
+            document.getElementById('deviceSelect').value = flow.id_device;
+            document.getElementById('flowNameSelect').value = flow.name;
+            document.getElementById('nicheInput').value = flow.niche || '';
+
+            // Load nodes and connections
+            if (flow.nodes && flow.nodes.nodes) {
+                loadFlowFromData({
+                    nodes: flow.nodes.nodes,
+                    connections: flow.edges && flow.edges.connections ? flow.edges.connections : []
+                });
+            }
+        } else {
+            Swal.fire({
+                title: 'Error!',
+                text: 'Failed to load flow for editing',
+                icon: 'error',
+                background: '#141414',
+                color: '#ffffff',
+                confirmButtonColor: '#e50914'
+            });
+        }
+    } catch (error) {
+        console.error('Load flow for edit error:', error);
+        Swal.fire({
+            title: 'Error!',
+            text: 'Failed to load flow data',
+            icon: 'error',
+            background: '#141414',
+            color: '#ffffff',
+            confirmButtonColor: '#e50914'
+        });
+    }
+}
+
 // Initialize on page load
 document.addEventListener('DOMContentLoaded', function() {
     loadDevices();
     initializeDragAndDrop();
     initializeConnectors();
     initializeCanvasPan();
+
+    // Check if editing existing flow
+    const urlParams = new URLSearchParams(window.location.search);
+    const flowId = urlParams.get('flowId');
+    if (flowId) {
+        // Wait for devices to load first
+        setTimeout(() => loadFlowForEdit(flowId), 500);
+    }
 });
