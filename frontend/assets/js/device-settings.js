@@ -201,8 +201,9 @@ async function loadDevices() {
                     <table class="devices-table">
                         <thead>
                             <tr>
-                                <th>Device ID</th>
+                                <th>ID</th>
                                 <th>ID Device</th>
+                                <th>Phone Number</th>
                                 <th>Instance</th>
                                 <th>Webhook ID</th>
                                 <th>Provider</th>
@@ -210,16 +211,18 @@ async function loadDevices() {
                                 <th>API Key</th>
                                 <th>ID ERP</th>
                                 <th>ID Admin</th>
-                                <th>Phone Number</th>
+                                <th>Status</th>
                                 <th>Created At</th>
                                 <th>Updated At</th>
+                                <th>Action</th>
                             </tr>
                         </thead>
                         <tbody>
-                            ${data.devices.map(device => `
+                            ${data.devices.map((device, index) => `
                                 <tr>
                                     <td><strong>${device.device_id || '-'}</strong></td>
                                     <td>${device.id_device || '-'}</td>
+                                    <td>${device.phone_number || '-'}</td>
                                     <td>${device.instance || '-'}</td>
                                     <td class="webhook-cell">${device.webhook_id || '-'}</td>
                                     <td><span class="badge badge-${device.provider}">${device.provider || '-'}</span></td>
@@ -227,9 +230,10 @@ async function loadDevices() {
                                     <td>${device.api_key ? '••••••' : '-'}</td>
                                     <td>${device.id_erp || '-'}</td>
                                     <td>${device.id_admin || '-'}</td>
-                                    <td>${device.phone_number || '-'}</td>
+                                    <td><button class="btn-status" onclick="showStatus('${device.id}', '${device.id_device}', '${device.phone_number}', '${device.provider}')">Check</button></td>
                                     <td>${device.created_at ? new Date(device.created_at).toLocaleString() : '-'}</td>
                                     <td>${device.updated_at ? new Date(device.updated_at).toLocaleString() : '-'}</td>
+                                    <td><button class="btn-action" onclick='editDevice(${JSON.stringify(device)})'>Edit</button></td>
                                 </tr>
                             `).join('')}
                         </tbody>
@@ -254,6 +258,77 @@ async function loadDevices() {
 function restrictToNumbers(event) {
     const input = event.target;
     input.value = input.value.replace(/[^0-9]/g, '');
+}
+
+// Show device status modal
+function showStatus(deviceId, idDevice, phoneNumber, provider) {
+    Swal.fire({
+        title: 'Device Status',
+        html: `
+            <div class="status-body">
+                <div class="status-item">
+                    <span class="status-label">Status:</span>
+                    <span class="status-badge status-disconnected">NOT CONNECTED</span>
+                </div>
+                <div class="status-item">
+                    <span class="status-label">Provider:</span>
+                    <span class="status-value">${provider}</span>
+                </div>
+                <div class="status-item">
+                    <span class="status-label">Connected:</span>
+                    <span class="status-badge status-disconnected">No</span>
+                </div>
+                <div class="status-item">
+                    <span class="status-label">Last Checked:</span>
+                    <span class="status-value">${new Date().toLocaleString()}</span>
+                </div>
+                <div class="device-info-box">
+                    <div class="device-info-title">📱 Device Info</div>
+                    <div class="device-info-item"><strong>Name:</strong> ${idDevice}</div>
+                    <div class="device-info-item"><strong>Number:</strong> ${phoneNumber}</div>
+                    <div class="device-info-item" style="color: #ff6b6b;"><strong>QR:</strong> Timeout</div>
+                </div>
+            </div>
+        `,
+        showCloseButton: true,
+        showConfirmButton: true,
+        confirmButtonText: 'Refresh',
+        confirmButtonColor: '#ffffff',
+        background: '#141414',
+        color: '#ffffff',
+        customClass: {
+            popup: 'status-modal-content',
+            title: 'status-title'
+        }
+    });
+}
+
+// Edit device function
+function editDevice(device) {
+    // Populate form with device data
+    document.getElementById('deviceId').value = device.device_id || '';
+    document.getElementById('webhookId').value = device.webhook_id || '';
+    document.getElementById('phoneNumber').value = device.phone_number || '';
+    document.getElementById('apiKey').value = device.api_key || '';
+    document.getElementById('idDevice').value = device.id_device || '';
+    document.getElementById('idErp').value = device.id_erp || '';
+    document.getElementById('idAdmin').value = device.id_admin || '';
+
+    // Set radio buttons
+    const apiKeyOption = document.querySelector(`input[name="apiKeyOption"][value="${device.api_key_option}"]`);
+    if (apiKeyOption) apiKeyOption.checked = true;
+
+    const provider = document.querySelector(`input[name="provider"][value="${device.provider}"]`);
+    if (provider) provider.checked = true;
+
+    // Change modal title
+    document.querySelector('.modal-title').textContent = 'Edit Device';
+
+    // Store device ID for update
+    window.editingDeviceId = device.id;
+
+    // Open modal
+    openDeviceModal();
 }
 
 // Initialize on page load
