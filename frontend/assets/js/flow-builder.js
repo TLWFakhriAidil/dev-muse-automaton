@@ -628,17 +628,26 @@ function loadFlowFromData(data) {
         nodeElement.style.left = `${nodeData.x}px`;
         nodeElement.style.top = `${nodeData.y}px`;
 
+        // Determine body text - check if node has config or use default
+        let bodyText = 'Click edit to configure';
+        if (nodeData.type === 'waiting_reply') {
+            bodyText = '<p style="color: #4CAF50;">✓ Ready (No config needed)</p>';
+        } else if (nodeData.config && Object.keys(nodeData.config).length > 0) {
+            bodyText = '<p style="color: #4CAF50;">✓ Configured</p>';
+        }
+
         nodeElement.innerHTML = `
             <div class="node-header">
                 <span class="node-icon">${getNodeIcon(nodeData.type)}</span>
                 <span class="node-title">${nodeData.label}</span>
             </div>
             <div class="node-body">
-                <p>Configure ${nodeData.label.toLowerCase()} settings</p>
+                ${bodyText}
             </div>
-            <div class="node-connector input-connector" data-connector-type="input"></div>
-            <div class="node-connector output-connector" data-connector-type="output"></div>
-            <div class="node-delete" onclick="deleteNode('${nodeData.id}')">×</div>
+            <div class="node-connector input-connector" data-connector-type="input" data-node-id="${nodeData.id}"></div>
+            <div class="node-connector output-connector" data-connector-type="output" data-node-id="${nodeData.id}"></div>
+            <div class="node-edit" data-node-id="${nodeData.id}">✏️</div>
+            <div class="node-delete" data-node-id="${nodeData.id}">×</div>
         `;
 
         makeNodeDraggable(nodeElement);
@@ -646,6 +655,26 @@ function loadFlowFromData(data) {
             e.stopPropagation();
             selectNode(nodeElement);
         });
+
+        // Add edit button click event
+        const editBtn = nodeElement.querySelector('.node-edit');
+        if (editBtn) {
+            editBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                e.preventDefault();
+                console.log('Edit button clicked for loaded node:', nodeData.id);
+                openNodeConfig(nodeData.id);
+            });
+        }
+
+        // Add delete button click event
+        const deleteBtn = nodeElement.querySelector('.node-delete');
+        if (deleteBtn) {
+            deleteBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                deleteNode(nodeData.id);
+            });
+        }
 
         document.getElementById('flowCanvas').appendChild(nodeElement);
 
