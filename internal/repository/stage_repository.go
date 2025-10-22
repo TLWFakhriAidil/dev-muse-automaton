@@ -95,7 +95,7 @@ func (r *StageRepository) UpdateStageValue(ctx context.Context, stageID int, upd
 
 // DeleteStageValue deletes a stage value
 func (r *StageRepository) DeleteStageValue(ctx context.Context, stageID int) error {
-	err := r.supabase.Delete("stagesetvalue", map[string]string{
+	err := r.supabase.DeleteAsAdmin("stagesetvalue", map[string]string{
 		"stagesetvalue_id": fmt.Sprintf("%d", stageID),
 	})
 

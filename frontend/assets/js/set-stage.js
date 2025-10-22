@@ -33,11 +33,18 @@ async function loadDevices() {
         // If in edit mode, populate the form with stored stage data
         if (window.editingStageData) {
             const stage = window.editingStageData;
-            document.getElementById('deviceSelect').value = stage.id_device || '';
+            const deviceSelect = document.getElementById('deviceSelect');
+
+            deviceSelect.value = stage.id_device || '';
             document.getElementById('stageInput').value = stage.stage || '';
             document.getElementById('typeSelect').value = stage.type_inputdata || stage.type || '';
             document.getElementById('inputHardCode').value = stage.inputhardcode || stage.input_hard_code || '';
             document.getElementById('columnSelect').value = stage.columnsdata || stage.column || '';
+
+            // Disable device select in edit mode (device cannot be changed)
+            deviceSelect.disabled = true;
+            deviceSelect.style.cursor = 'not-allowed';
+            deviceSelect.style.opacity = '0.6';
 
             // Toggle Input Hard Code field visibility
             toggleInputHardCode();
@@ -160,6 +167,12 @@ function closeStageModal() {
     document.querySelector('.modal-title').textContent = 'Add Stage Value';
     window.editingStageId = null;
     window.editingStageData = null;
+
+    // Re-enable device select
+    const deviceSelect = document.getElementById('deviceSelect');
+    deviceSelect.disabled = false;
+    deviceSelect.style.cursor = '';
+    deviceSelect.style.opacity = '';
 
     // Hide Input Hard Code field by default
     document.getElementById('inputHardCodeGroup').classList.add('hidden');

@@ -179,8 +179,18 @@ func (s *SupabaseClient) updateWithKey(table string, filter map[string]string, d
 	return body, nil
 }
 
-// Delete deletes a record from a table
+// Delete deletes a record from a table (uses anon key, RLS applies)
 func (s *SupabaseClient) Delete(table string, filter map[string]string) error {
+	return s.deleteWithKey(table, filter, s.AnonKey)
+}
+
+// DeleteAsAdmin deletes a record using service role key (bypasses RLS)
+func (s *SupabaseClient) DeleteAsAdmin(table string, filter map[string]string) error {
+	return s.deleteWithKey(table, filter, s.ServiceKey)
+}
+
+// deleteWithKey deletes a record with a specific API key
+func (s *SupabaseClient) deleteWithKey(table string, filter map[string]string, apiKey string) error {
 	url := fmt.Sprintf("%s/rest/v1/%s", s.URL, table)
 
 	req, err := http.NewRequest("DELETE", url, nil)
@@ -195,8 +205,8 @@ func (s *SupabaseClient) Delete(table string, filter map[string]string) error {
 	}
 	req.URL.RawQuery = q.Encode()
 
-	req.Header.Set("apikey", s.AnonKey)
-	req.Header.Set("Authorization", "Bearer "+s.AnonKey)
+	req.Header.Set("apikey", apiKey)
+	req.Header.Set("Authorization", "Bearer "+apiKey)
 
 	resp, err := s.HTTPClient.Do(req)
 	if err != nil {
