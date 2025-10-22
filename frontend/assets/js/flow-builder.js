@@ -14,6 +14,9 @@ let nodeIdCounter = 1;
 let draggedElement = null;
 let selectedNode = null;
 let zoomScale = 1;
+let isPanning = false;
+let panStart = { x: 0, y: 0 };
+let canvasOffset = { x: 0, y: 0 };
 
 // Load devices for dropdown
 async function loadDevices() {
@@ -154,8 +157,8 @@ function createFlowNode(type, label, icon, x, y) {
         </div>
         <div class="node-connector input-connector" data-connector-type="input" data-node-id="${nodeId}"></div>
         <div class="node-connector output-connector" data-connector-type="output" data-node-id="${nodeId}"></div>
-        <div class="node-edit" onclick="openNodeConfig('${nodeId}')">✏️</div>
-        <div class="node-delete" onclick="deleteNode('${nodeId}')">×</div>
+        <div class="node-edit" data-node-id="${nodeId}">✏️</div>
+        <div class="node-delete" data-node-id="${nodeId}">×</div>
     `;
 
     // Make node draggable within canvas
@@ -165,6 +168,20 @@ function createFlowNode(type, label, icon, x, y) {
     node.addEventListener('click', (e) => {
         e.stopPropagation();
         selectNode(node);
+    });
+
+    // Add edit button click event
+    const editBtn = node.querySelector('.node-edit');
+    editBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        openNodeConfig(nodeId);
+    });
+
+    // Add delete button click event
+    const deleteBtn = node.querySelector('.node-delete');
+    deleteBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        deleteNode(nodeId);
     });
 
     document.getElementById('flowCanvas').appendChild(node);
@@ -832,8 +849,16 @@ function closeNodeConfigModal() {
 
 // Edge Connection Functions
 function initializeConnectors() {
+    // Make sure start node connectors are initialized
+    const startConnectors = document.querySelectorAll('.start-node .node-connector');
+    startConnectors.forEach(connector => {
+        connector.setAttribute('data-node-id', 'start');
+    });
+
+    // Global click handler for connectors
     document.addEventListener('click', (e) => {
         if (e.target.classList.contains('node-connector')) {
+            e.stopPropagation();
             handleConnectorClick(e.target);
         }
     });
@@ -843,26 +868,57 @@ function handleConnectorClick(connector) {
     const nodeId = connector.getAttribute('data-node-id');
     const connectorType = connector.getAttribute('data-connector-type');
 
+    console.log('Connector clicked:', nodeId, connectorType);
+
     if (!connectionStart) {
         // Start connection from output connector
         if (connectorType === 'output') {
             connectionStart = { nodeId, connector };
             connector.style.background = 'var(--netflix-red)';
-            connector.style.transform = 'translateX(-50%) scale(1.5)';
+            connector.style.boxShadow = '0 0 10px var(--netflix-red)';
+
+            // Update based on connector type
+            if (connector.classList.contains('output-connector')) {
+                connector.style.transform = 'translateX(-50%) scale(1.5)';
+                connector.style.bottom = '-9px';
+            } else {
+                connector.style.transform = 'translateX(-50%) scale(1.5)';
+                connector.style.top = '-9px';
+            }
+
+            console.log('Connection started from', nodeId);
         }
     } else {
         // Complete connection to input connector
         if (connectorType === 'input' && nodeId !== connectionStart.nodeId) {
             createConnection(connectionStart.nodeId, nodeId);
+            console.log('Connection created:', connectionStart.nodeId, '->', nodeId);
 
             // Reset start connector style
             connectionStart.connector.style.background = '';
+            connectionStart.connector.style.boxShadow = '';
             connectionStart.connector.style.transform = '';
+
+            if (connectionStart.connector.classList.contains('output-connector')) {
+                connectionStart.connector.style.bottom = '-7px';
+            } else {
+                connectionStart.connector.style.top = '-7px';
+            }
+
             connectionStart = null;
         } else {
             // Cancel connection
+            console.log('Connection cancelled');
             connectionStart.connector.style.background = '';
+            connectionStart.connector.style.boxShadow = '';
             connectionStart.connector.style.transform = '';
+
+            if (connectionStart.connector.classList.contains('output-connector')) {
+                connectionStart.connector.style.bottom = '-7px';
+            } else {
+                connectionStart.connector.style.top = '-7px';
+            }
+
             connectionStart = null;
         }
     }
@@ -882,26 +938,45 @@ function createConnection(fromNodeId, toNodeId) {
 
 function drawConnections() {
     const svg = document.getElementById('connectionLayer');
+    const canvasContainer = document.querySelector('.canvas-container');
+    const canvas = document.getElementById('flowCanvas');
+
     svg.innerHTML = ''; // Clear existing lines
+
+    // Update SVG size to match canvas
+    svg.setAttribute('width', canvas.offsetWidth);
+    svg.setAttribute('height', canvas.offsetHeight);
+
+    console.log('Drawing connections:', flowData.connections.length);
 
     flowData.connections.forEach(conn => {
         const fromNode = document.querySelector(`[data-node-id="${conn.from}"]`);
         const toNode = document.querySelector(`[data-node-id="${conn.to}"]`);
 
-        if (!fromNode || !toNode) return;
+        if (!fromNode || !toNode) {
+            console.log('Node not found:', conn.from, conn.to);
+            return;
+        }
 
         const fromConnector = fromNode.querySelector('.output-connector');
         const toConnector = toNode.querySelector('.input-connector');
 
-        // Get positions
+        if (!fromConnector || !toConnector) {
+            console.log('Connector not found for nodes:', conn.from, conn.to);
+            return;
+        }
+
+        // Get absolute positions relative to canvas
         const fromRect = fromConnector.getBoundingClientRect();
         const toRect = toConnector.getBoundingClientRect();
-        const canvasRect = document.getElementById('flowCanvas').getBoundingClientRect();
+        const containerRect = canvasContainer.getBoundingClientRect();
 
-        const x1 = fromRect.left - canvasRect.left + fromRect.width / 2;
-        const y1 = fromRect.top - canvasRect.top + fromRect.height / 2;
-        const x2 = toRect.left - canvasRect.left + toRect.width / 2;
-        const y2 = toRect.top - canvasRect.top + toRect.height / 2;
+        const x1 = fromRect.left - containerRect.left + canvasContainer.scrollLeft + fromRect.width / 2;
+        const y1 = fromRect.top - containerRect.top + canvasContainer.scrollTop + fromRect.height / 2;
+        const x2 = toRect.left - containerRect.left + canvasContainer.scrollLeft + toRect.width / 2;
+        const y2 = toRect.top - containerRect.top + canvasContainer.scrollTop + toRect.height / 2;
+
+        console.log('Drawing line from', conn.from, 'to', conn.to, ':', {x1, y1, x2, y2});
 
         // Create curved path
         const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
@@ -912,8 +987,87 @@ function drawConnections() {
         path.setAttribute('class', 'connection-line');
         path.setAttribute('data-from', conn.from);
         path.setAttribute('data-to', conn.to);
+        path.setAttribute('stroke', '#ffd700');
+        path.setAttribute('stroke-width', '2');
+        path.setAttribute('fill', 'none');
 
         svg.appendChild(path);
+    });
+
+    console.log('Total SVG paths created:', svg.children.length);
+}
+
+// Canvas Panning and Zoom
+function initializeCanvasPan() {
+    const canvasContainer = document.querySelector('.canvas-container');
+    const canvas = document.getElementById('flowCanvas');
+
+    // Mouse wheel zoom
+    canvasContainer.addEventListener('wheel', (e) => {
+        e.preventDefault();
+
+        const delta = e.deltaY > 0 ? -0.1 : 0.1;
+        const newScale = Math.max(0.5, Math.min(2, zoomScale + delta));
+
+        if (newScale !== zoomScale) {
+            zoomScale = newScale;
+            applyZoom();
+            // Redraw connections after zoom
+            setTimeout(() => drawConnections(), 10);
+        }
+    });
+
+    // Middle mouse button or space + drag for panning
+    canvasContainer.addEventListener('mousedown', (e) => {
+        // Middle mouse button (button 1) or space + left click
+        if (e.button === 1 || (e.button === 0 && e.target === canvasContainer)) {
+            isPanning = true;
+            panStart = {
+                x: e.clientX - canvasContainer.scrollLeft,
+                y: e.clientY - canvasContainer.scrollTop
+            };
+            canvasContainer.style.cursor = 'grabbing';
+            e.preventDefault();
+        }
+    });
+
+    canvasContainer.addEventListener('mousemove', (e) => {
+        if (!isPanning) return;
+
+        e.preventDefault();
+        const x = e.clientX - panStart.x;
+        const y = e.clientY - panStart.y;
+
+        canvasContainer.scrollLeft = -x;
+        canvasContainer.scrollTop = -y;
+    });
+
+    canvasContainer.addEventListener('mouseup', (e) => {
+        if (isPanning) {
+            isPanning = false;
+            canvasContainer.style.cursor = '';
+            // Redraw connections after panning
+            drawConnections();
+        }
+    });
+
+    canvasContainer.addEventListener('mouseleave', () => {
+        if (isPanning) {
+            isPanning = false;
+            canvasContainer.style.cursor = '';
+        }
+    });
+
+    // Redraw connections on scroll
+    canvasContainer.addEventListener('scroll', () => {
+        drawConnections();
+    });
+
+    // Prevent context menu on middle click
+    canvasContainer.addEventListener('contextmenu', (e) => {
+        if (e.button === 1) {
+            e.preventDefault();
+        }
     });
 }
 
@@ -928,4 +1082,5 @@ document.addEventListener('DOMContentLoaded', function() {
     loadDevices();
     initializeDragAndDrop();
     initializeConnectors();
+    initializeCanvasPan();
 });

@@ -18,7 +18,8 @@
       "Bash(git add:*)",
       "Bash(git commit -m \"$(cat <<''EOF''\nADD NETFLIX-THEMED FRONTEND: Login/Register page with authentication\n\nCreated complete frontend authentication system:\n- Netflix color scheme (black, red, gold, white)\n- Responsive login/register forms\n- JavaScript authentication with JWT\n- Glass-morphism design with animations\n- Form validation and error handling\n\nFiles:\n- frontend/index.html - Landing page with login/register\n- frontend/assets/css/style.css - Netflix theme styling\n- frontend/assets/js/auth.js - Authentication logic\n\nReady for testing!\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>\nEOF\n)\")",
       "Bash(git push:*)",
-      "Bash(git commit:*)"
+      "Bash(git commit:*)",
+      "Bash(go build:*)"
     ],
     "deny": [],
     "ask": []
