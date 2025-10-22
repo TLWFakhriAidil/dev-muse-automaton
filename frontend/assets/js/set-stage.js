@@ -157,13 +157,20 @@ async function saveStageValue(event) {
 
     const isEditMode = window.editingStageId !== undefined && window.editingStageId !== null;
 
+    const typeValue = document.getElementById('typeSelect').value;
     const stageData = {
         id_device: document.getElementById('deviceSelect').value,
         stage: document.getElementById('stageInput').value.trim(),
-        type_inputdata: document.getElementById('typeSelect').value,
-        inputhardcode: document.getElementById('inputHardCode').value.trim(),
+        type_inputdata: typeValue,
         columnsdata: document.getElementById('columnSelect').value
     };
+
+    // Only include inputhardcode if Type is "Set"
+    if (typeValue === 'Set') {
+        stageData.inputhardcode = document.getElementById('inputHardCode').value.trim();
+    } else {
+        stageData.inputhardcode = ''; // Empty string for Input type
+    }
 
     // Show loading
     Swal.fire({

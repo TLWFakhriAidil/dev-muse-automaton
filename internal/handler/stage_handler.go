@@ -34,10 +34,18 @@ func (h *StageHandler) CreateStageValue(c *fiber.Ctx) error {
 	}
 
 	// Validate required fields
-	if req.IDDevice == "" || req.Stage == "" || req.TypeInputData == "" || req.ColumnsData == "" || req.InputHardCode == "" {
+	if req.IDDevice == "" || req.Stage == "" || req.TypeInputData == "" || req.ColumnsData == "" {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"success": false,
 			"message": "All fields are required",
+		})
+	}
+
+	// Validate InputHardCode is required only when Type = "Set"
+	if req.TypeInputData == "Set" && req.InputHardCode == "" {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"success": false,
+			"message": "Input Hard Code is required when Type is Set",
 		})
 	}
 

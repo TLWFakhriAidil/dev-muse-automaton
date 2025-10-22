@@ -2,12 +2,12 @@ package models
 
 // StageValue represents a stage set value configuration
 type StageValue struct {
-	ID            int     `json:"stagesetvalue_id"`
+	ID            int     `json:"stagesetvalue_id,omitempty"`
 	IDDevice      string  `json:"id_device"`
 	Stage         string  `json:"stage"`
 	TypeInputData string  `json:"type_inputdata"`
 	ColumnsData   string  `json:"columnsdata"`
-	InputHardCode string  `json:"inputhardcode"`
+	InputHardCode string  `json:"inputhardcode,omitempty"`
 }
 
 // CreateStageValueRequest is the request body for creating a stage value
@@ -16,7 +16,7 @@ type CreateStageValueRequest struct {
 	Stage         string `json:"stage" validate:"required"`
 	TypeInputData string `json:"type_inputdata" validate:"required,oneof=Set Input"`
 	ColumnsData   string `json:"columnsdata" validate:"required"`
-	InputHardCode string `json:"inputhardcode" validate:"required"`
+	InputHardCode string `json:"inputhardcode"` // Not required - only needed when Type = "Set"
 }
 
 // UpdateStageValueRequest is the request body for updating a stage value
