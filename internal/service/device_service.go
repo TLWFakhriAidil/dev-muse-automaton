@@ -50,6 +50,21 @@ func (s *DeviceService) CreateDevice(ctx context.Context, userID string, req *mo
 		}
 	}
 
+	// Check if id_device already exists
+	if req.IDDevice != nil && *req.IDDevice != "" {
+		existingDevice, err := s.deviceRepo.GetDeviceByIDDevice(ctx, *req.IDDevice)
+		if err != nil {
+			return nil, fmt.Errorf("failed to check existing id_device: %w", err)
+		}
+
+		if existingDevice != nil {
+			return &models.DeviceResponse{
+				Success: false,
+				Message: "Device with this ID Device already exists",
+			}, nil
+		}
+	}
+
 	// Create device - set DeviceID to nil for non-wablas providers
 	var deviceID *string
 	if req.Provider == "wablas" && req.DeviceID != "" {

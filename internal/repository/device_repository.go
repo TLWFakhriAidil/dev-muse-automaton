@@ -161,3 +161,26 @@ func (r *DeviceRepository) GetDeviceByDeviceID(ctx context.Context, deviceID str
 
 	return &devices[0], nil
 }
+
+// GetDeviceByIDDevice retrieves a device by id_device field only
+func (r *DeviceRepository) GetDeviceByIDDevice(ctx context.Context, idDevice string) (*models.DeviceSetting, error) {
+	data, err := r.supabase.QueryAsAdmin("device_setting", map[string]string{
+		"select":    "*",
+		"id_device": fmt.Sprintf("eq.%s", idDevice),
+		"limit":     "1",
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to get device by id_device: %w", err)
+	}
+
+	var devices []models.DeviceSetting
+	if err := json.Unmarshal(data, &devices); err != nil {
+		return nil, fmt.Errorf("failed to parse device: %w", err)
+	}
+
+	if len(devices) == 0 {
+		return nil, nil // Device not found, return nil without error
+	}
+
+	return &devices[0], nil
+}
