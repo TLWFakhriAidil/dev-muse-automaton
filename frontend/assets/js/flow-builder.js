@@ -167,14 +167,8 @@ function createFlowNode(type, label, icon, x, y) {
         <div class="node-delete" data-node-id="${nodeId}">×</div>
     `;
 
-    // Make node draggable within canvas
+    // Make node draggable within canvas (also handles selection on click)
     makeNodeDraggable(node);
-
-    // Add click event for selection
-    node.addEventListener('click', (e) => {
-        e.stopPropagation();
-        selectNode(node);
-    });
 
     // Add edit button click event
     const editBtn = node.querySelector('.node-edit');
@@ -224,10 +218,13 @@ function createFlowNode(type, label, icon, x, y) {
 // Make node draggable
 function makeNodeDraggable(node) {
     let isDragging = false;
+    let hasMoved = false;
     let currentX;
     let currentY;
     let initialX;
     let initialY;
+    let startX;
+    let startY;
 
     node.addEventListener('mousedown', (e) => {
         if (e.target.classList.contains('node-connector') ||
@@ -237,14 +234,28 @@ function makeNodeDraggable(node) {
         }
 
         isDragging = true;
+        hasMoved = false;
+        startX = e.clientX;
+        startY = e.clientY;
         initialX = e.clientX - node.offsetLeft;
         initialY = e.clientY - node.offsetTop;
+
+        // Prevent text selection during drag
+        e.preventDefault();
     });
 
     document.addEventListener('mousemove', (e) => {
         if (!isDragging) return;
 
         e.preventDefault();
+
+        // Check if mouse has moved more than 5 pixels (to distinguish click from drag)
+        const dx = Math.abs(e.clientX - startX);
+        const dy = Math.abs(e.clientY - startY);
+        if (dx > 5 || dy > 5) {
+            hasMoved = true;
+        }
+
         currentX = e.clientX - initialX;
         currentY = e.clientY - initialY;
 
@@ -266,6 +277,13 @@ function makeNodeDraggable(node) {
         if (isDragging) {
             isDragging = false;
             drawConnections(); // Final redraw when released
+
+            // If we didn't move (just clicked), select the node
+            if (!hasMoved) {
+                selectNode(node);
+            }
+
+            hasMoved = false;
         }
     });
 }
@@ -1084,31 +1102,41 @@ function drawConnections() {
         path.setAttribute('data-from', conn.from);
         path.setAttribute('data-to', conn.to);
         path.setAttribute('stroke', '#ffd700');
-        path.setAttribute('stroke-width', '2');
+        path.setAttribute('stroke-width', '3');
         path.setAttribute('fill', 'none');
-        path.style.cursor = 'pointer';
-        path.style.pointerEvents = 'all';
+        path.setAttribute('stroke-linecap', 'round');
 
-        // Add click handler to delete connection
-        path.addEventListener('click', (e) => {
+        // Create invisible wider path for easier clicking
+        const clickPath = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+        clickPath.setAttribute('d', d);
+        clickPath.setAttribute('stroke', 'transparent');
+        clickPath.setAttribute('stroke-width', '20'); // Much wider for easier clicking
+        clickPath.setAttribute('fill', 'none');
+        clickPath.setAttribute('class', 'connection-click-area');
+        clickPath.style.cursor = 'pointer';
+        clickPath.style.pointerEvents = 'all';
+
+        // Add click handler to the wider invisible path
+        clickPath.addEventListener('click', (e) => {
             e.stopPropagation();
             e.preventDefault();
             console.log('🗑️ Connection line clicked! From:', conn.from, 'To:', conn.to);
             deleteConnection(conn.from, conn.to);
-        }, true);
+        });
 
-        // Add hover effect
-        path.addEventListener('mouseenter', () => {
+        // Add hover effect to both paths
+        clickPath.addEventListener('mouseenter', () => {
             path.setAttribute('stroke', '#e50914');
+            path.setAttribute('stroke-width', '4');
+        });
+
+        clickPath.addEventListener('mouseleave', () => {
+            path.setAttribute('stroke', '#ffd700');
             path.setAttribute('stroke-width', '3');
         });
 
-        path.addEventListener('mouseleave', () => {
-            path.setAttribute('stroke', '#ffd700');
-            path.setAttribute('stroke-width', '2');
-        });
-
         svg.appendChild(path);
+        svg.appendChild(clickPath); // Add invisible wider path on top
     });
 
     console.log('Total SVG paths created:', svg.children.length);

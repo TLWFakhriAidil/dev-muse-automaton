@@ -241,16 +241,31 @@
     height: 2000px;
     min-width: 100%;
     min-height: 100%;
-    pointer-events: none;
+    pointer-events: none; /* SVG itself doesn't capture events */
     z-index: 1;
     overflow: visible;
 }
 
+/* Connection lines themselves CAN be clicked */
+.connection-layer * {
+    pointer-events: all;
+}
+
 .connection-line {
     stroke: var(--netflix-gold);
-    stroke-width: 2;
+    stroke-width: 3;
     fill: none;
     filter: drop-shadow(0 0 4px rgba(255, 215, 0, 0.3));
+    cursor: pointer;
+    /* Make lines easier to click with invisible wider stroke */
+    stroke-linecap: round;
+}
+
+/* Add invisible wider stroke for easier clicking */
+.connection-line:hover {
+    stroke: var(--netflix-red);
+    stroke-width: 4;
+    filter: drop-shadow(0 0 8px rgba(229, 9, 20, 0.6));
 }
 
 .connection-line.selected {
@@ -280,6 +295,15 @@
     box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
     cursor: move;
     transition: all 0.3s ease;
+    user-select: none;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    outline: none;
+}
+
+.flow-node:focus {
+    outline: none;
 }
 
 .flow-node:hover {
