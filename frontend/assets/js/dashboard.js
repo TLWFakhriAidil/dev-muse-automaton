@@ -31,10 +31,18 @@ function logout() {
     }
 }
 
-// Show coming soon alert
+// Show coming soon alert with SweetAlert2
 function showComingSoon(event) {
     event.preventDefault();
-    alert('This feature is coming soon! Stay tuned.');
+    Swal.fire({
+        title: 'Coming Soon!',
+        text: 'This feature is under development. Stay tuned!',
+        icon: 'info',
+        background: '#141414',
+        color: '#ffffff',
+        confirmButtonColor: '#e50914',
+        confirmButtonText: 'OK'
+    });
 }
 
 // Mobile sidebar toggle (for responsive design)
