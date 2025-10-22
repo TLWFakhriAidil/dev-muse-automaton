@@ -21,19 +21,6 @@ func NewDeviceService(deviceRepo *repository.DeviceRepository) *DeviceService {
 
 // CreateDevice creates a new device for a user
 func (s *DeviceService) CreateDevice(ctx context.Context, userID string, req *models.CreateDeviceRequest) (*models.DeviceResponse, error) {
-	// Check if device_id already exists
-	existingDevice, err := s.deviceRepo.GetDeviceByDeviceID(ctx, req.DeviceID)
-	if err != nil {
-		return nil, fmt.Errorf("failed to check existing device: %w", err)
-	}
-
-	if existingDevice != nil {
-		return &models.DeviceResponse{
-			Success: false,
-			Message: "Device with this device_id already exists",
-		}, nil
-	}
-
 	// Validate provider
 	validProviders := map[string]bool{
 		"waha":       true,
@@ -48,9 +35,29 @@ func (s *DeviceService) CreateDevice(ctx context.Context, userID string, req *mo
 		}, nil
 	}
 
-	// Create device
+	// Check if device_id already exists (only for wablas provider)
+	if req.Provider == "wablas" && req.DeviceID != "" {
+		existingDevice, err := s.deviceRepo.GetDeviceByDeviceID(ctx, req.DeviceID)
+		if err != nil {
+			return nil, fmt.Errorf("failed to check existing device: %w", err)
+		}
+
+		if existingDevice != nil {
+			return &models.DeviceResponse{
+				Success: false,
+				Message: "Device with this device_id already exists",
+			}, nil
+		}
+	}
+
+	// Create device - set DeviceID to nil for non-wablas providers
+	var deviceID *string
+	if req.Provider == "wablas" && req.DeviceID != "" {
+		deviceID = &req.DeviceID
+	}
+
 	device := &models.DeviceSetting{
-		DeviceID:     &req.DeviceID,
+		DeviceID:     deviceID,
 		WebhookID:    &req.WebhookURL,
 		Provider:     req.Provider,
 		APIKeyOption: req.APIKeyOption,

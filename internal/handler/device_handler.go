@@ -63,10 +63,18 @@ func (h *DeviceHandler) CreateDevice(c *fiber.Ctx) error {
 	}
 
 	// Validate required fields
-	if req.DeviceID == "" || req.Provider == "" || req.APIKeyOption == "" || req.PhoneNumber == "" {
+	if req.Provider == "" || req.APIKeyOption == "" || req.PhoneNumber == "" {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"success": false,
-			"message": "device_id, provider, api_key_option, and phone_number are required",
+			"message": "provider, api_key_option, and phone_number are required",
+		})
+	}
+
+	// device_id is only required for wablas provider
+	if req.Provider == "wablas" && req.DeviceID == "" {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"success": false,
+			"message": "device_id is required for wablas provider",
 		})
 	}
 
