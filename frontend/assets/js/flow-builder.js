@@ -147,13 +147,19 @@ function createFlowNode(type, label, icon, x, y) {
     node.style.left = `${x}px`;
     node.style.top = `${y}px`;
 
+    // Set default body text based on node type
+    let bodyText = 'Click edit to configure';
+    if (type === 'waiting_reply') {
+        bodyText = '<p style="color: #4CAF50;">✓ Ready (No config needed)</p>';
+    }
+
     node.innerHTML = `
         <div class="node-header">
             <span class="node-icon">${icon}</span>
             <span class="node-title">${label}</span>
         </div>
         <div class="node-body">
-            <p>Click edit to configure</p>
+            ${bodyText}
         </div>
         <div class="node-connector input-connector" data-connector-type="input" data-node-id="${nodeId}"></div>
         <div class="node-connector output-connector" data-connector-type="output" data-node-id="${nodeId}"></div>
@@ -726,8 +732,10 @@ function getConfigFieldsForType(type, config = {}) {
         case 'waiting_reply':
             return `
                 <div class="form-group">
-                    <label>Timeout (seconds) *</label>
-                    <input type="number" id="nodeConfigTimeout" required min="0" step="1" value="${config.timeout || 60}" style="width: 100%; padding: 0.9rem; background: rgba(51, 51, 51, 0.7); border: 2px solid rgba(255, 255, 255, 0.1); border-radius: 8px; color: white;" placeholder="Enter timeout...">
+                    <p style="color: rgba(255, 255, 255, 0.7); text-align: center; padding: 2rem;">
+                        This node waits for user reply without timeout.<br>
+                        No configuration needed.
+                    </p>
                 </div>
             `;
 
@@ -831,7 +839,8 @@ function saveNodeConfig(event) {
             break;
 
         case 'waiting_reply':
-            config.timeout = parseInt(document.getElementById('nodeConfigTimeout').value);
+            // No configuration needed - just waits for user reply
+            config.note = 'Waits for user reply without timeout';
             break;
 
         case 'conditions':
@@ -978,9 +987,12 @@ function createConnection(fromNodeId, toNodeId) {
 }
 
 function deleteConnection(fromNodeId, toNodeId) {
+    console.log('🗑️ deleteConnection called:', fromNodeId, '->', toNodeId);
+    console.log('Current connections:', flowData.connections);
+
     Swal.fire({
         title: 'Delete Connection?',
-        text: 'Remove this connection line?',
+        text: `Remove connection from ${fromNodeId} to ${toNodeId}?`,
         icon: 'warning',
         showCancelButton: true,
         confirmButtonColor: '#e50914',
@@ -990,12 +1002,17 @@ function deleteConnection(fromNodeId, toNodeId) {
         background: '#141414',
         color: '#ffffff'
     }).then((result) => {
+        console.log('Dialog result:', result);
         if (result.isConfirmed) {
+            console.log('User confirmed deletion');
             // Remove connection from data
+            const beforeCount = flowData.connections.length;
             flowData.connections = flowData.connections.filter(
                 c => !(c.from === fromNodeId && c.to === toNodeId)
             );
+            const afterCount = flowData.connections.length;
             console.log('✓ Connection deleted:', fromNodeId, '->', toNodeId);
+            console.log('Connections before:', beforeCount, 'after:', afterCount);
 
             // Redraw connections
             drawConnections();
@@ -1009,6 +1026,8 @@ function deleteConnection(fromNodeId, toNodeId) {
                 confirmButtonColor: '#e50914',
                 timer: 1500
             });
+        } else {
+            console.log('User cancelled deletion');
         }
     });
 }
@@ -1073,8 +1092,10 @@ function drawConnections() {
         // Add click handler to delete connection
         path.addEventListener('click', (e) => {
             e.stopPropagation();
+            e.preventDefault();
+            console.log('🗑️ Connection line clicked! From:', conn.from, 'To:', conn.to);
             deleteConnection(conn.from, conn.to);
-        });
+        }, true);
 
         // Add hover effect
         path.addEventListener('mouseenter', () => {
