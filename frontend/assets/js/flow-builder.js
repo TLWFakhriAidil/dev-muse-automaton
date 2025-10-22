@@ -13,6 +13,7 @@ let flowData = {
 let nodeIdCounter = 1;
 let draggedElement = null;
 let selectedNode = null;
+let zoomScale = 1;
 
 // Load devices for dropdown
 async function loadDevices() {
@@ -70,7 +71,7 @@ async function loadFlowForDevice() {
 
         if (data.success && data.flow) {
             // Load existing flow
-            document.getElementById('flowNameInput').value = data.flow.flow_name || '';
+            document.getElementById('flowNameSelect').value = data.flow.flow_name || '';
             document.getElementById('nicheInput').value = data.flow.niche || '';
 
             // Load nodes (if stored as JSON in backend)
@@ -79,7 +80,7 @@ async function loadFlowForDevice() {
             }
         } else {
             // No existing flow, clear canvas
-            document.getElementById('flowNameInput').value = '';
+            document.getElementById('flowNameSelect').value = '';
             document.getElementById('nicheInput').value = '';
         }
     } catch (error) {
@@ -95,11 +96,16 @@ function initializeDragAndDrop() {
     // Make node items draggable
     nodeItems.forEach(item => {
         item.addEventListener('dragstart', (e) => {
-            draggedElement = {
-                type: e.target.getAttribute('data-node-type'),
-                label: e.target.querySelector('.node-label').textContent,
-                icon: e.target.querySelector('.node-icon').textContent
-            };
+            // Get the node-item element (in case user drags from child)
+            const nodeItem = e.target.closest('.node-item');
+            if (nodeItem) {
+                draggedElement = {
+                    type: nodeItem.getAttribute('data-node-type'),
+                    label: nodeItem.querySelector('.node-label').textContent,
+                    icon: nodeItem.querySelector('.node-icon').textContent
+                };
+                console.log('Dragging:', draggedElement);
+            }
         });
 
         item.addEventListener('dragend', () => {
@@ -116,10 +122,12 @@ function initializeDragAndDrop() {
         e.preventDefault();
 
         if (draggedElement) {
+            const canvasContainer = canvas.parentElement;
             const rect = canvas.getBoundingClientRect();
-            const x = e.clientX - rect.left + canvas.scrollLeft;
-            const y = e.clientY - rect.top + canvas.scrollTop;
+            const x = e.clientX - rect.left + canvasContainer.scrollLeft;
+            const y = e.clientY - rect.top + canvasContainer.scrollTop;
 
+            console.log('Dropping at:', x, y);
             createFlowNode(draggedElement.type, draggedElement.label, draggedElement.icon, x, y);
         }
     });
@@ -305,7 +313,7 @@ function clearCanvas() {
 // Save flow
 async function saveFlow() {
     const deviceId = document.getElementById('deviceSelect').value;
-    const flowName = document.getElementById('flowNameInput').value.trim();
+    const flowName = document.getElementById('flowNameSelect').value;
     const niche = document.getElementById('nicheInput').value.trim();
 
     if (!deviceId) {
@@ -323,7 +331,7 @@ async function saveFlow() {
     if (!flowName) {
         Swal.fire({
             title: 'Error!',
-            text: 'Please enter a flow name',
+            text: 'Please select a flow type',
             icon: 'error',
             background: '#141414',
             color: '#ffffff',
@@ -404,12 +412,12 @@ async function saveFlow() {
 // Export flow
 function exportFlow() {
     const deviceId = document.getElementById('deviceSelect').value;
-    const flowName = document.getElementById('flowNameInput').value.trim();
+    const flowName = document.getElementById('flowNameSelect').value;
 
     if (!flowName) {
         Swal.fire({
             title: 'Error!',
-            text: 'Please enter a flow name before exporting',
+            text: 'Please select a flow type before exporting',
             icon: 'error',
             background: '#141414',
             color: '#ffffff',
@@ -463,7 +471,7 @@ function importFlow() {
 
                 // Set form values
                 if (importedData.flowName) {
-                    document.getElementById('flowNameInput').value = importedData.flowName;
+                    document.getElementById('flowNameSelect').value = importedData.flowName;
                 }
                 if (importedData.deviceId) {
                     document.getElementById('deviceSelect').value = importedData.deviceId;
@@ -553,7 +561,8 @@ function loadFlowFromData(data) {
 function getNodeIcon(type) {
     const icons = {
         'send_message': '💬',
-        'manual_response': '✋',
+        'waiting_reply': '💭',
+        'waiting_times': '⏳',
         'ai_prompt': '✨',
         'stage': '🎯',
         'send_image': '🖼️',
@@ -563,6 +572,38 @@ function getNodeIcon(type) {
         'conditions': '🔀'
     };
     return icons[type] || '📦';
+}
+
+// Zoom In
+function zoomIn() {
+    if (zoomScale < 2) {
+        zoomScale += 0.1;
+        applyZoom();
+    }
+}
+
+// Zoom Out
+function zoomOut() {
+    if (zoomScale > 0.5) {
+        zoomScale -= 0.1;
+        applyZoom();
+    }
+}
+
+// Reset Zoom
+function resetZoom() {
+    zoomScale = 1;
+    applyZoom();
+}
+
+// Apply Zoom
+function applyZoom() {
+    const canvas = document.getElementById('flowCanvas');
+    canvas.style.transform = `scale(${zoomScale})`;
+    canvas.style.transformOrigin = '0 0';
+
+    // Update zoom level display
+    document.getElementById('zoomLevel').textContent = `${Math.round(zoomScale * 100)}%`;
 }
 
 // Logout function

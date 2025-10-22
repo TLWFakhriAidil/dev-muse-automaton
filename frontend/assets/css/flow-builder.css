@@ -158,6 +158,50 @@
     transform: translateY(-2px);
 }
 
+/* Zoom Controls */
+.zoom-controls {
+    position: absolute;
+    top: 1rem;
+    right: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: rgba(20, 20, 20, 0.95);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 8px;
+    padding: 0.5rem;
+    z-index: 10;
+}
+
+.zoom-btn {
+    width: 36px;
+    height: 36px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 6px;
+    color: var(--netflix-white);
+    font-size: 1rem;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.zoom-btn:hover {
+    background: rgba(229, 9, 20, 0.3);
+    border-color: var(--netflix-red);
+    transform: scale(1.1);
+}
+
+.zoom-level {
+    color: var(--netflix-gold);
+    font-weight: 700;
+    font-size: 0.9rem;
+    min-width: 50px;
+    text-align: center;
+}
+
 /* Canvas Container */
 .canvas-container {
     flex: 1;

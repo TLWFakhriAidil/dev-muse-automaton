@@ -85,8 +85,12 @@
                 </select>
             </div>
             <div class="control-group">
-                <label for="flowNameInput">Flow Name *</label>
-                <input type="text" id="flowNameInput" placeholder="Enter flow name...">
+                <label for="flowNameSelect">Flow Type *</label>
+                <select id="flowNameSelect">
+                    <option value="">Select flow type...</option>
+                    <option value="Chatbot AI">Chatbot AI</option>
+                    <option value="Whatsapp Bot">Whatsapp Bot</option>
+                </select>
             </div>
             <div class="control-group">
                 <label for="nicheInput">Niche</label>
@@ -106,9 +110,14 @@
                         <span class="node-label">Send Message</span>
                     </div>
 
-                    <div class="node-item" draggable="true" data-node-type="manual_response">
-                        <span class="node-icon">✋</span>
-                        <span class="node-label">Manual Response</span>
+                    <div class="node-item" draggable="true" data-node-type="waiting_reply">
+                        <span class="node-icon">💭</span>
+                        <span class="node-label">Waiting Reply</span>
+                    </div>
+
+                    <div class="node-item" draggable="true" data-node-type="waiting_times">
+                        <span class="node-icon">⏳</span>
+                        <span class="node-label">Waiting Times</span>
                     </div>
 
                     <div class="node-item" draggable="true" data-node-type="ai_prompt">
@@ -169,6 +178,20 @@
 
             <!-- Canvas Area -->
             <div class="canvas-container">
+                <!-- Zoom Controls -->
+                <div class="zoom-controls">
+                    <button class="zoom-btn" onclick="zoomIn()" title="Zoom In">
+                        <span>🔍+</span>
+                    </button>
+                    <span id="zoomLevel" class="zoom-level">100%</span>
+                    <button class="zoom-btn" onclick="zoomOut()" title="Zoom Out">
+                        <span>🔍-</span>
+                    </button>
+                    <button class="zoom-btn" onclick="resetZoom()" title="Reset Zoom">
+                        <span>↺</span>
+                    </button>
+                </div>
+
                 <div id="flowCanvas" class="flow-canvas">
                     <!-- Start Node (always present) -->
                     <div class="flow-node start-node" data-node-id="start" style="top: 50px; left: 50%;">
