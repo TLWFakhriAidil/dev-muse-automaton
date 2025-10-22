@@ -39,6 +39,7 @@ func main() {
 	flowRepo := repository.NewFlowRepository(supabase)
 	conversationRepo := repository.NewConversationRepository(supabase)
 	analyticsRepo := repository.NewAnalyticsRepository(supabase)
+	stageRepo := repository.NewStageRepository(supabase)
 
 	// Initialize services
 	authService := service.NewAuthService(userRepo, cfg.JWTSecret)
@@ -49,6 +50,7 @@ func main() {
 	whatsappService := service.NewWhatsAppService(deviceRepo)
 	flowExecutionService := service.NewFlowExecutionService(flowRepo, conversationRepo, deviceRepo, aiService)
 	analyticsService := service.NewAnalyticsService(analyticsRepo, deviceRepo)
+	stageService := service.NewStageService(stageRepo)
 
 	// Initialize handlers
 	authHandler := handler.NewAuthHandler(authService)
@@ -58,6 +60,7 @@ func main() {
 	aiHandler := handler.NewAIHandler(aiService, authService)
 	webhookHandler := handler.NewWebhookHandler(flowExecutionService, deviceService, whatsappService)
 	analyticsHandler := handler.NewAnalyticsHandler(analyticsService, authService)
+	stageHandler := handler.NewStageHandler(stageService)
 	log.Printf("✅ Authentication system initialized")
 	log.Printf("✅ Device management system initialized")
 	log.Printf("✅ Flow builder system initialized")
@@ -66,6 +69,7 @@ func main() {
 	log.Printf("✅ WhatsApp messaging service initialized")
 	log.Printf("✅ Flow execution engine initialized")
 	log.Printf("✅ Analytics & reporting system initialized")
+	log.Printf("✅ Stage value management system initialized")
 
 	// Create Fiber app
 	app := fiber.New(fiber.Config{
@@ -156,6 +160,14 @@ func main() {
 	analytics.Get("/conversations", analyticsHandler.GetConversationAnalytics)
 	analytics.Get("/flows/:flowId", analyticsHandler.GetFlowAnalytics)
 	analytics.Post("/export", analyticsHandler.ExportAnalytics)
+
+	// Stage value routes (requires authentication)
+	stages := api.Group("/stage-values")
+	stages.Post("/", stageHandler.CreateStageValue)
+	stages.Get("/", stageHandler.GetAllStageValues)
+	stages.Get("/:id", stageHandler.GetStageValue)
+	stages.Put("/:id", stageHandler.UpdateStageValue)
+	stages.Delete("/:id", stageHandler.DeleteStageValue)
 
 	// Status endpoint with database check
 	api.Get("/status", func(c *fiber.Ctx) error {
