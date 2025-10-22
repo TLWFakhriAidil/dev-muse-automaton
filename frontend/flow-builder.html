@@ -63,10 +63,13 @@
         </nav>
 
         <div class="sidebar-footer">
-            <a href="#" class="nav-item" onclick="logout()">
-                <span class="nav-icon">🚪</span>
-                <span class="nav-text">Logout</span>
-            </a>
+            <div class="user-info">
+                <div class="user-avatar">👤</div>
+                <div class="user-details">
+                    <div class="user-email" id="userEmail">Loading...</div>
+                    <button class="btn-logout" onclick="logout()">Logout</button>
+                </div>
+            </div>
         </div>
     </aside>
 

@@ -1,6 +1,17 @@
 // Flow Builder JavaScript
 const API_BASE_URL = window.location.origin + '/api';
 
+// Load user email in sidebar
+function loadUserEmail() {
+    const userEmail = localStorage.getItem('user_email');
+    if (userEmail) {
+        const emailElement = document.getElementById('userEmail');
+        if (emailElement) {
+            emailElement.textContent = userEmail;
+        }
+    }
+}
+
 // Flow state
 let flowData = {
     nodes: [],
@@ -1468,6 +1479,7 @@ async function loadFlowForEdit(flowId) {
 
 // Initialize on page load
 document.addEventListener('DOMContentLoaded', function() {
+    loadUserEmail();
     loadDevices();
     initializeDragAndDrop();
     initializeConnectors();

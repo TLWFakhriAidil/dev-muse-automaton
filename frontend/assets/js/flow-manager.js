@@ -1,8 +1,20 @@
 // Flow Manager JavaScript
 const API_BASE_URL = window.location.origin + '/api';
 
+// Load user email in sidebar
+function loadUserEmail() {
+    const userEmail = localStorage.getItem('user_email');
+    if (userEmail) {
+        const emailElement = document.getElementById('userEmail');
+        if (emailElement) {
+            emailElement.textContent = userEmail;
+        }
+    }
+}
+
 // Load all flows on page load
 document.addEventListener('DOMContentLoaded', function() {
+    loadUserEmail();
     loadFlows();
 });
 
