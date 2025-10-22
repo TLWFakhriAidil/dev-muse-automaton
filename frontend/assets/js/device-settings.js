@@ -196,16 +196,46 @@ async function loadDevices() {
         const devicesList = document.getElementById('devicesList');
 
         if (data.success && data.devices && data.devices.length > 0) {
-            devicesList.innerHTML = data.devices.map(device => `
-                <div class="device-card">
-                    <h3 style="color: var(--netflix-gold); margin-bottom: 1rem;">${device.device_id}</h3>
-                    <div style="color: var(--netflix-light-gray); font-size: 0.9rem;">
-                        <p><strong>Provider:</strong> ${device.provider}</p>
-                        <p><strong>ID Device:</strong> ${device.id_device}</p>
-                        <p><strong>API Key Option:</strong> ${device.api_key_option}</p>
-                    </div>
+            devicesList.innerHTML = `
+                <div class="table-container">
+                    <table class="devices-table">
+                        <thead>
+                            <tr>
+                                <th>Device ID</th>
+                                <th>ID Device</th>
+                                <th>Instance</th>
+                                <th>Webhook ID</th>
+                                <th>Provider</th>
+                                <th>API Key Option</th>
+                                <th>API Key</th>
+                                <th>ID ERP</th>
+                                <th>ID Admin</th>
+                                <th>Phone Number</th>
+                                <th>Created At</th>
+                                <th>Updated At</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${data.devices.map(device => `
+                                <tr>
+                                    <td><strong>${device.device_id || '-'}</strong></td>
+                                    <td>${device.id_device || '-'}</td>
+                                    <td>${device.instance || '-'}</td>
+                                    <td class="webhook-cell">${device.webhook_id || '-'}</td>
+                                    <td><span class="badge badge-${device.provider}">${device.provider || '-'}</span></td>
+                                    <td>${device.api_key_option || '-'}</td>
+                                    <td>${device.api_key ? '••••••' : '-'}</td>
+                                    <td>${device.id_erp || '-'}</td>
+                                    <td>${device.id_admin || '-'}</td>
+                                    <td>${device.phone_number || '-'}</td>
+                                    <td>${device.created_at ? new Date(device.created_at).toLocaleString() : '-'}</td>
+                                    <td>${device.updated_at ? new Date(device.updated_at).toLocaleString() : '-'}</td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
                 </div>
-            `).join('');
+            `;
         } else {
             devicesList.innerHTML = `
                 <div class="empty-state">
