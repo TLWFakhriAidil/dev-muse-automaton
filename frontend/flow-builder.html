@@ -192,6 +192,11 @@
                     </button>
                 </div>
 
+                <!-- SVG Layer for Connections -->
+                <svg id="connectionLayer" class="connection-layer">
+                    <!-- Edge lines will be drawn here -->
+                </svg>
+
                 <div id="flowCanvas" class="flow-canvas">
                     <!-- Start Node (always present) -->
                     <div class="flow-node start-node" data-node-id="start" style="top: 50px; left: 50%;">
@@ -208,6 +213,25 @@
             </div>
         </div>
     </main>
+
+    <!-- Node Configuration Modal -->
+    <div id="nodeConfigModal" class="modal">
+        <div class="modal-content node-config-content">
+            <div class="modal-header">
+                <h2 class="modal-title" id="nodeConfigTitle">Configure Node</h2>
+                <button class="modal-close" onclick="closeNodeConfigModal()">&times;</button>
+            </div>
+
+            <form id="nodeConfigForm" onsubmit="saveNodeConfig(event)">
+                <div id="nodeConfigFields"></div>
+
+                <div class="modal-actions">
+                    <button type="button" class="btn-secondary" onclick="closeNodeConfigModal()">Cancel</button>
+                    <button type="submit" class="btn-primary">Save</button>
+                </div>
+            </form>
+        </div>
+    </div>
 
     <script src="assets/js/flow-builder.js"></script>
 </body>

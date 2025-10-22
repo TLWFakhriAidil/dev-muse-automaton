@@ -150,10 +150,11 @@ function createFlowNode(type, label, icon, x, y) {
             <span class="node-title">${label}</span>
         </div>
         <div class="node-body">
-            <p>Configure ${label.toLowerCase()} settings</p>
+            <p>Click edit to configure</p>
         </div>
-        <div class="node-connector input-connector" data-connector-type="input"></div>
-        <div class="node-connector output-connector" data-connector-type="output"></div>
+        <div class="node-connector input-connector" data-connector-type="input" data-node-id="${nodeId}"></div>
+        <div class="node-connector output-connector" data-connector-type="output" data-node-id="${nodeId}"></div>
+        <div class="node-edit" onclick="openNodeConfig('${nodeId}')">✏️</div>
         <div class="node-delete" onclick="deleteNode('${nodeId}')">×</div>
     `;
 
@@ -189,7 +190,8 @@ function makeNodeDraggable(node) {
 
     node.addEventListener('mousedown', (e) => {
         if (e.target.classList.contains('node-connector') ||
-            e.target.classList.contains('node-delete')) {
+            e.target.classList.contains('node-delete') ||
+            e.target.classList.contains('node-edit')) {
             return;
         }
 
@@ -214,10 +216,16 @@ function makeNodeDraggable(node) {
             nodeData.x = currentX;
             nodeData.y = currentY;
         }
+
+        // Redraw connections while dragging
+        drawConnections();
     });
 
     document.addEventListener('mouseup', () => {
-        isDragging = false;
+        if (isDragging) {
+            isDragging = false;
+            drawConnections(); // Final redraw when released
+        }
     });
 }
 
@@ -606,6 +614,309 @@ function applyZoom() {
     document.getElementById('zoomLevel').textContent = `${Math.round(zoomScale * 100)}%`;
 }
 
+// Node Configuration Functions
+let currentConfigNodeId = null;
+let connectionStart = null;
+
+// Open node configuration modal
+function openNodeConfig(nodeId) {
+    currentConfigNodeId = nodeId;
+    const nodeData = flowData.nodes.find(n => n.id === nodeId);
+
+    if (!nodeData) return;
+
+    const modal = document.getElementById('nodeConfigModal');
+    const title = document.getElementById('nodeConfigTitle');
+    const fieldsContainer = document.getElementById('nodeConfigFields');
+
+    title.textContent = `Configure ${nodeData.label}`;
+    fieldsContainer.innerHTML = getConfigFieldsForType(nodeData.type, nodeData.config);
+
+    modal.classList.add('active');
+    document.body.style.overflow = 'hidden';
+}
+
+// Get configuration fields based on node type
+function getConfigFieldsForType(type, config = {}) {
+    switch(type) {
+        case 'send_message':
+        case 'ai_prompt':
+            return `
+                <div class="form-group">
+                    <label>${type === 'send_message' ? 'Message Content' : 'AI Prompt'} *</label>
+                    <textarea id="nodeConfigText" rows="6" required style="width: 100%; padding: 0.9rem; background: rgba(51, 51, 51, 0.7); border: 2px solid rgba(255, 255, 255, 0.1); border-radius: 8px; color: white; font-family: inherit;" placeholder="Enter ${type === 'send_message' ? 'message' : 'prompt'}...">${config.text || ''}</textarea>
+                </div>
+            `;
+
+        case 'stage':
+            return `
+                <div class="form-group">
+                    <label>Stage Name *</label>
+                    <input type="text" id="nodeConfigValue" required value="${config.value || ''}" style="width: 100%; padding: 0.9rem; background: rgba(51, 51, 51, 0.7); border: 2px solid rgba(255, 255, 255, 0.1); border-radius: 8px; color: white;" placeholder="Enter stage name...">
+                </div>
+            `;
+
+        case 'send_image':
+        case 'send_audio':
+        case 'send_video':
+            const mediaType = type.replace('send_', '');
+            return `
+                <div class="form-group">
+                    <label>${mediaType.charAt(0).toUpperCase() + mediaType.slice(1)} URL *</label>
+                    <input type="url" id="nodeConfigUrl" required value="${config.url || ''}" style="width: 100%; padding: 0.9rem; background: rgba(51, 51, 51, 0.7); border: 2px solid rgba(255, 255, 255, 0.1); border-radius: 8px; color: white;" placeholder="Enter ${mediaType} URL...">
+                </div>
+            `;
+
+        case 'delay':
+        case 'waiting_times':
+            return `
+                <div class="form-group">
+                    <label>${type === 'delay' ? 'Delay' : 'Waiting Time'} (seconds) *</label>
+                    <input type="number" id="nodeConfigDelay" required min="0" step="1" value="${config.delay || ''}" style="width: 100%; padding: 0.9rem; background: rgba(51, 51, 51, 0.7); border: 2px solid rgba(255, 255, 255, 0.1); border-radius: 8px; color: white;" placeholder="Enter time in seconds...">
+                </div>
+            `;
+
+        case 'waiting_reply':
+            return `
+                <div class="form-group">
+                    <label>Timeout (seconds) *</label>
+                    <input type="number" id="nodeConfigTimeout" required min="0" step="1" value="${config.timeout || 60}" style="width: 100%; padding: 0.9rem; background: rgba(51, 51, 51, 0.7); border: 2px solid rgba(255, 255, 255, 0.1); border-radius: 8px; color: white;" placeholder="Enter timeout...">
+                </div>
+            `;
+
+        case 'conditions':
+            return getConditionsConfig(config.conditions || []);
+
+        default:
+            return '<p>No configuration needed</p>';
+    }
+}
+
+// Get conditions configuration HTML
+function getConditionsConfig(conditions) {
+    let html = '<div id="conditionsContainer">';
+
+    conditions.forEach((cond, index) => {
+        html += getConditionItemHTML(cond, index);
+    });
+
+    html += '</div>';
+    html += '<button type="button" class="add-condition-btn" onclick="addCondition()">+ Add Condition</button>';
+
+    return html;
+}
+
+// Get single condition item HTML
+function getConditionItemHTML(cond = {}, index) {
+    return `
+        <div class="condition-item" data-condition-index="${index}">
+            <div class="condition-item-header">
+                <span class="condition-label">Condition ${index + 1}</span>
+                <button type="button" class="remove-condition-btn" onclick="removeCondition(${index})">Remove</button>
+            </div>
+            <div class="form-group">
+                <label>Type</label>
+                <select class="condition-type" style="width: 100%; padding: 0.9rem; background: rgba(51, 51, 51, 0.7); border: 2px solid rgba(255, 255, 255, 0.1); border-radius: 8px; color: white;">
+                    <option value="contains" ${cond.type === 'contains' ? 'selected' : ''}>Contains</option>
+                    <option value="match" ${cond.type === 'match' ? 'selected' : ''}>Match</option>
+                    <option value="equal" ${cond.type === 'equal' ? 'selected' : ''}>Equal</option>
+                    <option value="default" ${cond.type === 'default' ? 'selected' : ''}>Default</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Value</label>
+                <input type="text" class="condition-value" value="${cond.value || ''}" style="width: 100%; padding: 0.9rem; background: rgba(51, 51, 51, 0.7); border: 2px solid rgba(255, 255, 255, 0.1); border-radius: 8px; color: white;" placeholder="Enter condition value...">
+            </div>
+        </div>
+    `;
+}
+
+// Add new condition
+function addCondition() {
+    const container = document.getElementById('conditionsContainer');
+    const index = container.children.length;
+    container.insertAdjacentHTML('beforeend', getConditionItemHTML({}, index));
+}
+
+// Remove condition
+function removeCondition(index) {
+    const item = document.querySelector(`[data-condition-index="${index}"]`);
+    if (item) item.remove();
+
+    // Re-index remaining conditions
+    document.querySelectorAll('.condition-item').forEach((item, newIndex) => {
+        item.setAttribute('data-condition-index', newIndex);
+        item.querySelector('.condition-label').textContent = `Condition ${newIndex + 1}`;
+        item.querySelector('.remove-condition-btn').setAttribute('onclick', `removeCondition(${newIndex})`);
+    });
+}
+
+// Save node configuration
+function saveNodeConfig(event) {
+    event.preventDefault();
+
+    const nodeData = flowData.nodes.find(n => n.id === currentConfigNodeId);
+    if (!nodeData) return;
+
+    const type = nodeData.type;
+    let config = {};
+
+    // Get configuration based on node type
+    switch(type) {
+        case 'send_message':
+        case 'ai_prompt':
+            config.text = document.getElementById('nodeConfigText').value;
+            break;
+
+        case 'stage':
+            config.value = document.getElementById('nodeConfigValue').value;
+            break;
+
+        case 'send_image':
+        case 'send_audio':
+        case 'send_video':
+            config.url = document.getElementById('nodeConfigUrl').value;
+            break;
+
+        case 'delay':
+        case 'waiting_times':
+            config.delay = parseInt(document.getElementById('nodeConfigDelay').value);
+            break;
+
+        case 'waiting_reply':
+            config.timeout = parseInt(document.getElementById('nodeConfigTimeout').value);
+            break;
+
+        case 'conditions':
+            const conditions = [];
+            document.querySelectorAll('.condition-item').forEach(item => {
+                conditions.push({
+                    type: item.querySelector('.condition-type').value,
+                    value: item.querySelector('.condition-value').value
+                });
+            });
+            config.conditions = conditions;
+            break;
+    }
+
+    // Update node config
+    nodeData.config = config;
+
+    // Update node body to show configured state
+    const nodeElement = document.querySelector(`[data-node-id="${currentConfigNodeId}"]`);
+    if (nodeElement) {
+        const nodeBody = nodeElement.querySelector('.node-body');
+        nodeBody.innerHTML = '<p style="color: #4CAF50;">✓ Configured</p>';
+    }
+
+    closeNodeConfigModal();
+
+    Swal.fire({
+        title: 'Saved!',
+        text: 'Node configuration saved',
+        icon: 'success',
+        background: '#141414',
+        color: '#ffffff',
+        confirmButtonColor: '#e50914',
+        timer: 1500
+    });
+}
+
+// Close node configuration modal
+function closeNodeConfigModal() {
+    const modal = document.getElementById('nodeConfigModal');
+    modal.classList.remove('active');
+    document.body.style.overflow = 'auto';
+    currentConfigNodeId = null;
+}
+
+// Edge Connection Functions
+function initializeConnectors() {
+    document.addEventListener('click', (e) => {
+        if (e.target.classList.contains('node-connector')) {
+            handleConnectorClick(e.target);
+        }
+    });
+}
+
+function handleConnectorClick(connector) {
+    const nodeId = connector.getAttribute('data-node-id');
+    const connectorType = connector.getAttribute('data-connector-type');
+
+    if (!connectionStart) {
+        // Start connection from output connector
+        if (connectorType === 'output') {
+            connectionStart = { nodeId, connector };
+            connector.style.background = 'var(--netflix-red)';
+            connector.style.transform = 'translateX(-50%) scale(1.5)';
+        }
+    } else {
+        // Complete connection to input connector
+        if (connectorType === 'input' && nodeId !== connectionStart.nodeId) {
+            createConnection(connectionStart.nodeId, nodeId);
+
+            // Reset start connector style
+            connectionStart.connector.style.background = '';
+            connectionStart.connector.style.transform = '';
+            connectionStart = null;
+        } else {
+            // Cancel connection
+            connectionStart.connector.style.background = '';
+            connectionStart.connector.style.transform = '';
+            connectionStart = null;
+        }
+    }
+}
+
+function createConnection(fromNodeId, toNodeId) {
+    // Check if connection already exists
+    const exists = flowData.connections.find(c => c.from === fromNodeId && c.to === toNodeId);
+    if (exists) return;
+
+    // Add connection to data
+    flowData.connections.push({ from: fromNodeId, to: toNodeId });
+
+    // Redraw all connections
+    drawConnections();
+}
+
+function drawConnections() {
+    const svg = document.getElementById('connectionLayer');
+    svg.innerHTML = ''; // Clear existing lines
+
+    flowData.connections.forEach(conn => {
+        const fromNode = document.querySelector(`[data-node-id="${conn.from}"]`);
+        const toNode = document.querySelector(`[data-node-id="${conn.to}"]`);
+
+        if (!fromNode || !toNode) return;
+
+        const fromConnector = fromNode.querySelector('.output-connector');
+        const toConnector = toNode.querySelector('.input-connector');
+
+        // Get positions
+        const fromRect = fromConnector.getBoundingClientRect();
+        const toRect = toConnector.getBoundingClientRect();
+        const canvasRect = document.getElementById('flowCanvas').getBoundingClientRect();
+
+        const x1 = fromRect.left - canvasRect.left + fromRect.width / 2;
+        const y1 = fromRect.top - canvasRect.top + fromRect.height / 2;
+        const x2 = toRect.left - canvasRect.left + toRect.width / 2;
+        const y2 = toRect.top - canvasRect.top + toRect.height / 2;
+
+        // Create curved path
+        const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+        const midY = (y1 + y2) / 2;
+        const d = `M ${x1} ${y1} C ${x1} ${midY}, ${x2} ${midY}, ${x2} ${y2}`;
+
+        path.setAttribute('d', d);
+        path.setAttribute('class', 'connection-line');
+        path.setAttribute('data-from', conn.from);
+        path.setAttribute('data-to', conn.to);
+
+        svg.appendChild(path);
+    });
+}
+
 // Logout function
 function logout() {
     localStorage.removeItem('auth_token');
@@ -616,4 +927,5 @@ function logout() {
 document.addEventListener('DOMContentLoaded', function() {
     loadDevices();
     initializeDragAndDrop();
+    initializeConnectors();
 });
