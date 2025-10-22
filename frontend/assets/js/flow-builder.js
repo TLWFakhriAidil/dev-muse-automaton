@@ -172,10 +172,16 @@ function createFlowNode(type, label, icon, x, y) {
 
     // Add edit button click event
     const editBtn = node.querySelector('.node-edit');
-    editBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        openNodeConfig(nodeId);
-    });
+    if (editBtn) {
+        editBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            e.preventDefault();
+            console.log('Edit button clicked for node:', nodeId);
+            openNodeConfig(nodeId);
+        });
+    } else {
+        console.error('Edit button not found for node:', nodeId);
+    }
 
     // Add delete button click event
     const deleteBtn = node.querySelector('.node-delete');
@@ -194,6 +200,18 @@ function createFlowNode(type, label, icon, x, y) {
         x: x,
         y: y,
         config: {}
+    });
+
+    // Initialize connectors for this new node
+    const connectors = node.querySelectorAll('.node-connector');
+    console.log('Initializing connectors for new node:', nodeId, 'Count:', connectors.length);
+    connectors.forEach(connector => {
+        connector.addEventListener('click', (e) => {
+            e.stopPropagation();
+            e.preventDefault();
+            console.log('New node connector clicked');
+            handleConnectorClick(connector);
+        }, true);
     });
 }
 
@@ -637,20 +655,32 @@ let connectionStart = null;
 
 // Open node configuration modal
 function openNodeConfig(nodeId) {
+    console.log('openNodeConfig called with nodeId:', nodeId);
     currentConfigNodeId = nodeId;
     const nodeData = flowData.nodes.find(n => n.id === nodeId);
 
-    if (!nodeData) return;
+    console.log('Found node data:', nodeData);
+    console.log('All nodes:', flowData.nodes);
+
+    if (!nodeData) {
+        console.error('Node data not found for:', nodeId);
+        return;
+    }
 
     const modal = document.getElementById('nodeConfigModal');
     const title = document.getElementById('nodeConfigTitle');
     const fieldsContainer = document.getElementById('nodeConfigFields');
+
+    console.log('Modal element:', modal);
+    console.log('Title element:', title);
+    console.log('Fields container:', fieldsContainer);
 
     title.textContent = `Configure ${nodeData.label}`;
     fieldsContainer.innerHTML = getConfigFieldsForType(nodeData.type, nodeData.config);
 
     modal.classList.add('active');
     document.body.style.overflow = 'hidden';
+    console.log('Modal should now be visible with class:', modal.className);
 }
 
 // Get configuration fields based on node type
@@ -851,16 +881,33 @@ function closeNodeConfigModal() {
 function initializeConnectors() {
     // Make sure start node connectors are initialized
     const startConnectors = document.querySelectorAll('.start-node .node-connector');
+    console.log('Initializing start node connectors:', startConnectors.length);
     startConnectors.forEach(connector => {
         connector.setAttribute('data-node-id', 'start');
+        console.log('Start connector initialized:', connector);
     });
 
-    // Global click handler for connectors
+    // Global click handler for connectors using event delegation
     document.addEventListener('click', (e) => {
+        // Check if the clicked element is a connector
         if (e.target.classList.contains('node-connector')) {
             e.stopPropagation();
+            e.preventDefault();
+            console.log('Connector click detected via event delegation');
             handleConnectorClick(e.target);
         }
+    }, true); // Use capture phase to catch events before they bubble
+
+    // Also add direct click handlers to all existing connectors
+    const allConnectors = document.querySelectorAll('.node-connector');
+    console.log('Adding direct handlers to', allConnectors.length, 'connectors');
+    allConnectors.forEach(connector => {
+        connector.addEventListener('click', (e) => {
+            e.stopPropagation();
+            e.preventDefault();
+            console.log('Connector click detected via direct handler');
+            handleConnectorClick(connector);
+        }, true);
     });
 }
 
@@ -868,56 +915,45 @@ function handleConnectorClick(connector) {
     const nodeId = connector.getAttribute('data-node-id');
     const connectorType = connector.getAttribute('data-connector-type');
 
-    console.log('Connector clicked:', nodeId, connectorType);
+    console.log('=== Connector Clicked ===');
+    console.log('Node ID:', nodeId);
+    console.log('Connector Type:', connectorType);
+    console.log('Connection Start:', connectionStart);
 
     if (!connectionStart) {
         // Start connection from output connector
         if (connectorType === 'output') {
             connectionStart = { nodeId, connector };
-            connector.style.background = 'var(--netflix-red)';
-            connector.style.boxShadow = '0 0 10px var(--netflix-red)';
+            connector.style.background = '#e50914';
+            connector.style.boxShadow = '0 0 10px #e50914';
+            connector.style.transform = 'translateX(-50%) scale(1.5)';
+            connector.style.zIndex = '100';
 
-            // Update based on connector type
-            if (connector.classList.contains('output-connector')) {
-                connector.style.transform = 'translateX(-50%) scale(1.5)';
-                connector.style.bottom = '-9px';
-            } else {
-                connector.style.transform = 'translateX(-50%) scale(1.5)';
-                connector.style.top = '-9px';
-            }
-
-            console.log('Connection started from', nodeId);
+            console.log('✓ Connection started from node:', nodeId);
+        } else {
+            console.log('✗ Cannot start connection from input connector');
         }
     } else {
         // Complete connection to input connector
         if (connectorType === 'input' && nodeId !== connectionStart.nodeId) {
+            console.log('✓ Creating connection:', connectionStart.nodeId, '->', nodeId);
             createConnection(connectionStart.nodeId, nodeId);
-            console.log('Connection created:', connectionStart.nodeId, '->', nodeId);
 
             // Reset start connector style
             connectionStart.connector.style.background = '';
             connectionStart.connector.style.boxShadow = '';
             connectionStart.connector.style.transform = '';
-
-            if (connectionStart.connector.classList.contains('output-connector')) {
-                connectionStart.connector.style.bottom = '-7px';
-            } else {
-                connectionStart.connector.style.top = '-7px';
-            }
+            connectionStart.connector.style.zIndex = '';
 
             connectionStart = null;
+            console.log('✓ Connection completed and reset');
         } else {
             // Cancel connection
-            console.log('Connection cancelled');
+            console.log('✗ Connection cancelled (same node or wrong connector type)');
             connectionStart.connector.style.background = '';
             connectionStart.connector.style.boxShadow = '';
             connectionStart.connector.style.transform = '';
-
-            if (connectionStart.connector.classList.contains('output-connector')) {
-                connectionStart.connector.style.bottom = '-7px';
-            } else {
-                connectionStart.connector.style.top = '-7px';
-            }
+            connectionStart.connector.style.zIndex = '';
 
             connectionStart = null;
         }
@@ -927,10 +963,15 @@ function handleConnectorClick(connector) {
 function createConnection(fromNodeId, toNodeId) {
     // Check if connection already exists
     const exists = flowData.connections.find(c => c.from === fromNodeId && c.to === toNodeId);
-    if (exists) return;
+    if (exists) {
+        console.log('Connection already exists:', fromNodeId, '->', toNodeId);
+        return;
+    }
 
     // Add connection to data
     flowData.connections.push({ from: fromNodeId, to: toNodeId });
+    console.log('✓ Connection added to flowData:', fromNodeId, '->', toNodeId);
+    console.log('Total connections:', flowData.connections.length);
 
     // Redraw all connections
     drawConnections();
@@ -1017,10 +1058,16 @@ function initializeCanvasPan() {
         }
     });
 
-    // Middle mouse button or space + drag for panning
+    // Middle mouse button or left click on canvas background for panning
     canvasContainer.addEventListener('mousedown', (e) => {
-        // Middle mouse button (button 1) or space + left click
-        if (e.button === 1 || (e.button === 0 && e.target === canvasContainer)) {
+        // Check if clicking on canvas container or the canvas itself (not nodes, not connectors)
+        const isCanvasBackground = e.target === canvasContainer ||
+                                   e.target.id === 'flowCanvas' ||
+                                   e.target.classList.contains('flow-canvas') ||
+                                   e.target.id === 'connectionLayer';
+
+        // Middle mouse button (button 1) or left click on canvas background
+        if (e.button === 1 || (e.button === 0 && isCanvasBackground)) {
             isPanning = true;
             panStart = {
                 x: e.clientX - canvasContainer.scrollLeft,
