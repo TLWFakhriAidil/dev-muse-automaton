@@ -83,7 +83,7 @@ func (r *StageRepository) GetAllStageValues(ctx context.Context) ([]models.Stage
 // UpdateStageValue updates a stage value
 func (r *StageRepository) UpdateStageValue(ctx context.Context, stageID int, updates map[string]interface{}) error {
 	_, err := r.supabase.UpdateAsAdmin("stagesetvalue", map[string]string{
-		"stagesetvalue_id": fmt.Sprintf("eq.%d", stageID),
+		"stagesetvalue_id": fmt.Sprintf("%d", stageID),
 	}, updates)
 
 	if err != nil {
@@ -96,7 +96,7 @@ func (r *StageRepository) UpdateStageValue(ctx context.Context, stageID int, upd
 // DeleteStageValue deletes a stage value
 func (r *StageRepository) DeleteStageValue(ctx context.Context, stageID int) error {
 	err := r.supabase.Delete("stagesetvalue", map[string]string{
-		"stagesetvalue_id": fmt.Sprintf("eq.%d", stageID),
+		"stagesetvalue_id": fmt.Sprintf("%d", stageID),
 	})
 
 	if err != nil {

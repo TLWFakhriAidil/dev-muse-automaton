@@ -29,6 +29,22 @@ async function loadDevices() {
                 deviceSelect.appendChild(option);
             });
         }
+
+        // If in edit mode, populate the form with stored stage data
+        if (window.editingStageData) {
+            const stage = window.editingStageData;
+            document.getElementById('deviceSelect').value = stage.id_device || '';
+            document.getElementById('stageInput').value = stage.stage || '';
+            document.getElementById('typeSelect').value = stage.type_inputdata || stage.type || '';
+            document.getElementById('inputHardCode').value = stage.inputhardcode || stage.input_hard_code || '';
+            document.getElementById('columnSelect').value = stage.columnsdata || stage.column || '';
+
+            // Toggle Input Hard Code field visibility
+            toggleInputHardCode();
+
+            // Clear the temporary data
+            window.editingStageData = null;
+        }
     } catch (error) {
         console.error('Load devices error:', error);
     }
@@ -143,6 +159,10 @@ function closeStageModal() {
     document.getElementById('stageForm').reset();
     document.querySelector('.modal-title').textContent = 'Add Stage Value';
     window.editingStageId = null;
+    window.editingStageData = null;
+
+    // Hide Input Hard Code field by default
+    document.getElementById('inputHardCodeGroup').classList.add('hidden');
 }
 
 // Save stage value
@@ -238,25 +258,18 @@ async function saveStageValue(event) {
 }
 
 // Edit stage value
-function editStageValue(stage) {
-    // Populate form
-    document.getElementById('deviceSelect').value = stage.id_device || '';
-    document.getElementById('stageInput').value = stage.stage || '';
-    document.getElementById('typeSelect').value = stage.type_inputdata || stage.type || '';
-    document.getElementById('inputHardCode').value = stage.inputhardcode || stage.input_hard_code || '';
-    document.getElementById('columnSelect').value = stage.columnsdata || stage.column || '';
-
+async function editStageValue(stage) {
     // Change modal title
     document.querySelector('.modal-title').textContent = 'Edit Stage Value';
 
     // Store stage ID for update
     window.editingStageId = stage.stagesetvalue_id || stage.id;
 
-    // Open modal
-    openStageModal();
+    // Store stage data temporarily
+    window.editingStageData = stage;
 
-    // Toggle Input Hard Code field visibility based on current Type value
-    toggleInputHardCode();
+    // Open modal (this will load devices)
+    openStageModal();
 }
 
 // Delete stage value
