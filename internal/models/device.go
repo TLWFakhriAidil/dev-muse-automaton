@@ -36,10 +36,14 @@ type CreateDeviceRequest struct {
 
 // UpdateDeviceRequest is the request body for updating a device
 type UpdateDeviceRequest struct {
+	WebhookURL   *string `json:"webhook_url,omitempty"`
 	Provider     *string `json:"provider,omitempty"`
 	APIKeyOption *string `json:"api_key_option,omitempty"`
 	APIKey       *string `json:"api_key,omitempty"`
 	PhoneNumber  *string `json:"phone_number,omitempty"`
+	IDDevice     *string `json:"id_device,omitempty"`
+	IDERP        *string `json:"id_erp,omitempty"`
+	IDAdmin      *string `json:"id_admin,omitempty"`
 	Instance     *string `json:"instance,omitempty"`
 }
 

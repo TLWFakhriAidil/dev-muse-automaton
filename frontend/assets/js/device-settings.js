@@ -32,6 +32,10 @@ function closeDeviceModal() {
     document.getElementById('deviceForm').reset();
     document.getElementById('deviceId').value = '';
     document.getElementById('webhookId').value = '';
+
+    // Reset modal title and editing state
+    document.querySelector('.modal-title').textContent = 'Add New Device';
+    window.editingDeviceId = null;
 }
 
 // Save device
@@ -44,6 +48,9 @@ async function saveDevice(event) {
         return;
     }
 
+    // Check if we're editing
+    const isEditMode = window.editingDeviceId !== undefined && window.editingDeviceId !== null;
+
     // Get form values
     let deviceId = document.getElementById('deviceId').value.trim();
     let webhookId = document.getElementById('webhookId').value.trim();
@@ -55,14 +62,19 @@ async function saveDevice(event) {
     const idErp = document.getElementById('idErp').value.trim();
     const idAdmin = document.getElementById('idAdmin').value.trim();
 
-    // Auto-generate Device ID if not provided
-    if (!deviceId) {
+    // For non-wablas providers, device_id should be empty/null (only for CREATE mode)
+    if (!isEditMode && provider !== 'wablas') {
+        deviceId = '';
+    }
+
+    // Auto-generate Device ID if not provided and provider is wablas (only for CREATE mode)
+    if (!isEditMode && provider === 'wablas' && !deviceId) {
         deviceId = 'DEV-' + Math.random().toString(36).substring(2, 15).toUpperCase();
         document.getElementById('deviceId').value = deviceId;
     }
 
-    // Auto-generate Webhook if not provided
-    if (!webhookId) {
+    // Auto-generate Webhook if not provided (only for CREATE mode)
+    if (!isEditMode && !webhookId) {
         const randomPath = Math.random().toString(36).substring(2, 15);
         const randomToken = Math.random().toString(36).substring(2, 15);
         webhookId = `${API_BASE_URL}/webhook/whatsapp/${randomPath}/${randomToken}`;
@@ -108,14 +120,31 @@ async function saveDevice(event) {
     });
 
     try {
-        const response = await fetch(`${API_BASE_URL}/devices`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}`
-            },
-            body: JSON.stringify({
-                device_id: deviceId,
+        let response;
+
+        if (isEditMode) {
+            // Update existing device
+            response = await fetch(`${API_BASE_URL}/devices/${window.editingDeviceId}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({
+                    webhook_url: webhookId,
+                    api_key_option: apiKeyOption,
+                    provider: provider,
+                    api_key: apiKey,
+                    phone_number: phoneNumber,
+                    id_device: idDevice,
+                    id_erp: idErp,
+                    id_admin: idAdmin
+                })
+            });
+        } else {
+            // Create new device
+            // For wablas, device_id is required; for others, send empty string
+            const requestBody = {
                 webhook_url: webhookId,
                 api_key_option: apiKeyOption,
                 provider: provider,
@@ -124,20 +153,39 @@ async function saveDevice(event) {
                 id_device: idDevice,
                 id_erp: idErp,
                 id_admin: idAdmin
-            })
-        });
+            };
+
+            // Only include device_id if provider is wablas
+            if (provider === 'wablas') {
+                requestBody.device_id = deviceId || 'DEV-' + Math.random().toString(36).substring(2, 15).toUpperCase();
+            } else {
+                requestBody.device_id = '';
+            }
+
+            response = await fetch(`${API_BASE_URL}/devices`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify(requestBody)
+            });
+        }
 
         const data = await response.json();
 
         if (data.success) {
             Swal.fire({
                 title: 'Success!',
-                text: 'Device has been saved successfully',
+                text: isEditMode ? 'Device has been updated successfully' : 'Device has been saved successfully',
                 icon: 'success',
                 background: '#141414',
                 color: '#ffffff',
                 confirmButtonColor: '#e50914'
             });
+
+            // Clear editing state
+            window.editingDeviceId = null;
 
             closeDeviceModal();
             loadDevices(); // Reload devices list

@@ -133,6 +133,9 @@ func (s *DeviceService) UpdateDevice(ctx context.Context, userID, deviceID strin
 	// Build update map
 	updates := make(map[string]interface{})
 
+	if req.WebhookURL != nil {
+		updates["webhook_id"] = *req.WebhookURL
+	}
 	if req.Provider != nil {
 		updates["provider"] = *req.Provider
 	}
@@ -144,6 +147,15 @@ func (s *DeviceService) UpdateDevice(ctx context.Context, userID, deviceID strin
 	}
 	if req.PhoneNumber != nil {
 		updates["phone_number"] = *req.PhoneNumber
+	}
+	if req.IDDevice != nil {
+		updates["id_device"] = *req.IDDevice
+	}
+	if req.IDERP != nil {
+		updates["id_erp"] = *req.IDERP
+	}
+	if req.IDAdmin != nil {
+		updates["id_admin"] = *req.IDAdmin
 	}
 	if req.Instance != nil {
 		updates["instance"] = *req.Instance
