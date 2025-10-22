@@ -1059,6 +1059,20 @@ function updateConditionNodeConnectors(nodeElement, conditions) {
     console.log(`✓ Updated condition node ${nodeId} with ${conditions.length} output connectors`);
 }
 
+// Track if global connector handler has been initialized
+let connectorHandlerInitialized = false;
+
+// Global handler function - defined once
+function globalConnectorHandler(e) {
+    // Check if the clicked element is a connector
+    if (e.target.classList.contains('node-connector')) {
+        e.stopPropagation();
+        e.preventDefault();
+        console.log('Connector click detected via event delegation');
+        handleConnectorClick(e.target);
+    }
+}
+
 // Edge Connection Functions
 function initializeConnectors() {
     // Make sure start node connectors are initialized
@@ -1069,28 +1083,17 @@ function initializeConnectors() {
         console.log('Start connector initialized:', connector);
     });
 
-    // Global click handler for connectors using event delegation
-    document.addEventListener('click', (e) => {
-        // Check if the clicked element is a connector
-        if (e.target.classList.contains('node-connector')) {
-            e.stopPropagation();
-            e.preventDefault();
-            console.log('Connector click detected via event delegation');
-            handleConnectorClick(e.target);
-        }
-    }, true); // Use capture phase to catch events before they bubble
+    // Only add global click handler ONCE
+    if (!connectorHandlerInitialized) {
+        console.log('Adding global connector click handler (first time only)');
+        document.addEventListener('click', globalConnectorHandler, true);
+        connectorHandlerInitialized = true;
+    } else {
+        console.log('Global connector handler already initialized, skipping');
+    }
 
-    // Also add direct click handlers to all existing connectors
-    const allConnectors = document.querySelectorAll('.node-connector');
-    console.log('Adding direct handlers to', allConnectors.length, 'connectors');
-    allConnectors.forEach(connector => {
-        connector.addEventListener('click', (e) => {
-            e.stopPropagation();
-            e.preventDefault();
-            console.log('Connector click detected via direct handler');
-            handleConnectorClick(connector);
-        }, true);
-    });
+    // NOTE: We don't need direct handlers anymore since we have global delegation
+    // The global handler will catch all connector clicks
 }
 
 function handleConnectorClick(connector) {
