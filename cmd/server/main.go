@@ -190,15 +190,15 @@ func main() {
 	})
 
 	// Serve static files (frontend)
-	app.Static("/assets", "./dist/assets")
-	app.Static("/", "./dist", fiber.Static{
+	app.Static("/assets", "./frontend/assets")
+	app.Static("/", "./frontend", fiber.Static{
 		Index: "index.html",
 	})
 
 	// SPA fallback - serve index.html for all non-API routes
 	app.Use(func(c *fiber.Ctx) error {
 		if c.Path()[:4] != "/api" && c.Path() != "/healthz" {
-			return c.SendFile("./dist/index.html")
+			return c.SendFile("./frontend/index.html")
 		}
 		return c.Next()
 	})
