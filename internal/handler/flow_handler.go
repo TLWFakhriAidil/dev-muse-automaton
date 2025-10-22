@@ -62,10 +62,10 @@ func (h *FlowHandler) CreateFlow(c *fiber.Ctx) error {
 	}
 
 	// Validate required fields
-	if req.IDDevice == "" || req.Name == "" {
+	if req.IDDevice == "" || req.FlowName == "" {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"success": false,
-			"message": "Device ID and name are required",
+			"message": "Device ID and flow name are required",
 		})
 	}
 

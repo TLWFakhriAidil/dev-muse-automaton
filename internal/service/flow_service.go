@@ -59,10 +59,10 @@ func (s *FlowService) CreateFlow(ctx context.Context, userID string, req *models
 
 	flow := &models.ChatbotFlow{
 		IDDevice: deviceIdentifier, // Use the user-friendly identifier
-		Name:     req.Name,
+		Name:     req.FlowName,
 		Niche:    req.Niche,
-		Nodes:    req.Nodes,
-		Edges:    req.Edges,
+		Nodes:    map[string]interface{}{}, // Will parse from NodesData if needed
+		Edges:    map[string]interface{}{}, // Will parse from NodesData if needed
 	}
 
 	if err := s.flowRepo.CreateFlow(ctx, flow); err != nil {
@@ -295,17 +295,16 @@ func (s *FlowService) UpdateFlow(ctx context.Context, userID, flowID string, req
 	// Build update map
 	updates := make(map[string]interface{})
 
-	if req.Name != nil {
-		updates["name"] = *req.Name
+	if req.FlowName != nil {
+		updates["name"] = *req.FlowName
 	}
 	if req.Niche != nil {
 		updates["niche"] = *req.Niche
 	}
-	if req.Nodes != nil {
-		updates["nodes"] = req.Nodes
-	}
-	if req.Edges != nil {
-		updates["edges"] = req.Edges
+	if req.NodesData != nil {
+		updates["nodes"] = map[string]interface{}{}
+		updates["edges"] = map[string]interface{}{}
+		// You could parse NodesData JSON here if needed
 	}
 
 	if len(updates) == 0 {

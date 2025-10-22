@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Flow Builder - DevMuse Automaton</title>
+    <link rel="stylesheet" href="assets/css/dashboard.css">
+    <link rel="stylesheet" href="assets/css/flow-builder.css">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+</head>
+<body>
+    <!-- Background Gradient -->
+    <div class="background-gradient"></div>
+
+    <!-- Sidebar -->
+    <aside class="sidebar">
+        <div class="sidebar-header">
+            <div class="logo">
+                <span class="logo-icon">🤖</span>
+                <h1 class="logo-text">
+                    <span class="logo-dev">Dev</span><span class="logo-muse">Muse</span>
+                </h1>
+            </div>
+        </div>
+
+        <nav class="sidebar-nav">
+            <a href="dashboard.html" class="nav-item">
+                <span class="nav-icon">📊</span>
+                <span class="nav-text">Dashboard</span>
+            </a>
+            <a href="flow-builder.html" class="nav-item active">
+                <span class="nav-icon">🔀</span>
+                <span class="nav-text">Flow Builder</span>
+            </a>
+            <a href="#" class="nav-item">
+                <span class="nav-icon">📈</span>
+                <span class="nav-text">Analytics</span>
+            </a>
+            <a href="device-settings.html" class="nav-item">
+                <span class="nav-icon">⚙️</span>
+                <span class="nav-text">Device Settings</span>
+            </a>
+            <a href="set-stage.html" class="nav-item">
+                <span class="nav-icon">🎯</span>
+                <span class="nav-text">Set Stage</span>
+            </a>
+        </nav>
+
+        <div class="sidebar-footer">
+            <a href="profile.html" class="nav-item">
+                <span class="nav-icon">👤</span>
+                <span class="nav-text">Profile</span>
+            </a>
+            <a href="#" class="nav-item" onclick="logout()">
+                <span class="nav-icon">🚪</span>
+                <span class="nav-text">Logout</span>
+            </a>
+        </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <!-- Header -->
+        <header class="page-header">
+            <div class="header-content">
+                <div>
+                    <h1 class="page-title">Flow Builder</h1>
+                    <p class="page-subtitle">Design and build your conversational flows</p>
+                </div>
+                <div class="header-actions">
+                    <button class="btn-primary" onclick="saveFlow()">
+                        <span>💾</span>
+                        <span>Save Flow</span>
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <!-- Flow Controls Section -->
+        <div class="flow-controls-section">
+            <div class="control-group">
+                <label for="deviceSelect">Device *</label>
+                <select id="deviceSelect" onchange="loadFlowForDevice()">
+                    <option value="">Select a device...</option>
+                </select>
+            </div>
+            <div class="control-group">
+                <label for="flowNameInput">Flow Name *</label>
+                <input type="text" id="flowNameInput" placeholder="Enter flow name...">
+            </div>
+            <div class="control-group">
+                <label for="nicheInput">Niche</label>
+                <input type="text" id="nicheInput" placeholder="Enter your niche...">
+            </div>
+        </div>
+
+        <!-- Flow Builder Container -->
+        <div class="flow-builder-container">
+            <!-- Left Sidebar - Nodes Panel -->
+            <div class="nodes-panel">
+                <div class="panel-section">
+                    <h3 class="panel-title">Add Nodes</h3>
+
+                    <div class="node-item" draggable="true" data-node-type="send_message">
+                        <span class="node-icon">💬</span>
+                        <span class="node-label">Send Message</span>
+                    </div>
+
+                    <div class="node-item" draggable="true" data-node-type="manual_response">
+                        <span class="node-icon">✋</span>
+                        <span class="node-label">Manual Response</span>
+                    </div>
+
+                    <div class="node-item" draggable="true" data-node-type="ai_prompt">
+                        <span class="node-icon">✨</span>
+                        <span class="node-label">AI Prompt</span>
+                    </div>
+
+                    <div class="node-item" draggable="true" data-node-type="stage">
+                        <span class="node-icon">🎯</span>
+                        <span class="node-label">Stage</span>
+                    </div>
+
+                    <div class="node-item" draggable="true" data-node-type="send_image">
+                        <span class="node-icon">🖼️</span>
+                        <span class="node-label">Send Image</span>
+                    </div>
+
+                    <div class="node-item" draggable="true" data-node-type="send_audio">
+                        <span class="node-icon">🔊</span>
+                        <span class="node-label">Send Audio</span>
+                    </div>
+
+                    <div class="node-item" draggable="true" data-node-type="send_video">
+                        <span class="node-icon">🎥</span>
+                        <span class="node-label">Send Video</span>
+                    </div>
+
+                    <div class="node-item" draggable="true" data-node-type="delay">
+                        <span class="node-icon">⏱️</span>
+                        <span class="node-label">Delay</span>
+                    </div>
+
+                    <div class="node-item" draggable="true" data-node-type="conditions">
+                        <span class="node-icon">🔀</span>
+                        <span class="node-label">Conditions</span>
+                    </div>
+                </div>
+
+                <div class="panel-section">
+                    <h3 class="panel-title">Actions</h3>
+
+                    <button class="action-btn" onclick="clearCanvas()">
+                        <span>🗑️</span>
+                        <span>Clear Canvas</span>
+                    </button>
+
+                    <button class="action-btn" onclick="exportFlow()">
+                        <span>📤</span>
+                        <span>Export</span>
+                    </button>
+
+                    <button class="action-btn" onclick="importFlow()">
+                        <span>📥</span>
+                        <span>Import</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Canvas Area -->
+            <div class="canvas-container">
+                <div id="flowCanvas" class="flow-canvas">
+                    <!-- Start Node (always present) -->
+                    <div class="flow-node start-node" data-node-id="start" style="top: 50px; left: 50%;">
+                        <div class="node-header start-header">
+                            <span class="node-icon">▶️</span>
+                            <span class="node-title">Start</span>
+                        </div>
+                        <div class="node-body">
+                            <p>Flow begins here</p>
+                        </div>
+                        <div class="node-connector output-connector" data-connector-type="output"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script src="assets/js/flow-builder.js"></script>
+</body>
+</html>

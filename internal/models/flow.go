@@ -16,19 +16,17 @@ type ChatbotFlow struct {
 
 // CreateFlowRequest is the request body for creating a flow
 type CreateFlowRequest struct {
-	IDDevice string                 `json:"id_device" validate:"required"`
-	Name     string                 `json:"name" validate:"required"`
-	Niche    string                 `json:"niche"`
-	Nodes    map[string]interface{} `json:"nodes,omitempty"`
-	Edges    map[string]interface{} `json:"edges,omitempty"`
+	IDDevice  string `json:"id_device" validate:"required"`
+	FlowName  string `json:"flow_name" validate:"required"`
+	Niche     string `json:"niche"`
+	NodesData string `json:"nodes_data"` // JSON string containing complete flow structure
 }
 
 // UpdateFlowRequest is the request body for updating a flow
 type UpdateFlowRequest struct {
-	Name  *string                `json:"name,omitempty"`
-	Niche *string                `json:"niche,omitempty"`
-	Nodes map[string]interface{} `json:"nodes,omitempty"`
-	Edges map[string]interface{} `json:"edges,omitempty"`
+	FlowName  *string `json:"flow_name,omitempty"`
+	Niche     *string `json:"niche,omitempty"`
+	NodesData *string `json:"nodes_data,omitempty"`
 }
 
 // FlowResponse is the response for flow operations
