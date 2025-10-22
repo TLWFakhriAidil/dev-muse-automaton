@@ -53,3 +53,9 @@ type ChangePasswordRequest struct {
 	CurrentPassword string `json:"current_password" validate:"required"`
 	NewPassword     string `json:"new_password" validate:"required,min=6"`
 }
+
+// UpdateProfileRequest is the request body for updating profile
+type UpdateProfileRequest struct {
+	Gmail *string `json:"gmail,omitempty"`
+	Phone *string `json:"phone,omitempty"`
+}

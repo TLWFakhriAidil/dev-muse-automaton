@@ -177,3 +177,28 @@ func (r *UserRepository) UpdatePassword(ctx context.Context, userID string, hash
 
 	return nil
 }
+
+// UpdateProfile updates user profile (gmail and phone)
+func (r *UserRepository) UpdateProfile(ctx context.Context, userID string, gmail *string, phone *string) error {
+	updateData := map[string]interface{}{
+		"updated_at": time.Now(),
+	}
+
+	if gmail != nil {
+		updateData["gmail"] = *gmail
+	}
+
+	if phone != nil {
+		updateData["phone"] = *phone
+	}
+
+	_, err := r.supabase.UpdateAsAdmin("user", map[string]string{
+		"id": userID,
+	}, updateData)
+
+	if err != nil {
+		return fmt.Errorf("failed to update profile: %w", err)
+	}
+
+	return nil
+}

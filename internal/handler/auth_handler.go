@@ -199,3 +199,49 @@ func (h *AuthHandler) ChangePassword(c *fiber.Ctx) error {
 
 	return c.Status(fiber.StatusOK).JSON(resp)
 }
+
+// UpdateProfile handles updating user profile (gmail and phone)
+func (h *AuthHandler) UpdateProfile(c *fiber.Ctx) error {
+	// Get token from Authorization header
+	authHeader := c.Get("Authorization")
+	if authHeader == "" {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+			"success": false,
+			"message": "Authorization header required",
+		})
+	}
+
+	// Extract token
+	token := authHeader
+	if len(authHeader) > 7 && authHeader[:7] == "Bearer " {
+		token = authHeader[7:]
+	}
+
+	var req models.UpdateProfileRequest
+
+	// Parse request body
+	if err := c.BodyParser(&req); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"success": false,
+			"message": "Invalid request body",
+			"error":   err.Error(),
+		})
+	}
+
+	// Call service
+	resp, err := h.authService.UpdateProfile(c.Context(), token, &req)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"success": false,
+			"message": "Failed to update profile",
+			"error":   err.Error(),
+		})
+	}
+
+	// If update failed
+	if !resp.Success {
+		return c.Status(fiber.StatusUnauthorized).JSON(resp)
+	}
+
+	return c.Status(fiber.StatusOK).JSON(resp)
+}

@@ -219,3 +219,25 @@ func (s *AuthService) ChangePassword(ctx context.Context, tokenString string, re
 		Message: "Password changed successfully",
 	}, nil
 }
+
+// UpdateProfile updates user profile (gmail and phone)
+func (s *AuthService) UpdateProfile(ctx context.Context, tokenString string, req *models.UpdateProfileRequest) (*models.AuthResponse, error) {
+	// Validate token and get user
+	claims, err := s.ValidateToken(tokenString)
+	if err != nil {
+		return &models.AuthResponse{
+			Success: false,
+			Message: "Invalid or expired token",
+		}, nil
+	}
+
+	// Update profile in database
+	if err := s.userRepo.UpdateProfile(ctx, claims.UserID, req.Gmail, req.Phone); err != nil {
+		return nil, fmt.Errorf("failed to update profile: %w", err)
+	}
+
+	return &models.AuthResponse{
+		Success: true,
+		Message: "Profile updated successfully",
+	}, nil
+}

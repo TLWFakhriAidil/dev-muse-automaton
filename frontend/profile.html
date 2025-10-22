@@ -107,15 +107,19 @@
                         <span class="info-note">Email cannot be changed</span>
                     </div>
 
-                    <div class="info-group">
-                        <label>Gmail (Optional)</label>
-                        <div class="info-value" id="gmail">-</div>
+                    <div class="form-group">
+                        <label for="gmailInput">Gmail (Optional)</label>
+                        <input type="email" id="gmailInput" placeholder="Enter your Gmail address">
                     </div>
 
-                    <div class="info-group">
-                        <label>Phone Number (Optional)</label>
-                        <div class="info-value" id="phone">-</div>
+                    <div class="form-group">
+                        <label for="phoneInput">Phone Number (Optional)</label>
+                        <input type="text" id="phoneInput" placeholder="Enter your phone number">
                     </div>
+
+                    <button type="button" class="btn-save-profile" onclick="saveProfile()">
+                        <span>Save Profile</span>
+                    </button>
                 </div>
 
                 <!-- Account Status Card -->

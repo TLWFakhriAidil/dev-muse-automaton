@@ -24,8 +24,8 @@ async function loadProfile() {
             // Profile Information
             document.getElementById('fullName').textContent = user.full_name || '-';
             document.getElementById('email').textContent = user.email || '-';
-            document.getElementById('gmail').textContent = user.gmail || '-';
-            document.getElementById('phone').textContent = user.phone || '-';
+            document.getElementById('gmailInput').value = user.gmail || '';
+            document.getElementById('phoneInput').value = user.phone || '';
 
             // Account Status
             const statusBadge = document.getElementById('status');
@@ -154,6 +154,76 @@ async function changePassword(event) {
         }
     } catch (error) {
         console.error('Change password error:', error);
+        Swal.fire({
+            title: 'Error!',
+            text: 'Network error. Please check your connection.',
+            icon: 'error',
+            background: '#141414',
+            color: '#ffffff',
+            confirmButtonColor: '#e50914'
+        });
+    }
+}
+
+// Save profile (Gmail and Phone)
+async function saveProfile() {
+    const token = localStorage.getItem('auth_token');
+    if (!token) {
+        window.location.href = '/';
+        return;
+    }
+
+    const gmail = document.getElementById('gmailInput').value.trim();
+    const phone = document.getElementById('phoneInput').value.trim();
+
+    // Show loading
+    Swal.fire({
+        title: 'Saving Profile...',
+        text: 'Please wait',
+        allowOutsideClick: false,
+        didOpen: () => {
+            Swal.showLoading();
+        },
+        background: '#141414',
+        color: '#ffffff'
+    });
+
+    try {
+        const response = await fetch(`${API_BASE_URL}/auth/update-profile`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify({
+                gmail: gmail || null,
+                phone: phone || null
+            })
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+            Swal.fire({
+                title: 'Success!',
+                text: 'Profile updated successfully',
+                icon: 'success',
+                background: '#141414',
+                color: '#ffffff',
+                confirmButtonColor: '#e50914'
+            });
+        } else {
+            Swal.fire({
+                title: 'Error!',
+                text: data.message || 'Failed to update profile',
+                icon: 'error',
+                background: '#141414',
+                color: '#ffffff',
+                confirmButtonColor: '#e50914'
+            });
+        }
+    } catch (error) {
+        console.error('Save profile error:', error);
         Swal.fire({
             title: 'Error!',
             text: 'Network error. Please check your connection.',
