@@ -607,12 +607,17 @@ function importFlow() {
 
 // Load flow from data
 function loadFlowFromData(data) {
+    console.log('📥 loadFlowFromData called with:', data);
+    console.log('Nodes count:', data.nodes?.length, 'Connections count:', data.connections?.length);
+
     // Clear existing nodes (except start)
     const nodes = document.querySelectorAll('.flow-node:not(.start-node)');
     nodes.forEach(node => node.remove());
 
     flowData = data;
     nodeIdCounter = 1;
+
+    console.log('✓ flowData set:', flowData);
 
     // Recreate nodes
     data.nodes.forEach(nodeData => {
@@ -651,14 +656,20 @@ function loadFlowFromData(data) {
         }
     });
 
+    console.log('✓ All nodes recreated');
+
     // Re-initialize connectors after loading all nodes
     // This is CRITICAL for making connections work on loaded flows
     initializeConnectors();
 
+    console.log('✓ Connectors re-initialized');
+
     // Redraw connections after nodes are loaded
+    // Use longer timeout to ensure DOM is fully ready
     setTimeout(() => {
+        console.log('🎨 About to draw connections. flowData.connections:', flowData.connections);
         drawConnections();
-    }, 100);
+    }, 300);
 }
 
 // Get node icon by type

@@ -128,7 +128,8 @@ func (r *FlowRepository) UpdateFlow(ctx context.Context, flowID string, updates 
 
 // DeleteFlow deletes a flow
 func (r *FlowRepository) DeleteFlow(ctx context.Context, flowID string) error {
-	err := r.supabase.Delete("chatbot_flows", map[string]string{
+	// Use DeleteAsAdmin to bypass RLS policies
+	err := r.supabase.DeleteAsAdmin("chatbot_flows", map[string]string{
 		"id": flowID,
 	})
 

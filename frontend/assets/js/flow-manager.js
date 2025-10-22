@@ -64,18 +64,18 @@ function createFlowRow(flow) {
     const updatedAt = new Date(flow.updated_at).toLocaleString();
 
     row.innerHTML = `
-        <td><span class="id-cell" title="${flow.id}">${flow.id.substring(0, 8)}...</span></td>
+        <td><span title="${flow.id}">${flow.id.substring(0, 8)}...</span></td>
         <td><strong>${flow.id_device || 'N/A'}</strong></td>
-        <td>${flow.name || 'Unnamed Flow'}</td>
+        <td><strong>${flow.name || 'Unnamed Flow'}</strong></td>
         <td>${flow.niche || '-'}</td>
         <td>${createdAt}</td>
         <td>${updatedAt}</td>
-        <td class="actions-cell">
-            <button class="btn-edit" onclick="editFlow('${flow.id}')" title="Edit Flow">
-                ✏️
+        <td style="display: flex; gap: 0.5rem;">
+            <button class="btn-action" onclick="editFlow('${flow.id}')" title="Edit Flow">
+                ✏️ Edit
             </button>
-            <button class="btn-delete" onclick="deleteFlow('${flow.id}', '${flow.name}')" title="Delete Flow">
-                🗑️
+            <button class="btn-action" onclick="deleteFlow('${flow.id}', '${flow.name || 'this flow'}')" title="Delete Flow" style="background: linear-gradient(135deg, #dc2626 0%, #991b1b 100%);">
+                🗑️ Delete
             </button>
         </td>
     `;
