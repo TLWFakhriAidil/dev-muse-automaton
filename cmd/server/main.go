@@ -197,10 +197,16 @@ func main() {
 
 	// SPA fallback - serve index.html for all non-API routes
 	app.Use(func(c *fiber.Ctx) error {
-		if c.Path()[:4] != "/api" && c.Path() != "/healthz" {
-			return c.SendFile("./frontend/index.html")
+		path := c.Path()
+		// Check if path starts with /api or is /healthz
+		if len(path) >= 4 && path[:4] == "/api" {
+			return c.Next()
 		}
-		return c.Next()
+		if path == "/healthz" {
+			return c.Next()
+		}
+		// Serve index.html for all other routes
+		return c.SendFile("./frontend/index.html")
 	})
 
 	// Get port from environment or default to 8080
