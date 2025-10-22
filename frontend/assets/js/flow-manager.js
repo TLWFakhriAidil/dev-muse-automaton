@@ -34,12 +34,20 @@ async function loadFlows() {
                 tbody.appendChild(row);
             });
         } else {
-            tbody.innerHTML = `
-                <tr>
-                    <td colspan="7" style="text-align: center; padding: 3rem; color: rgba(255, 255, 255, 0.6);">
-                        No flows found. Create your first flow to get started!
-                    </td>
-                </tr>
+            // Show empty state with icon like set-stage
+            const tableContainer = document.querySelector('.table-container');
+            tableContainer.innerHTML = `
+                <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 400px; padding: 3rem;">
+                    <div style="font-size: 5rem; margin-bottom: 1.5rem; opacity: 0.5;">
+                        📋
+                    </div>
+                    <h2 style="font-size: 1.8rem; font-weight: 600; color: rgba(255, 255, 255, 0.9); margin-bottom: 0.5rem;">
+                        No Flows Yet
+                    </h2>
+                    <p style="color: rgba(255, 255, 255, 0.6); font-size: 1rem;">
+                        Click "Flow Builder" in the sidebar to create your first chatbot flow
+                    </p>
+                </div>
             `;
         }
     } catch (error) {
