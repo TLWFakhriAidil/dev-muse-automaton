@@ -51,13 +51,16 @@ func (s *DeviceService) CreateDevice(ctx context.Context, userID string, req *mo
 	// Create device
 	device := &models.DeviceSetting{
 		DeviceID:     &req.DeviceID,
+		WebhookID:    &req.WebhookURL,
 		Provider:     req.Provider,
 		APIKeyOption: req.APIKeyOption,
 		APIKey:       req.APIKey,
 		PhoneNumber:  &req.PhoneNumber,
+		IDDevice:     req.IDDevice,
+		IDERP:        req.IDERP,
+		IDAdmin:      req.IDAdmin,
 		Instance:     req.Instance,
 		UserID:       &userID,
-		IDDevice:     &req.DeviceID, // Set id_device same as device_id
 	}
 
 	if err := s.deviceRepo.CreateDevice(ctx, device); err != nil {

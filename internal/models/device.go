@@ -23,10 +23,14 @@ type DeviceSetting struct {
 // CreateDeviceRequest is the request body for creating a device
 type CreateDeviceRequest struct {
 	DeviceID     string  `json:"device_id" validate:"required"`
+	WebhookURL   string  `json:"webhook_url"`
 	Provider     string  `json:"provider" validate:"required,oneof=waha wablas whacenter"`
 	APIKeyOption string  `json:"api_key_option" validate:"required"`
 	APIKey       *string `json:"api_key,omitempty"`
 	PhoneNumber  string  `json:"phone_number" validate:"required"`
+	IDDevice     *string `json:"id_device,omitempty"`
+	IDERP        *string `json:"id_erp,omitempty"`
+	IDAdmin      *string `json:"id_admin,omitempty"`
 	Instance     *string `json:"instance,omitempty"`
 }
 
