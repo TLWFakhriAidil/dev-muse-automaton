@@ -109,6 +109,22 @@ async function loadStageValues() {
     }
 }
 
+// Toggle Input Hard Code field visibility based on Type selection
+function toggleInputHardCode() {
+    const typeSelect = document.getElementById('typeSelect');
+    const inputHardCodeGroup = document.getElementById('inputHardCodeGroup');
+    const inputHardCode = document.getElementById('inputHardCode');
+
+    if (typeSelect.value === 'Set') {
+        inputHardCodeGroup.classList.remove('hidden');
+        inputHardCode.setAttribute('required', 'required');
+    } else {
+        inputHardCodeGroup.classList.add('hidden');
+        inputHardCode.removeAttribute('required');
+        inputHardCode.value = ''; // Clear the value when hidden
+    }
+}
+
 // Open stage modal
 function openStageModal() {
     const modal = document.getElementById('stageModal');
@@ -231,6 +247,9 @@ function editStageValue(stage) {
 
     // Open modal
     openStageModal();
+
+    // Toggle Input Hard Code field visibility based on current Type value
+    toggleInputHardCode();
 }
 
 // Delete stage value

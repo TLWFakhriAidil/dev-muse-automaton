@@ -234,6 +234,24 @@
     box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
 }
 
+.modal-content::-webkit-scrollbar {
+    width: 8px;
+}
+
+.modal-content::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 4px;
+}
+
+.modal-content::-webkit-scrollbar-thumb {
+    background: rgba(229, 9, 20, 0.3);
+    border-radius: 4px;
+}
+
+.modal-content::-webkit-scrollbar-thumb:hover {
+    background: rgba(229, 9, 20, 0.5);
+}
+
 .modal-header {
     display: flex;
     justify-content: space-between;
@@ -274,6 +292,10 @@
 
 .form-group {
     margin-bottom: 1.5rem;
+}
+
+.form-group.hidden {
+    display: none;
 }
 
 .form-group label {
