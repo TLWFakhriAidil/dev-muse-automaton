@@ -913,24 +913,55 @@ function closeNodeConfigModal() {
 function updateConditionNodeConnectors(nodeElement, conditions) {
     const nodeId = nodeElement.getAttribute('data-node-id');
 
-    // Remove all existing output connectors
+    // Remove all existing output connectors and wrappers
     const existingOutputs = nodeElement.querySelectorAll('.output-connector');
     existingOutputs.forEach(output => output.remove());
+    const existingWrappers = nodeElement.querySelectorAll('.condition-connector-wrapper');
+    existingWrappers.forEach(wrapper => wrapper.remove());
 
     // Create output connector for each condition
     const nodeWidth = nodeElement.offsetWidth;
     const spacing = nodeWidth / (conditions.length + 1);
 
     conditions.forEach((condition, index) => {
+        // Create connector wrapper
+        const connectorWrapper = document.createElement('div');
+        connectorWrapper.className = 'condition-connector-wrapper';
+        connectorWrapper.style.position = 'absolute';
+        connectorWrapper.style.left = `${spacing * (index + 1)}px`;
+        connectorWrapper.style.bottom = '-40px';
+        connectorWrapper.style.transform = 'translateX(-50%)';
+        connectorWrapper.style.display = 'flex';
+        connectorWrapper.style.flexDirection = 'column';
+        connectorWrapper.style.alignItems = 'center';
+        connectorWrapper.style.gap = '4px';
+
+        // Create label
+        const label = document.createElement('div');
+        label.className = 'condition-label';
+        label.textContent = condition.value || condition.type;
+        label.style.fontSize = '10px';
+        label.style.color = '#ffd700';
+        label.style.background = 'rgba(0, 0, 0, 0.8)';
+        label.style.padding = '2px 6px';
+        label.style.borderRadius = '4px';
+        label.style.whiteSpace = 'nowrap';
+        label.style.maxWidth = '80px';
+        label.style.overflow = 'hidden';
+        label.style.textOverflow = 'ellipsis';
+        label.style.border = '1px solid rgba(255, 215, 0, 0.3)';
+
+        // Create connector
         const connector = document.createElement('div');
         connector.className = 'node-connector output-connector';
         connector.setAttribute('data-connector-type', 'output');
         connector.setAttribute('data-node-id', nodeId);
         connector.setAttribute('data-condition-index', index);
         connector.setAttribute('data-condition-type', condition.type);
-        connector.style.left = `${spacing * (index + 1)}px`;
-        connector.style.bottom = '-7px';
-        connector.style.transform = 'translateX(-50%)';
+        connector.style.position = 'relative';
+        connector.style.bottom = 'auto';
+        connector.style.left = 'auto';
+        connector.style.transform = 'none';
 
         // Add tooltip
         connector.setAttribute('title', `${condition.type}: ${condition.value || 'any'}`);
@@ -943,7 +974,9 @@ function updateConditionNodeConnectors(nodeElement, conditions) {
             handleConnectorClick(connector);
         }, true);
 
-        nodeElement.appendChild(connector);
+        connectorWrapper.appendChild(label);
+        connectorWrapper.appendChild(connector);
+        nodeElement.appendChild(connectorWrapper);
     });
 
     console.log(`✓ Updated condition node ${nodeId} with ${conditions.length} output connectors`);
@@ -1184,9 +1217,19 @@ function drawConnections() {
 
         svg.appendChild(path);
         svg.appendChild(clickPath); // Add invisible wider path on top
+
+        console.log('Created connection paths:', {
+            from: conn.from,
+            to: conn.to,
+            visiblePath: path,
+            clickPath: clickPath,
+            pathD: d
+        });
     });
 
     console.log('Total SVG paths created:', svg.children.length);
+    console.log('SVG layer z-index:', window.getComputedStyle(svg).zIndex);
+    console.log('SVG layer pointer-events:', window.getComputedStyle(svg).pointerEvents);
 }
 
 // Canvas Panning and Zoom
@@ -1211,6 +1254,13 @@ function initializeCanvasPan() {
 
     // Middle mouse button or left click on canvas background for panning
     canvasContainer.addEventListener('mousedown', (e) => {
+        // Don't pan if clicking on connection lines or their click areas
+        if (e.target.classList.contains('connection-line') ||
+            e.target.classList.contains('connection-click-area')) {
+            console.log('🚫 Ignoring canvas pan - clicking on connection');
+            return;
+        }
+
         // Check if clicking on canvas container or the canvas itself (not nodes, not connectors)
         const isCanvasBackground = e.target === canvasContainer ||
                                    e.target.id === 'flowCanvas' ||
