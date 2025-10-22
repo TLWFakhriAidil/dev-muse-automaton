@@ -330,9 +330,24 @@ func (s *FlowService) UpdateFlow(ctx context.Context, userID, flowID string, req
 		updates["niche"] = *req.Niche
 	}
 	if req.NodesData != nil {
-		updates["nodes"] = map[string]interface{}{}
-		updates["edges"] = map[string]interface{}{}
-		// You could parse NodesData JSON here if needed
+		// Parse NodesData JSON string to extract nodes and edges/connections
+		var flowData map[string]interface{}
+		nodes := map[string]interface{}{}
+		edges := map[string]interface{}{}
+
+		if err := json.Unmarshal([]byte(*req.NodesData), &flowData); err == nil {
+			// Extract nodes array
+			if nodesArray, ok := flowData["nodes"].([]interface{}); ok {
+				nodes["nodes"] = nodesArray
+			}
+			// Extract connections/edges array
+			if connectionsArray, ok := flowData["connections"].([]interface{}); ok {
+				edges["connections"] = connectionsArray
+			}
+		}
+
+		updates["nodes"] = nodes
+		updates["edges"] = edges
 	}
 
 	if len(updates) == 0 {

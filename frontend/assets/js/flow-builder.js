@@ -377,6 +377,9 @@ function clearCanvas() {
     });
 }
 
+// Global variable to track if we're editing an existing flow
+let editingFlowId = null;
+
 // Save flow
 async function saveFlow() {
     const deviceId = document.getElementById('deviceSelect').value;
@@ -413,14 +416,6 @@ async function saveFlow() {
         return;
     }
 
-    // Prepare flow data
-    const flowPayload = {
-        id_device: deviceId,
-        flow_name: flowName,
-        niche: niche,
-        nodes_data: JSON.stringify(flowData)
-    };
-
     Swal.fire({
         title: 'Saving...',
         text: 'Please wait',
@@ -433,21 +428,50 @@ async function saveFlow() {
     });
 
     try {
-        const response = await fetch(`${API_BASE_URL}/flows`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}`
-            },
-            body: JSON.stringify(flowPayload)
-        });
+        let response;
+
+        // Check if we're editing an existing flow
+        if (editingFlowId) {
+            // Update existing flow using PUT
+            const updatePayload = {
+                flow_name: flowName,
+                niche: niche,
+                nodes_data: JSON.stringify(flowData)
+            };
+
+            response = await fetch(`${API_BASE_URL}/flows/${editingFlowId}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify(updatePayload)
+            });
+        } else {
+            // Create new flow using POST
+            const flowPayload = {
+                id_device: deviceId,
+                flow_name: flowName,
+                niche: niche,
+                nodes_data: JSON.stringify(flowData)
+            };
+
+            response = await fetch(`${API_BASE_URL}/flows`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify(flowPayload)
+            });
+        }
 
         const data = await response.json();
 
         if (data.success) {
             Swal.fire({
                 title: 'Success!',
-                text: 'Flow saved successfully',
+                text: editingFlowId ? 'Flow updated successfully' : 'Flow saved successfully',
                 icon: 'success',
                 background: '#141414',
                 color: '#ffffff',
@@ -626,6 +650,15 @@ function loadFlowFromData(data) {
             nodeIdCounter = idNum + 1;
         }
     });
+
+    // Re-initialize connectors after loading all nodes
+    // This is CRITICAL for making connections work on loaded flows
+    initializeConnectors();
+
+    // Redraw connections after nodes are loaded
+    setTimeout(() => {
+        drawConnections();
+    }, 100);
 }
 
 // Get node icon by type
@@ -1351,6 +1384,9 @@ async function loadFlowForEdit(flowId) {
 
         if (data.success && data.flow) {
             const flow = data.flow;
+
+            // Set the editing flow ID so saveFlow knows to use PUT
+            editingFlowId = flow.id;
 
             // Set device and flow type
             document.getElementById('deviceSelect').value = flow.id_device;
