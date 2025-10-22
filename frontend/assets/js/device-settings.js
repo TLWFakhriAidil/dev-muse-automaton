@@ -45,20 +45,21 @@ async function saveDevice(event) {
     }
 
     // Get form values
-    const deviceId = document.getElementById('deviceId').value;
-    const webhookId = document.getElementById('webhookId').value;
+    const deviceId = document.getElementById('deviceId').value.trim();
+    const webhookId = document.getElementById('webhookId').value.trim();
     const apiKeyOption = document.querySelector('input[name="apiKeyOption"]:checked').value;
     const provider = document.querySelector('input[name="provider"]:checked').value;
-    const apiKey = document.getElementById('apiKey').value;
-    const idDevice = document.getElementById('idDevice').value;
-    const idErp = document.getElementById('idErp').value;
-    const idAdmin = document.getElementById('idAdmin').value;
+    const apiKey = document.getElementById('apiKey').value.trim();
+    const phoneNumber = document.getElementById('phoneNumber').value.trim();
+    const idDevice = document.getElementById('idDevice').value.trim();
+    const idErp = document.getElementById('idErp').value.trim();
+    const idAdmin = document.getElementById('idAdmin').value.trim();
 
     // Validate required fields
     if (!deviceId) {
         Swal.fire({
             title: 'Error!',
-            text: 'Please generate a Device ID first',
+            text: 'Please click "GENERATE DEVICE" button first',
             icon: 'error',
             background: '#141414',
             color: '#ffffff',
@@ -71,6 +72,19 @@ async function saveDevice(event) {
         Swal.fire({
             title: 'Error!',
             text: 'ID Device is required',
+            icon: 'error',
+            background: '#141414',
+            color: '#ffffff',
+            confirmButtonColor: '#e50914'
+        });
+        return;
+    }
+
+    // Validate phone number (only numbers)
+    if (phoneNumber && !/^\d+$/.test(phoneNumber)) {
+        Swal.fire({
+            title: 'Error!',
+            text: 'Phone number must contain only numbers',
             icon: 'error',
             background: '#141414',
             color: '#ffffff',
@@ -104,6 +118,7 @@ async function saveDevice(event) {
                 api_key_option: apiKeyOption,
                 provider: provider,
                 api_key: apiKey,
+                phone_number: phoneNumber,
                 id_device: idDevice,
                 id_erp: idErp,
                 id_admin: idAdmin
@@ -203,7 +218,19 @@ async function loadDevices() {
     }
 }
 
+// Only allow numbers in phone number field
+function restrictToNumbers(event) {
+    const input = event.target;
+    input.value = input.value.replace(/[^0-9]/g, '');
+}
+
 // Initialize on page load
 document.addEventListener('DOMContentLoaded', function() {
     loadDevices();
+
+    // Add input restriction to phone number field
+    const phoneInput = document.getElementById('phoneNumber');
+    if (phoneInput) {
+        phoneInput.addEventListener('input', restrictToNumbers);
+    }
 });
