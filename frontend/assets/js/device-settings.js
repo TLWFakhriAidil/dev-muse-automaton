@@ -45,8 +45,8 @@ async function saveDevice(event) {
     }
 
     // Get form values
-    const deviceId = document.getElementById('deviceId').value.trim();
-    const webhookId = document.getElementById('webhookId').value.trim();
+    let deviceId = document.getElementById('deviceId').value.trim();
+    let webhookId = document.getElementById('webhookId').value.trim();
     const apiKeyOption = document.querySelector('input[name="apiKeyOption"]:checked').value;
     const provider = document.querySelector('input[name="provider"]:checked').value;
     const apiKey = document.getElementById('apiKey').value.trim();
@@ -55,19 +55,21 @@ async function saveDevice(event) {
     const idErp = document.getElementById('idErp').value.trim();
     const idAdmin = document.getElementById('idAdmin').value.trim();
 
-    // Validate required fields
+    // Auto-generate Device ID if not provided
     if (!deviceId) {
-        Swal.fire({
-            title: 'Error!',
-            text: 'Please click "GENERATE DEVICE" button first',
-            icon: 'error',
-            background: '#141414',
-            color: '#ffffff',
-            confirmButtonColor: '#e50914'
-        });
-        return;
+        deviceId = 'DEV-' + Math.random().toString(36).substring(2, 15).toUpperCase();
+        document.getElementById('deviceId').value = deviceId;
     }
 
+    // Auto-generate Webhook if not provided
+    if (!webhookId) {
+        const randomPath = Math.random().toString(36).substring(2, 15);
+        const randomToken = Math.random().toString(36).substring(2, 15);
+        webhookId = `${API_BASE_URL}/webhook/whatsapp/${randomPath}/${randomToken}`;
+        document.getElementById('webhookId').value = webhookId;
+    }
+
+    // Validate required fields
     if (!idDevice) {
         Swal.fire({
             title: 'Error!',
