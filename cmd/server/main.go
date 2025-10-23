@@ -159,6 +159,9 @@ func main() {
 	webhook.Post("/whacenter/:deviceId", webhookHandler.HandleWhacenterWebhook)
 	webhook.Post("/start-flow", webhookHandler.StartFlow)
 
+	// Catch-all webhook route for custom URL patterns like /:userid/:flowname
+	app.Post("/:webhook_id/:flow_name", webhookHandler.ReceiveWebhook)
+
 	// Analytics routes (requires authentication)
 	analytics := api.Group("/analytics")
 	analytics.Get("/dashboard", analyticsHandler.GetDashboard)
