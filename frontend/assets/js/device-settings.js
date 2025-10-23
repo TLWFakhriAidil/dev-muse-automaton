@@ -383,22 +383,77 @@ function restrictToNumbers(event) {
 }
 
 // Show device status modal
-function showStatus(deviceId, idDevice, phoneNumber, provider) {
+async function showStatus(deviceId, idDevice, phoneNumber, provider) {
+    // Show loading state
     Swal.fire({
-        title: 'Device Status',
-        html: `
+        title: 'Checking Device Status',
+        html: '<div class="loading-spinner">🔄 Please wait...</div>',
+        allowOutsideClick: false,
+        showConfirmButton: false,
+        didOpen: () => {
+            Swal.showLoading();
+        }
+    });
+
+    try {
+        const token = localStorage.getItem('token');
+        if (!token) {
+            Swal.fire({
+                icon: 'error',
+                title: 'Authentication Error',
+                text: 'Please login again'
+            });
+            return;
+        }
+
+        const response = await fetch(`${API_BASE_URL}/devices/${deviceId}/status`, {
+            method: 'GET',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            }
+        });
+
+        const result = await response.json();
+
+        if (!result.success) {
+            Swal.fire({
+                icon: 'error',
+                title: 'Status Check Failed',
+                text: result.message || 'Failed to check device status'
+            });
+            return;
+        }
+
+        // Determine connection status badge
+        let isConnected = false;
+        let statusBadge = 'status-disconnected';
+        let statusText = 'NOT CONNECTED';
+
+        if (result.provider === 'whacenter') {
+            isConnected = result.status === 'CONNECTED';
+            statusText = result.status;
+            statusBadge = isConnected ? 'status-connected' : 'status-disconnected';
+        } else if (result.provider === 'waha') {
+            isConnected = result.status === 'WORKING';
+            statusText = result.status;
+            statusBadge = isConnected ? 'status-connected' : 'status-disconnected';
+        }
+
+        // Build HTML content
+        let htmlContent = `
             <div class="status-body">
                 <div class="status-item">
                     <span class="status-label">Status:</span>
-                    <span class="status-badge status-disconnected">NOT CONNECTED</span>
+                    <span class="status-badge ${statusBadge}">${statusText}</span>
                 </div>
                 <div class="status-item">
                     <span class="status-label">Provider:</span>
-                    <span class="status-value">${provider}</span>
+                    <span class="status-value">${result.provider.toUpperCase()}</span>
                 </div>
                 <div class="status-item">
                     <span class="status-label">Connected:</span>
-                    <span class="status-badge status-disconnected">No</span>
+                    <span class="status-badge ${isConnected ? 'status-connected' : 'status-disconnected'}">${isConnected ? 'Yes' : 'No'}</span>
                 </div>
                 <div class="status-item">
                     <span class="status-label">Last Checked:</span>
@@ -408,21 +463,55 @@ function showStatus(deviceId, idDevice, phoneNumber, provider) {
                     <div class="device-info-title">📱 Device Info</div>
                     <div class="device-info-item"><strong>Name:</strong> ${idDevice}</div>
                     <div class="device-info-item"><strong>Number:</strong> ${phoneNumber}</div>
-                    <div class="device-info-item" style="color: #ff6b6b;"><strong>QR:</strong> Timeout</div>
                 </div>
-            </div>
-        `,
-        showCloseButton: true,
-        showConfirmButton: true,
-        confirmButtonText: 'Refresh',
-        confirmButtonColor: '#ffffff',
-        background: '#141414',
-        color: '#ffffff',
-        customClass: {
-            popup: 'status-modal-content',
-            title: 'status-title'
+        `;
+
+        // Add QR code if available
+        if (result.image) {
+            htmlContent += `
+                <div class="qr-code-container" style="margin-top: 20px; text-align: center;">
+                    <div style="color: #ffd700; font-weight: bold; margin-bottom: 10px;">
+                        📱 Scan QR Code to Connect
+                    </div>
+                    <img src="${result.image}" alt="QR Code" style="max-width: 300px; width: 100%; border: 3px solid #ffd700; border-radius: 10px; padding: 10px; background: white;">
+                </div>
+            `;
         }
-    });
+
+        htmlContent += '</div>';
+
+        // Show result modal
+        Swal.fire({
+            title: 'Device Status',
+            html: htmlContent,
+            showCloseButton: true,
+            showConfirmButton: true,
+            confirmButtonText: 'Refresh Status',
+            confirmButtonColor: '#e50914',
+            background: '#141414',
+            color: '#ffffff',
+            customClass: {
+                popup: 'status-modal-content',
+                title: 'status-title',
+                confirmButton: 'btn-primary'
+            }
+        }).then((result) => {
+            // If user clicks refresh, call showStatus again
+            if (result.isConfirmed) {
+                showStatus(deviceId, idDevice, phoneNumber, provider);
+            }
+        });
+
+    } catch (error) {
+        console.error('Error checking device status:', error);
+        Swal.fire({
+            icon: 'error',
+            title: 'Error',
+            text: 'Failed to check device status: ' + error.message,
+            background: '#141414',
+            color: '#ffffff'
+        });
+    }
 }
 
 // Edit device function

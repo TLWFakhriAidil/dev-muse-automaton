@@ -54,3 +54,12 @@ type DeviceResponse struct {
 	Device  *DeviceSetting `json:"device,omitempty"`
 	Devices []DeviceSetting `json:"devices,omitempty"`
 }
+
+// DeviceStatusResponse is the response for device status check
+type DeviceStatusResponse struct {
+	Success  bool   `json:"success"`
+	Provider string `json:"provider"`
+	Status   string `json:"status"`
+	QRImage  string `json:"image,omitempty"`
+	Message  string `json:"message,omitempty"`
+}

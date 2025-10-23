@@ -259,3 +259,36 @@ func (h *DeviceHandler) GenerateDevice(c *fiber.Ctx) error {
 
 	return c.Status(fiber.StatusOK).JSON(resp)
 }
+
+// CheckDeviceStatus handles device status check and QR code generation
+func (h *DeviceHandler) CheckDeviceStatus(c *fiber.Ctx) error {
+	// Get user ID from token
+	userID, err := h.getUserIDFromToken(c)
+	if err != nil {
+		return err
+	}
+
+	deviceID := c.Params("id")
+	if deviceID == "" {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"success": false,
+			"message": "Device ID required",
+		})
+	}
+
+	// Call service
+	resp, err := h.deviceService.CheckDeviceStatus(c.Context(), userID, deviceID)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"success": false,
+			"message": "Failed to check device status",
+			"error":   err.Error(),
+		})
+	}
+
+	if !resp.Success {
+		return c.Status(fiber.StatusBadRequest).JSON(resp)
+	}
+
+	return c.Status(fiber.StatusOK).JSON(resp)
+}
