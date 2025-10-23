@@ -238,9 +238,10 @@ func (s *ConversationService) UpdateConversation(ctx context.Context, userID, pr
 	if req.Niche != nil {
 		updates["niche"] = *req.Niche
 	}
-	if req.ConversationHistory != nil {
-		updates["conversation_history"] = *req.ConversationHistory
-	}
+	// ConversationHistory removed - using conv_last field instead
+	// if req.ConversationHistory != nil {
+	// 	updates["conversation_history"] = *req.ConversationHistory
+	// }
 	if req.IsActive != nil {
 		updates["is_active"] = *req.IsActive
 	}
@@ -316,31 +317,31 @@ func (s *ConversationService) AddMessage(ctx context.Context, userID, prospectID
 		}, nil
 	}
 
-	// Get existing conversation history
-	history := conversation.ConversationHistory
-	if history == nil {
-		history = make(map[string]interface{})
+	// Get existing conv_last (format: "User: message\nBot: reply")
+	convLast := ""
+	if conversation.ConvLast != nil {
+		convLast = *conversation.ConvLast
 	}
 
-	// Get messages array
-	messages, ok := history["messages"].([]interface{})
-	if !ok {
-		messages = []interface{}{}
+	// Add new message to conv_last
+	prefix := ""
+	if req.Role == "user" {
+		prefix = "User:"
+	} else if req.Role == "assistant" || req.Role == "system" {
+		prefix = "Bot:"
 	}
 
-	// Add new message
-	newMessage := map[string]interface{}{
-		"role":      req.Role,
-		"content":   req.Content,
-		"timestamp": time.Now().Format(time.RFC3339),
+	newLine := fmt.Sprintf("%s %s", prefix, req.Content)
+	if convLast != "" {
+		convLast += "\n" + newLine
+	} else {
+		convLast = newLine
 	}
-	messages = append(messages, newMessage)
-	history["messages"] = messages
 
 	// Update conversation
 	updates := map[string]interface{}{
-		"conversation_history": history,
-		"last_interaction":     time.Now(),
+		"conv_last":        convLast,
+		"last_interaction": time.Now(),
 	}
 
 	if err := s.conversationRepo.UpdateConversation(ctx, prospectID, updates); err != nil {

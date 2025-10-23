@@ -217,16 +217,10 @@ func (s *FlowProcessorService) ProcessIncomingMessage(ctx context.Context, webho
 			stage := "start"
 			newConv.Stage = &stage
 
-			// Initialize conversation history
-			newConv.ConversationHistory = make(map[string]interface{})
-			messages := []interface{}{
-				map[string]interface{}{
-					"role":    "user",
-					"content": extractedMsg.Message,
-					"name":    extractedMsg.Name,
-				},
-			}
-			newConv.ConversationHistory["messages"] = messages
+			// Initialize conv_last with user message
+			// Format: "User: message\nBot: reply"
+			convLast := fmt.Sprintf("User: %s", extractedMsg.Message)
+			newConv.ConvLast = &convLast
 
 			err = s.convRepo.CreateConversation(ctx, newConv)
 			if err != nil {

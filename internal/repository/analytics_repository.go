@@ -6,6 +6,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strings"
 	"time"
 )
 
@@ -237,10 +238,9 @@ func (r *AnalyticsRepository) GetDeviceMetrics(ctx context.Context, userID strin
 		if len(conversations) > 0 {
 			respondedCount := 0
 			for _, conv := range conversations {
-				if conv.ConversationHistory != nil {
-					if messages, ok := conv.ConversationHistory["messages"].([]interface{}); ok && len(messages) > 0 {
-						respondedCount++
-					}
+				// Check if conv_last has any data (user has sent at least one message)
+				if conv.ConvLast != nil && *conv.ConvLast != "" {
+					respondedCount++
 				}
 			}
 			metrics.ResponseRate = (float64(respondedCount) / float64(len(conversations))) * 100
@@ -282,21 +282,19 @@ func (r *AnalyticsRepository) GetMessageMetrics(ctx context.Context, deviceID st
 
 	totalMessages := 0
 	for _, conv := range conversations {
-		if conv.ConversationHistory != nil {
-			if messages, ok := conv.ConversationHistory["messages"].([]interface{}); ok {
-				messageCount := len(messages)
-				totalMessages += messageCount
-
-				for _, msg := range messages {
-					if msgMap, ok := msg.(map[string]interface{}); ok {
-						if role, ok := msgMap["role"].(string); ok {
-							if role == "user" {
-								metrics.TotalMessagesReceived++
-							} else if role == "assistant" {
-								metrics.TotalMessagesSent++
-							}
-						}
-					}
+		// Parse conv_last format: "User: message\nBot: reply"
+		if conv.ConvLast != nil && *conv.ConvLast != "" {
+			lines := strings.Split(*conv.ConvLast, "\n")
+			for _, line := range lines {
+				line = strings.TrimSpace(line)
+				if line == "" {
+					continue
+				}
+				totalMessages++
+				if strings.HasPrefix(line, "User:") {
+					metrics.TotalMessagesReceived++
+				} else if strings.HasPrefix(line, "Bot:") {
+					metrics.TotalMessagesSent++
 				}
 			}
 		}

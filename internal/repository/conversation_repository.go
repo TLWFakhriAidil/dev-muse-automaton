@@ -32,11 +32,9 @@ func (r *ConversationRepository) CreateConversation(ctx context.Context, convers
 	conversation.IsActive = true
 	conversation.Status = "active"
 
-	// Initialize empty conversation history if not provided
-	if conversation.ConversationHistory == nil {
-		conversation.ConversationHistory = make(map[string]interface{})
-		conversation.ConversationHistory["messages"] = []interface{}{}
-	}
+	// Initialize conv_last with just the user message for now
+	// Bot reply will be added during flow execution
+	// Format: "User: message\nBot: reply"
 
 	// Insert using service role (bypasses RLS)
 	data, err := r.supabase.InsertAsAdmin("ai_whatsapp", conversation)

@@ -254,30 +254,25 @@ func (s *FlowExecutionService) ProcessMessage(ctx context.Context, conversationI
 	}
 
 	if result.Response != "" {
-		// Add to conversation history
-		if conversation.ConversationHistory == nil {
-			conversation.ConversationHistory = make(map[string]interface{})
+		// Update conv_last with format: "User: message\nBot: reply"
+		convLast := ""
+		if conversation.ConvLast != nil {
+			convLast = *conversation.ConvLast
 		}
 
-		history, ok := conversation.ConversationHistory["messages"].([]interface{})
-		if !ok {
-			history = make([]interface{}, 0)
+		// Add user message
+		userLine := fmt.Sprintf("User: %s", userMessage)
+		if convLast != "" {
+			convLast += "\n" + userLine
+		} else {
+			convLast = userLine
 		}
 
-		history = append(history, map[string]interface{}{
-			"role":      "user",
-			"content":   userMessage,
-			"timestamp": time.Now().Unix(),
-		})
+		// Add bot reply
+		botLine := fmt.Sprintf("Bot: %s", result.Response)
+		convLast += "\n" + botLine
 
-		history = append(history, map[string]interface{}{
-			"role":      "assistant",
-			"content":   result.Response,
-			"timestamp": time.Now().Unix(),
-		})
-
-		conversation.ConversationHistory["messages"] = history
-		updates["conversation_history"] = conversation.ConversationHistory
+		updates["conv_last"] = convLast
 	}
 
 	if err := s.conversationRepo.UpdateConversation(ctx, conversationID, updates); err != nil {
