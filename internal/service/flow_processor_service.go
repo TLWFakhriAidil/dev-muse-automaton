@@ -59,20 +59,43 @@ func (s *FlowProcessorService) determineFlowType(flow *models.ChatbotFlow) strin
 func (s *FlowProcessorService) ProcessIncomingMessage(ctx context.Context, webhookID string, rawData map[string]interface{}) error {
 	log.Printf("📨 Processing incoming message for webhook ID: %s", webhookID)
 
-	// Step 1: Get device by webhook_id
+	// Step 1: Get device by webhook_id, if not found try id_device
 	device, err := s.deviceRepo.GetDeviceByWebhookID(ctx, webhookID)
 	if err != nil {
-		return fmt.Errorf("failed to get device by webhook ID: %w", err)
+		log.Printf("⚠️  Error getting device by webhook_id: %v", err)
 	}
+
+	// If not found by webhook_id, try by id_device
 	if device == nil {
-		return fmt.Errorf("device not found for webhook ID: %s", webhookID)
+		log.Printf("🔍 Device not found by webhook_id, trying id_device: %s", webhookID)
+		device, err = s.deviceRepo.GetDeviceByIDDevice(ctx, webhookID)
+		if err != nil {
+			log.Printf("⚠️  Error getting device by id_device: %v", err)
+		}
+	}
+
+	if device == nil {
+		return fmt.Errorf("device not found for webhook ID or id_device: %s", webhookID)
 	}
 
 	idDevice := getStringValue(device.IDDevice)
-	log.Printf("✅ Found device: %s (Provider: %s)", idDevice, device.Provider)
+
+	// Detect provider from webhook data if needed
+	provider := device.Provider
+	if provider == "" || provider == "waha" {
+		// Check if this is a Waha webhook structure
+		if _, hasPayload := rawData["payload"]; hasPayload {
+			if _, hasSession := rawData["session"]; hasSession {
+				provider = "waha"
+				log.Printf("🔍 Detected Waha webhook from data structure")
+			}
+		}
+	}
+
+	log.Printf("✅ Found device: %s (Provider: %s)", idDevice, provider)
 
 	// Step 2: Extract message data based on provider
-	extractedMsg, err := s.webhookService.ExtractMessageData(ctx, rawData, idDevice, device.Provider)
+	extractedMsg, err := s.webhookService.ExtractMessageData(ctx, rawData, idDevice, provider)
 	if err != nil {
 		log.Printf("⚠️  Message extraction failed: %v", err)
 		return nil // Don't return error for group messages or invalid numbers
