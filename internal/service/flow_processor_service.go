@@ -206,6 +206,12 @@ func (s *FlowProcessorService) ProcessIncomingMessage(ctx context.Context, webho
 				IDDevice:        idDevice,
 				ProspectNum:     extractedMsg.PhoneNumber,
 				ExecutionStatus: &executionStatus,
+				FlowID:          &flow.ID, // Save chatbot_flows id
+			}
+
+			// Set prospect name if available
+			if extractedMsg.Name != "" {
+				newConv.ProspectName = &extractedMsg.Name
 			}
 
 			// Set niche if available
@@ -213,9 +219,7 @@ func (s *FlowProcessorService) ProcessIncomingMessage(ctx context.Context, webho
 				newConv.Niche = &flow.Niche
 			}
 
-			// Set initial stage
-			stage := "start"
-			newConv.Stage = &stage
+			// Stage is left as NULL on initial insert (no default value)
 
 			// Initialize conv_last with user message
 			// Format: "User: message\nBot: reply"
@@ -228,7 +232,7 @@ func (s *FlowProcessorService) ProcessIncomingMessage(ctx context.Context, webho
 			}
 
 			contactID = fmt.Sprintf("%d", *newConv.IDProspect) // Convert int to string
-			currentStage = "start"
+			currentStage = ""                                       // Stage is null initially
 			contactExists = false
 			log.Printf("✅ Created new ai_whatsapp conversation: %s", contactID)
 		} else {
@@ -237,7 +241,7 @@ func (s *FlowProcessorService) ProcessIncomingMessage(ctx context.Context, webho
 			if conversation.Stage != nil {
 				currentStage = *conversation.Stage
 			} else {
-				currentStage = "start"
+				currentStage = "" // Stage can be null
 			}
 			contactExists = true
 			log.Printf("✅ Found existing ai_whatsapp conversation: %s (Stage: %s)", contactID, currentStage)
