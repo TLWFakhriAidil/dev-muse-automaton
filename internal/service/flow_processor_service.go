@@ -103,16 +103,20 @@ func (s *FlowProcessorService) ProcessIncomingMessage(ctx context.Context, webho
 
 	log.Printf("✅ Extracted message from %s: %s", extractedMsg.PhoneNumber, extractedMsg.Message)
 
-	// Step 3: Get flow by device_id
-	flows, err := s.flowRepo.GetFlowsByDeviceID(ctx, device.ID)
+	// Step 3: Get flow by id_device (not device.ID which is UUID)
+	log.Printf("🔍 Looking for flows with id_device: %s", idDevice)
+	flows, err := s.flowRepo.GetFlowsByDeviceID(ctx, idDevice)
 	if err != nil {
+		log.Printf("❌ Error getting flows: %v", err)
 		return fmt.Errorf("failed to get flows for device: %w", err)
 	}
 
 	if len(flows) == 0 {
-		log.Printf("⚠️  No flows found for device: %s", idDevice)
+		log.Printf("⚠️  No flows found for id_device: %s", idDevice)
 		return nil // No flows configured, skip processing
 	}
+
+	log.Printf("✅ Found %d flow(s) for device", len(flows))
 
 	// Use the first active flow
 	flow := flows[0]
