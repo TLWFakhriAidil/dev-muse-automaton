@@ -242,3 +242,66 @@ func (r *ConversationRepository) GetConversationStats(ctx context.Context, devic
 
 	return stats, nil
 }
+
+// GetWasapBotContact retrieves a contact from wasapbot table
+func (r *ConversationRepository) GetWasapBotContact(ctx context.Context, deviceID, prospectNum, niche string) (*models.WasapBot, error) {
+	data, err := r.supabase.QueryAsAdmin("wasapbot", map[string]string{
+		"select":       "*",
+		"device_id":    fmt.Sprintf("eq.%s", deviceID),
+		"prospect_num": fmt.Sprintf("eq.%s", prospectNum),
+		"niche":        fmt.Sprintf("eq.%s", niche),
+		"limit":        "1",
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to get wasapbot contact: %w", err)
+	}
+
+	var contacts []models.WasapBot
+	if err := json.Unmarshal(data, &contacts); err != nil {
+		return nil, fmt.Errorf("failed to parse wasapbot contact: %w", err)
+	}
+
+	if len(contacts) == 0 {
+		return nil, nil // Contact not found
+	}
+
+	return &contacts[0], nil
+}
+
+// CreateWasapBotContact creates a new contact in wasapbot table
+func (r *ConversationRepository) CreateWasapBotContact(ctx context.Context, contact *models.WasapBot) error {
+	contact.CreatedAt = time.Now().Format(time.RFC3339)
+	contact.UpdatedAt = time.Now().Format(time.RFC3339)
+
+	data, err := r.supabase.InsertAsAdmin("wasapbot", contact)
+	if err != nil {
+		return fmt.Errorf("failed to create wasapbot contact: %w", err)
+	}
+
+	// Parse response to get created contact
+	var contacts []models.WasapBot
+	if err := json.Unmarshal(data, &contacts); err != nil {
+		return fmt.Errorf("failed to parse created wasapbot contact: %w", err)
+	}
+
+	if len(contacts) > 0 {
+		*contact = contacts[0]
+	}
+
+	return nil
+}
+
+// UpdateWasapBotContact updates an existing contact in wasapbot table
+func (r *ConversationRepository) UpdateWasapBotContact(ctx context.Context, id string, updates map[string]interface{}) error {
+	updates["updated_at"] = time.Now().Format(time.RFC3339)
+
+	_, err := r.supabase.UpdateAsAdmin("wasapbot", map[string]string{
+		"id": id,
+	}, updates)
+
+	if err != nil {
+		return fmt.Errorf("failed to update wasapbot contact: %w", err)
+	}
+
+	return nil
+}

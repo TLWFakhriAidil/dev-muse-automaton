@@ -48,7 +48,9 @@ func main() {
 	conversationService := service.NewConversationService(conversationRepo, deviceRepo)
 	aiService := service.NewAIService(deviceRepo)
 	whatsappService := service.NewWhatsAppService(deviceRepo)
+	webhookService := service.NewWebhookService(deviceRepo, flowRepo)
 	flowExecutionService := service.NewFlowExecutionService(flowRepo, conversationRepo, deviceRepo, aiService)
+	flowProcessorService := service.NewFlowProcessorService(webhookService, flowRepo, deviceRepo, conversationRepo)
 	analyticsService := service.NewAnalyticsService(analyticsRepo, deviceRepo)
 	stageService := service.NewStageService(stageRepo)
 
@@ -58,7 +60,7 @@ func main() {
 	flowHandler := handler.NewFlowHandler(flowService, authService)
 	conversationHandler := handler.NewConversationHandler(conversationService, authService)
 	aiHandler := handler.NewAIHandler(aiService, authService)
-	webhookHandler := handler.NewWebhookHandler(flowExecutionService, deviceService, whatsappService)
+	webhookHandler := handler.NewWebhookHandler(flowExecutionService, deviceService, whatsappService, flowProcessorService)
 	analyticsHandler := handler.NewAnalyticsHandler(analyticsService, authService)
 	stageHandler := handler.NewStageHandler(stageService)
 	log.Printf("✅ Authentication system initialized")
@@ -150,6 +152,7 @@ func main() {
 
 	// Webhook routes (public - no authentication required)
 	webhook := api.Group("/webhook")
+	webhook.Post("/:webhook_id", webhookHandler.ReceiveWebhook) // New unified webhook endpoint
 	webhook.Post("/whatsapp/:deviceId", webhookHandler.HandleWhatsAppWebhook)
 	webhook.Post("/waha/:deviceId", webhookHandler.HandleWahaWebhook)
 	webhook.Post("/wablas/:deviceId", webhookHandler.HandleWablasWebhook)

@@ -184,3 +184,26 @@ func (r *DeviceRepository) GetDeviceByIDDevice(ctx context.Context, idDevice str
 
 	return &devices[0], nil
 }
+
+// GetDeviceByWebhookID retrieves a device by webhook_id
+func (r *DeviceRepository) GetDeviceByWebhookID(ctx context.Context, webhookID string) (*models.DeviceSetting, error) {
+	data, err := r.supabase.QueryAsAdmin("device_setting", map[string]string{
+		"select":     "*",
+		"webhook_id": fmt.Sprintf("eq.%s", webhookID),
+		"limit":      "1",
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to get device by webhook_id: %w", err)
+	}
+
+	var devices []models.DeviceSetting
+	if err := json.Unmarshal(data, &devices); err != nil {
+		return nil, fmt.Errorf("failed to parse device: %w", err)
+	}
+
+	if len(devices) == 0 {
+		return nil, nil // Device not found, return nil without error
+	}
+
+	return &devices[0], nil
+}

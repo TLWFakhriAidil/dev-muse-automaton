@@ -1,0 +1,243 @@
+package service
+
+import (
+	"context"
+	"fmt"
+	"log"
+	"strings"
+
+	"chatbot-automation/internal/models"
+	"chatbot-automation/internal/repository"
+)
+
+type FlowProcessorService struct {
+	webhookService *WebhookService
+	flowRepo       *repository.FlowRepository
+	deviceRepo     *repository.DeviceRepository
+	convRepo       *repository.ConversationRepository
+}
+
+func NewFlowProcessorService(
+	webhookService *WebhookService,
+	flowRepo *repository.FlowRepository,
+	deviceRepo *repository.DeviceRepository,
+	convRepo *repository.ConversationRepository,
+) *FlowProcessorService {
+	return &FlowProcessorService{
+		webhookService: webhookService,
+		flowRepo:       flowRepo,
+		deviceRepo:     deviceRepo,
+		convRepo:       convRepo,
+	}
+}
+
+// Helper function to safely get string from pointer
+func getStringValue(ptr *string) string {
+	if ptr == nil {
+		return ""
+	}
+	return *ptr
+}
+
+// determineFlowType determines if flow is for Whatsapp Bot or Chatbot AI
+// Based on niche or flow name patterns
+func (s *FlowProcessorService) determineFlowType(flow *models.ChatbotFlow) string {
+	// Check if niche or name contains "ai" or "chatbot"
+	niche := strings.ToLower(flow.Niche)
+	name := strings.ToLower(flow.Name)
+
+	if strings.Contains(niche, "ai") || strings.Contains(name, "ai") ||
+		strings.Contains(niche, "chatbot") || strings.Contains(name, "chatbot") {
+		return "Chatbot AI"
+	}
+
+	// Default to Whatsapp Bot
+	return "Whatsapp Bot"
+}
+
+// ProcessIncomingMessage processes an incoming webhook message
+func (s *FlowProcessorService) ProcessIncomingMessage(ctx context.Context, webhookID string, rawData map[string]interface{}) error {
+	log.Printf("📨 Processing incoming message for webhook ID: %s", webhookID)
+
+	// Step 1: Get device by webhook_id
+	device, err := s.deviceRepo.GetDeviceByWebhookID(ctx, webhookID)
+	if err != nil {
+		return fmt.Errorf("failed to get device by webhook ID: %w", err)
+	}
+	if device == nil {
+		return fmt.Errorf("device not found for webhook ID: %s", webhookID)
+	}
+
+	idDevice := getStringValue(device.IDDevice)
+	log.Printf("✅ Found device: %s (Provider: %s)", idDevice, device.Provider)
+
+	// Step 2: Extract message data based on provider
+	extractedMsg, err := s.webhookService.ExtractMessageData(ctx, rawData, idDevice, device.Provider)
+	if err != nil {
+		log.Printf("⚠️  Message extraction failed: %v", err)
+		return nil // Don't return error for group messages or invalid numbers
+	}
+
+	log.Printf("✅ Extracted message from %s: %s", extractedMsg.PhoneNumber, extractedMsg.Message)
+
+	// Step 3: Get flow by device_id
+	flows, err := s.flowRepo.GetFlowsByDeviceID(ctx, device.ID)
+	if err != nil {
+		return fmt.Errorf("failed to get flows for device: %w", err)
+	}
+
+	if len(flows) == 0 {
+		log.Printf("⚠️  No flows found for device: %s", idDevice)
+		return nil // No flows configured, skip processing
+	}
+
+	// Use the first active flow
+	flow := flows[0]
+	flowType := s.determineFlowType(&flow)
+	log.Printf("✅ Found flow: %s (Type: %s)", flow.Name, flowType)
+
+	// Step 4: Validate flow has nodes and edges
+	if flow.Nodes == nil || len(flow.Nodes) == 0 {
+		log.Printf("⚠️  Flow %s has no nodes configured", flow.Name)
+		return nil // No nodes, skip processing
+	}
+
+	if flow.Edges == nil || len(flow.Edges) == 0 {
+		log.Printf("⚠️  Flow %s has no edges configured", flow.Name)
+		return nil // No edges, skip processing
+	}
+
+	log.Printf("✅ Flow validated: %d nodes, %d edges", len(flow.Nodes), len(flow.Edges))
+
+	// Step 5: Determine which table to use based on flow data type
+	var contactExists bool
+	var contactID string
+	var currentStage string
+
+	userID := getStringValue(device.UserID)
+
+	if flowType == "Whatsapp Bot" {
+		// Use wasapbot table
+		log.Printf("📋 Using Whatsapp Bot flow - checking wasapbot table")
+		contact, err := s.convRepo.GetWasapBotContact(ctx, idDevice, extractedMsg.PhoneNumber, flow.Niche)
+		if err != nil {
+			return fmt.Errorf("failed to check wasapbot contact: %w", err)
+		}
+
+		if contact == nil {
+			// Create new contact
+			log.Printf("➕ Creating new wasapbot contact")
+			newContact := &models.WasapBot{
+				UserID:      userID,
+				DeviceID:    idDevice,
+				ProspectNum: extractedMsg.PhoneNumber,
+				Niche:       flow.Niche,
+				Stage:       "start", // Initial stage
+				Data:        make(map[string]interface{}),
+			}
+			newContact.Data["name"] = extractedMsg.Name
+			newContact.Data["last_message"] = extractedMsg.Message
+
+			err = s.convRepo.CreateWasapBotContact(ctx, newContact)
+			if err != nil {
+				return fmt.Errorf("failed to create wasapbot contact: %w", err)
+			}
+
+			contactID = newContact.ID
+			currentStage = "start"
+			contactExists = false
+			log.Printf("✅ Created new wasapbot contact: %s", contactID)
+		} else {
+			// Contact exists
+			contactID = contact.ID
+			currentStage = contact.Stage
+			contactExists = true
+			log.Printf("✅ Found existing wasapbot contact: %s (Stage: %s)", contactID, currentStage)
+
+			// Update last message
+			updates := map[string]interface{}{
+				"data": map[string]interface{}{
+					"last_message": extractedMsg.Message,
+				},
+			}
+			_ = s.convRepo.UpdateWasapBotContact(ctx, contactID, updates)
+		}
+
+	} else if flowType == "Chatbot AI" {
+		// Use ai_whatsapp table
+		log.Printf("🤖 Using Chatbot AI flow - checking ai_whatsapp table")
+		conversation, err := s.convRepo.GetConversationByProspectNum(ctx, extractedMsg.PhoneNumber, idDevice)
+		if err != nil {
+			return fmt.Errorf("failed to check ai_whatsapp contact: %w", err)
+		}
+
+		if conversation == nil {
+			// Create new conversation
+			log.Printf("➕ Creating new ai_whatsapp conversation")
+			newConv := &models.AIWhatsapp{
+				IDDevice:    idDevice,
+				ProspectNum: extractedMsg.PhoneNumber,
+				IsActive:    true,
+				Status:      "active",
+			}
+
+			// Set niche if available
+			if flow.Niche != "" {
+				newConv.Niche = &flow.Niche
+			}
+
+			// Set initial stage
+			stage := "start"
+			newConv.Stage = &stage
+
+			// Initialize conversation history
+			newConv.ConversationHistory = make(map[string]interface{})
+			messages := []interface{}{
+				map[string]interface{}{
+					"role":    "user",
+					"content": extractedMsg.Message,
+					"name":    extractedMsg.Name,
+				},
+			}
+			newConv.ConversationHistory["messages"] = messages
+
+			err = s.convRepo.CreateConversation(ctx, newConv)
+			if err != nil {
+				return fmt.Errorf("failed to create ai_whatsapp conversation: %w", err)
+			}
+
+			contactID = newConv.IDProspect
+			currentStage = "start"
+			contactExists = false
+			log.Printf("✅ Created new ai_whatsapp conversation: %s", contactID)
+		} else {
+			// Conversation exists
+			contactID = conversation.IDProspect
+			if conversation.Stage != nil {
+				currentStage = *conversation.Stage
+			} else {
+				currentStage = "start"
+			}
+			contactExists = true
+			log.Printf("✅ Found existing ai_whatsapp conversation: %s (Stage: %s)", contactID, currentStage)
+
+			// Update last interaction
+			_ = s.convRepo.UpdateLastInteraction(ctx, contactID)
+		}
+	} else {
+		return fmt.Errorf("unsupported flow type: %s", flowType)
+	}
+
+	// Step 6: Process the flow (to be implemented in next phase)
+	log.Printf("🔄 Ready to process flow for contact %s at stage: %s", contactID, currentStage)
+	log.Printf("📊 Contact exists: %v", contactExists)
+
+	// TODO: Implement flow execution logic
+	// This will involve:
+	// 1. Finding the current node based on stage
+	// 2. Executing node actions (send message, condition check, etc.)
+	// 3. Moving to next node based on edges
+	// 4. Updating contact stage
+
+	return nil
+}

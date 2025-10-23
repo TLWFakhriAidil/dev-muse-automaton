@@ -13,14 +13,16 @@ type WebhookHandler struct {
 	flowExecutionService *service.FlowExecutionService
 	deviceService        *service.DeviceService
 	whatsappService      *service.WhatsAppService
+	flowProcessor        *service.FlowProcessorService
 }
 
 // NewWebhookHandler creates a new webhook handler
-func NewWebhookHandler(flowExecutionService *service.FlowExecutionService, deviceService *service.DeviceService, whatsappService *service.WhatsAppService) *WebhookHandler {
+func NewWebhookHandler(flowExecutionService *service.FlowExecutionService, deviceService *service.DeviceService, whatsappService *service.WhatsAppService, flowProcessor *service.FlowProcessorService) *WebhookHandler {
 	return &WebhookHandler{
 		flowExecutionService: flowExecutionService,
 		deviceService:        deviceService,
 		whatsappService:      whatsappService,
+		flowProcessor:        flowProcessor,
 	}
 }
 
@@ -332,4 +334,46 @@ func stripSuffix(s, suffix string) string {
 		return s[:len(s)-len(suffix)]
 	}
 	return s
+}
+
+// ReceiveWebhook handles incoming webhook messages using webhook_id
+// POST /api/webhook/:webhook_id
+func (h *WebhookHandler) ReceiveWebhook(c *fiber.Ctx) error {
+	// Get webhook_id from URL parameter
+	webhookID := c.Params("webhook_id")
+	if webhookID == "" {
+		log.Printf("❌ Missing webhook_id in request")
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"success": false,
+			"message": "webhook_id is required",
+		})
+	}
+
+	log.Printf("📥 Received webhook for ID: %s", webhookID)
+
+	// Parse incoming webhook data
+	var webhookData map[string]interface{}
+	if err := c.BodyParser(&webhookData); err != nil {
+		log.Printf("❌ Failed to parse webhook body: %v", err)
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"success": false,
+			"message": "invalid request body",
+		})
+	}
+
+	log.Printf("📦 Webhook data received: %d fields", len(webhookData))
+
+	// Process the message asynchronously
+	go func() {
+		err := h.flowProcessor.ProcessIncomingMessage(c.Context(), webhookID, webhookData)
+		if err != nil {
+			log.Printf("❌ Failed to process webhook message: %v", err)
+		}
+	}()
+
+	// Return immediate success response
+	return c.Status(fiber.StatusOK).JSON(fiber.Map{
+		"success": true,
+		"message": "webhook received",
+	})
 }
