@@ -351,6 +351,10 @@ func (h *WebhookHandler) ReceiveWebhook(c *fiber.Ctx) error {
 
 	log.Printf("📥 Received webhook for ID: %s", webhookID)
 
+	// Get raw body for logging
+	rawBody := string(c.Body())
+	log.Printf("📦 RAW WEBHOOK BODY: %s", rawBody)
+
 	// Parse incoming webhook data
 	var webhookData map[string]interface{}
 	if err := c.BodyParser(&webhookData); err != nil {
@@ -362,6 +366,7 @@ func (h *WebhookHandler) ReceiveWebhook(c *fiber.Ctx) error {
 	}
 
 	log.Printf("📦 Webhook data received: %d fields", len(webhookData))
+	log.Printf("📦 PARSED WEBHOOK DATA: %+v", webhookData)
 
 	// Process the message asynchronously
 	go func() {

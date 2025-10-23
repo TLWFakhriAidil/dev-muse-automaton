@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"path/filepath"
 	"strings"
@@ -35,6 +36,9 @@ func NewWebhookService(deviceRepo *repository.DeviceRepository, flowRepo *reposi
 
 // ExtractMessageData extracts and normalizes message data from webhook
 func (s *WebhookService) ExtractMessageData(ctx context.Context, rawData map[string]interface{}, deviceID string, provider string) (*models.ExtractedMessage, error) {
+	log.Printf("🔍 EXTRACTING MESSAGE DATA - Provider: %s, DeviceID: %s", provider, deviceID)
+	log.Printf("🔍 RAW DATA KEYS: %+v", getMapKeys(rawData))
+
 	if provider == "whacenter" {
 		return s.extractWhacenterData(rawData, deviceID)
 	} else if provider == "waha" {
@@ -43,10 +47,22 @@ func (s *WebhookService) ExtractMessageData(ctx context.Context, rawData map[str
 	return nil, fmt.Errorf("unsupported provider: %s", provider)
 }
 
+// Helper to get map keys for debugging
+func getMapKeys(m map[string]interface{}) []string {
+	keys := make([]string, 0, len(m))
+	for k := range m {
+		keys = append(keys, k)
+	}
+	return keys
+}
+
 // extractWhacenterData extracts data from Whacenter webhook
 func (s *WebhookService) extractWhacenterData(data map[string]interface{}, deviceID string) (*models.ExtractedMessage, error) {
+	log.Printf("🔍 WHACENTER EXTRACTION - Full data: %+v", data)
+
 	// Check if group message (skip groups)
 	if isGroup, ok := data["isGroup"].(bool); ok && isGroup {
+		log.Printf("⚠️  Skipping group message")
 		return nil, fmt.Errorf("group messages are not supported")
 	}
 
@@ -54,6 +70,8 @@ func (s *WebhookService) extractWhacenterData(data map[string]interface{}, devic
 	from, _ := data["from"].(string)
 	phone, _ := data["phone"].(string)
 	pushName, _ := data["pushName"].(string)
+
+	log.Printf("🔍 WHACENTER FIELDS - message: %s, from: %s, phone: %s, pushName: %s", message, from, phone, pushName)
 
 	// Use 'from' if available, otherwise 'phone'
 	phoneNumber := from
@@ -66,6 +84,7 @@ func (s *WebhookService) extractWhacenterData(data map[string]interface{}, devic
 
 	// Validate phone number
 	if !s.isValidPhoneNumber(phoneNumber, "whacenter") {
+		log.Printf("❌ Invalid phone number: %s", phoneNumber)
 		return nil, fmt.Errorf("invalid phone number format")
 	}
 
@@ -74,24 +93,34 @@ func (s *WebhookService) extractWhacenterData(data map[string]interface{}, devic
 		pushName = "Sis"
 	}
 
-	return &models.ExtractedMessage{
+	extracted := &models.ExtractedMessage{
 		PhoneNumber: phoneNumber,
 		Message:     message,
 		Name:        pushName,
 		Provider:    "whacenter",
 		DeviceID:    deviceID,
-	}, nil
+	}
+
+	log.Printf("✅ WHACENTER EXTRACTED: %+v", extracted)
+	return extracted, nil
 }
 
 // extractWahaData extracts data from Waha webhook
 func (s *WebhookService) extractWahaData(data map[string]interface{}, deviceID string) (*models.ExtractedMessage, error) {
+	log.Printf("🔍 WAHA EXTRACTION - Full data: %+v", data)
+
 	payload, ok := data["payload"].(map[string]interface{})
 	if !ok {
+		log.Printf("❌ Missing payload in Waha webhook data")
 		return nil, fmt.Errorf("missing payload in webhook data")
 	}
 
+	log.Printf("🔍 WAHA PAYLOAD: %+v", payload)
+
 	message, _ := payload["body"].(string)
 	fromRaw, _ := payload["from"].(string)
+
+	log.Printf("🔍 WAHA FIELDS - message: %s, from: %s", message, fromRaw)
 
 	// Trim whitespace from message
 	message = strings.TrimSpace(message)
