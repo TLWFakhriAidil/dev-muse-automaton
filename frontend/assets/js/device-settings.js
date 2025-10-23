@@ -384,27 +384,34 @@ function restrictToNumbers(event) {
 
 // Show device status modal
 async function showStatus(deviceId, idDevice, phoneNumber, provider) {
+    // Check token first before showing loading state
+    const token = localStorage.getItem('auth_token');
+    if (!token) {
+        Swal.fire({
+            icon: 'error',
+            title: 'Authentication Error',
+            text: 'Please login again',
+            background: '#141414',
+            color: '#ffffff',
+            confirmButtonColor: '#e50914'
+        });
+        return;
+    }
+
     // Show loading state
     Swal.fire({
         title: 'Checking Device Status',
         html: '<div class="loading-spinner">🔄 Please wait...</div>',
         allowOutsideClick: false,
         showConfirmButton: false,
+        background: '#141414',
+        color: '#ffffff',
         didOpen: () => {
             Swal.showLoading();
         }
     });
 
     try {
-        const token = localStorage.getItem('token');
-        if (!token) {
-            Swal.fire({
-                icon: 'error',
-                title: 'Authentication Error',
-                text: 'Please login again'
-            });
-            return;
-        }
 
         const response = await fetch(`${API_BASE_URL}/devices/${deviceId}/status`, {
             method: 'GET',
