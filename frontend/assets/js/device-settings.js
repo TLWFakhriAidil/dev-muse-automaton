@@ -1,10 +1,84 @@
 // Device Settings JavaScript
 const API_BASE_URL = window.location.origin + '/api';
 
-// Generate random device ID
-function generateDeviceId() {
-    const randomId = 'DEV-' + Math.random().toString(36).substring(2, 15).toUpperCase();
-    document.getElementById('deviceId').value = randomId;
+// Generate device via API (Whacenter or Waha)
+async function generateDeviceId() {
+    // Check if we're editing a device
+    if (!window.editingDeviceId) {
+        Swal.fire({
+            icon: 'error',
+            title: 'Error',
+            text: 'Please save the device first before generating',
+            background: '#141414',
+            color: '#ffffff',
+            confirmButtonColor: '#e50914'
+        });
+        return;
+    }
+
+    const token = localStorage.getItem('auth_token');
+    if (!token) {
+        window.location.href = '/';
+        return;
+    }
+
+    // Show loading
+    Swal.fire({
+        title: 'Generating Device...',
+        html: 'Please wait while we connect to the provider API',
+        allowOutsideClick: false,
+        didOpen: () => {
+            Swal.showLoading();
+        },
+        background: '#141414',
+        color: '#ffffff'
+    });
+
+    try {
+        const response = await fetch(`${API_BASE_URL}/devices/${window.editingDeviceId}/generate`, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            }
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+            Swal.fire({
+                icon: 'success',
+                title: 'Success!',
+                text: data.message || 'Device generated successfully',
+                background: '#141414',
+                color: '#ffffff',
+                confirmButtonColor: '#e50914'
+            }).then(() => {
+                // Reload devices to show updated data
+                loadDevices();
+                closeDeviceModal();
+            });
+        } else {
+            Swal.fire({
+                icon: 'error',
+                title: 'Generation Failed',
+                text: data.message || 'Failed to generate device',
+                background: '#141414',
+                color: '#ffffff',
+                confirmButtonColor: '#e50914'
+            });
+        }
+    } catch (error) {
+        console.error('Generate device error:', error);
+        Swal.fire({
+            icon: 'error',
+            title: 'Error',
+            text: 'Network error. Please try again.',
+            background: '#141414',
+            color: '#ffffff',
+            confirmButtonColor: '#e50914'
+        });
+    }
 }
 
 // Generate webhook URL

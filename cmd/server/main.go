@@ -119,6 +119,7 @@ func main() {
 	devices.Get("/:id", deviceHandler.GetDevice)
 	devices.Put("/:id", deviceHandler.UpdateDevice)
 	devices.Delete("/:id", deviceHandler.DeleteDevice)
+	devices.Post("/:id/generate", deviceHandler.GenerateDevice)
 
 	// Flow builder routes (requires authentication)
 	flows := api.Group("/flows")
