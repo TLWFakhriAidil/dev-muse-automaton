@@ -25,7 +25,6 @@ type AIWhatsapp struct {
 	Marketer        *string    `json:"marketer,omitempty"`
 	CreatedAt       *time.Time `json:"created_at,omitempty"`
 	UpdatedAt       *time.Time `json:"updated_at,omitempty"`
-	UpdateToday     *time.Time `json:"update_today,omitempty"`
 }
 
 // CreateConversationRequest is the request body for creating a conversation
