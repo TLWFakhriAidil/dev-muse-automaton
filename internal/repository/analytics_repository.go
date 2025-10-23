@@ -59,18 +59,21 @@ func (r *AnalyticsRepository) GetConversationMetrics(ctx context.Context, device
 	dailyCounts := make(map[string]int)
 
 	for _, conv := range conversations {
-		// Count by status
-		if conv.IsActive {
-			metrics.ActiveConversations++
+		// Count by execution status (using ExecutionStatus field instead of Status)
+		status := "active"
+		if conv.ExecutionStatus != nil && *conv.ExecutionStatus != "" {
+			status = *conv.ExecutionStatus
 		}
 
-		if conv.Status == "completed" {
+		if status == "active" {
+			metrics.ActiveConversations++
+		} else if status == "completed" {
 			metrics.CompletedConversations++
-		} else if conv.Status == "abandoned" {
+		} else if status == "abandoned" {
 			metrics.AbandonedConversations++
 		}
 
-		metrics.ConversationsByStatus[conv.Status]++
+		metrics.ConversationsByStatus[status]++
 
 		// Count by stage
 		if conv.Stage != nil {
@@ -82,16 +85,18 @@ func (r *AnalyticsRepository) GetConversationMetrics(ctx context.Context, device
 			metrics.ConversationsByNiche[*conv.Niche]++
 		}
 
-		// Calculate completion time
-		if conv.CompletedAt != nil {
-			duration := conv.CompletedAt.Sub(conv.CreatedAt).Seconds()
+		// Calculate completion time (using UpdatedAt - CreatedAt as approximation)
+		if status == "completed" && conv.UpdatedAt != nil && conv.CreatedAt != nil {
+			duration := conv.UpdatedAt.Sub(*conv.CreatedAt).Seconds()
 			totalCompletionTime += duration
 			completedCount++
 		}
 
 		// Daily counts
-		dateKey := conv.CreatedAt.Format("2006-01-02")
-		dailyCounts[dateKey]++
+		if conv.CreatedAt != nil {
+			dateKey := conv.CreatedAt.Format("2006-01-02")
+			dailyCounts[dateKey]++
+		}
 	}
 
 	// Calculate average completion time
@@ -158,13 +163,18 @@ func (r *AnalyticsRepository) GetFlowMetrics(ctx context.Context, flowID string,
 
 	var totalCompletionTime float64
 	for _, conv := range conversations {
-		if conv.Status == "completed" {
+		status := "active"
+		if conv.ExecutionStatus != nil && *conv.ExecutionStatus != "" {
+			status = *conv.ExecutionStatus
+		}
+
+		if status == "completed" {
 			metrics.CompletedExecutions++
-			if conv.CompletedAt != nil {
-				duration := conv.CompletedAt.Sub(conv.CreatedAt).Seconds()
+			if conv.UpdatedAt != nil && conv.CreatedAt != nil {
+				duration := conv.UpdatedAt.Sub(*conv.CreatedAt).Seconds()
 				totalCompletionTime += duration
 			}
-		} else if conv.Status == "abandoned" {
+		} else if status == "abandoned" {
 			metrics.AbandonedExecutions++
 		}
 	}
@@ -228,7 +238,11 @@ func (r *AnalyticsRepository) GetDeviceMetrics(ctx context.Context, userID strin
 
 		activeCount := 0
 		for _, conv := range conversations {
-			if conv.IsActive {
+			status := "active"
+			if conv.ExecutionStatus != nil && *conv.ExecutionStatus != "" {
+				status = *conv.ExecutionStatus
+			}
+			if status == "active" {
 				activeCount++
 			}
 		}

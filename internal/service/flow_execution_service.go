@@ -122,14 +122,14 @@ func (s *FlowExecutionService) StartFlow(ctx context.Context, userID string, req
 		// Create new conversation
 		stage := "started"
 		niche := flow.Niche
+		executionStatus := "active"
 		conversation = &models.AIWhatsapp{
-			ProspectNum: req.ProspectNum,
-			IDDevice:    deviceIdentifier,
-			Stage:       &stage,
-			Niche:       &niche,
-			FlowID:      &flow.ID,
-			IsActive:    true,
-			Status:      "active",
+			ProspectNum:     req.ProspectNum,
+			IDDevice:        deviceIdentifier,
+			Stage:           &stage,
+			Niche:           &niche,
+			FlowID:          &flow.ID,
+			ExecutionStatus: &executionStatus,
 		}
 
 		if err := s.conversationRepo.CreateConversation(ctx, conversation); err != nil {
@@ -142,19 +142,21 @@ func (s *FlowExecutionService) StartFlow(ctx context.Context, userID string, req
 	}
 
 	// Update conversation with current node
-	conversation.CurrentNode = &startNode.ID
+	conversation.CurrentNodeID = &startNode.ID
 	conversation.FlowID = &flow.ID
-	conversation.IsActive = true
-	conversation.Status = "active"
+	executionStatus := "active"
+	conversation.ExecutionStatus = &executionStatus
+
+	// Convert IDProspect to string for update
+	prospectIDStr := fmt.Sprintf("%d", *conversation.IDProspect)
 
 	updates := map[string]interface{}{
-		"current_node": startNode.ID,
-		"flow_id":      flow.ID,
-		"is_active":    true,
-		"status":       "active",
+		"current_node_id":  startNode.ID,
+		"flow_id":          flow.ID,
+		"execution_status": "active",
 	}
 
-	if err := s.conversationRepo.UpdateConversation(ctx, conversation.IDProspect, updates); err != nil {
+	if err := s.conversationRepo.UpdateConversation(ctx, prospectIDStr, updates); err != nil {
 		return &models.StartFlowResponse{
 			Success: false,
 			Message: "Failed to update conversation",
@@ -165,7 +167,7 @@ func (s *FlowExecutionService) StartFlow(ctx context.Context, userID string, req
 	return &models.StartFlowResponse{
 		Success:        true,
 		Message:        "Flow started successfully",
-		ConversationID: conversation.IDProspect,
+		ConversationID: prospectIDStr,
 	}, nil
 }
 
@@ -198,8 +200,8 @@ func (s *FlowExecutionService) ProcessMessage(ctx context.Context, conversationI
 
 	// Get current node
 	currentNodeID := ""
-	if conversation.CurrentNode != nil {
-		currentNodeID = *conversation.CurrentNode
+	if conversation.CurrentNodeID != nil {
+		currentNodeID = *conversation.CurrentNodeID
 	}
 
 	if currentNodeID == "" {
@@ -215,6 +217,7 @@ func (s *FlowExecutionService) ProcessMessage(ctx context.Context, conversationI
 	}
 
 	// Execute flow from current node
+	// Note: SessionData not available in current schema, using empty map
 	execCtx := &models.ExecutionContext{
 		ConversationID: conversationID,
 		DeviceID:       conversation.IDDevice,
@@ -222,7 +225,7 @@ func (s *FlowExecutionService) ProcessMessage(ctx context.Context, conversationI
 		CurrentNodeID:  currentNodeID,
 		FlowID:         *conversation.FlowID,
 		UserMessage:    userMessage,
-		Variables:      conversation.SessionData,
+		Variables:      make(map[string]interface{}), // SessionData not in current schema
 		CreatedAt:      time.Now(),
 		UpdatedAt:      time.Now(),
 	}
@@ -433,13 +436,22 @@ func (s *FlowExecutionService) GetExecutionStatus(ctx context.Context, userID st
 	}
 
 	currentNodeID := ""
-	if conversation.CurrentNode != nil {
-		currentNodeID = *conversation.CurrentNode
+	if conversation.CurrentNodeID != nil {
+		currentNodeID = *conversation.CurrentNodeID
 	}
 
 	flowID := ""
 	if conversation.FlowID != nil {
 		flowID = *conversation.FlowID
+	}
+
+	createdAt := time.Now()
+	if conversation.CreatedAt != nil {
+		createdAt = *conversation.CreatedAt
+	}
+	updatedAt := time.Now()
+	if conversation.UpdatedAt != nil {
+		updatedAt = *conversation.UpdatedAt
 	}
 
 	return &models.ExecutionContext{
@@ -448,8 +460,8 @@ func (s *FlowExecutionService) GetExecutionStatus(ctx context.Context, userID st
 		ProspectNum:    conversation.ProspectNum,
 		CurrentNodeID:  currentNodeID,
 		FlowID:         flowID,
-		Variables:      conversation.SessionData,
-		CreatedAt:      conversation.CreatedAt,
-		UpdatedAt:      conversation.UpdatedAt,
+		Variables:      make(map[string]interface{}), // SessionData not in current schema
+		CreatedAt:      createdAt,
+		UpdatedAt:      updatedAt,
 	}, nil
 }

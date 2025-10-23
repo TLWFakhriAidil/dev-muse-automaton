@@ -201,11 +201,11 @@ func (s *FlowProcessorService) ProcessIncomingMessage(ctx context.Context, webho
 		if conversation == nil {
 			// Create new conversation
 			log.Printf("➕ Creating new ai_whatsapp conversation")
+			executionStatus := "active"
 			newConv := &models.AIWhatsapp{
-				IDDevice:    idDevice,
-				ProspectNum: extractedMsg.PhoneNumber,
-				IsActive:    true,
-				Status:      "active",
+				IDDevice:        idDevice,
+				ProspectNum:     extractedMsg.PhoneNumber,
+				ExecutionStatus: &executionStatus,
 			}
 
 			// Set niche if available
@@ -227,13 +227,13 @@ func (s *FlowProcessorService) ProcessIncomingMessage(ctx context.Context, webho
 				return fmt.Errorf("failed to create ai_whatsapp conversation: %w", err)
 			}
 
-			contactID = newConv.IDProspect
+			contactID = fmt.Sprintf("%d", *newConv.IDProspect) // Convert int to string
 			currentStage = "start"
 			contactExists = false
 			log.Printf("✅ Created new ai_whatsapp conversation: %s", contactID)
 		} else {
 			// Conversation exists
-			contactID = conversation.IDProspect
+			contactID = fmt.Sprintf("%d", *conversation.IDProspect) // Convert int to string
 			if conversation.Stage != nil {
 				currentStage = *conversation.Stage
 			} else {

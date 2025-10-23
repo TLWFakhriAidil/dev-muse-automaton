@@ -7,8 +7,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"time"
-
-	"github.com/google/uuid"
 )
 
 // ConversationRepository handles conversation data operations
@@ -25,12 +23,8 @@ func NewConversationRepository(supabase *database.SupabaseClient) *ConversationR
 
 // CreateConversation creates a new conversation
 func (r *ConversationRepository) CreateConversation(ctx context.Context, conversation *models.AIWhatsapp) error {
-	// Generate UUID for new conversation
-	conversation.IDProspect = uuid.New().String()
-	conversation.CreatedAt = time.Now()
-	conversation.UpdatedAt = time.Now()
-	conversation.IsActive = true
-	conversation.Status = "active"
+	// Database will auto-generate id_prospect (serial/autoincrement)
+	// Database will auto-set created_at, updated_at timestamps
 
 	// Initialize conv_last with just the user message for now
 	// Bot reply will be added during flow execution
@@ -214,8 +208,13 @@ func (r *ConversationRepository) GetConversationStats(ctx context.Context, devic
 
 	// Calculate statistics
 	for _, conv := range conversations {
-		// Count by status
-		switch conv.Status {
+		// Count by execution status
+		status := "active"
+		if conv.ExecutionStatus != nil && *conv.ExecutionStatus != "" {
+			status = *conv.ExecutionStatus
+		}
+
+		switch status {
 		case "active":
 			stats.ActiveConversations++
 		case "completed":
