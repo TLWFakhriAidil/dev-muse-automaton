@@ -86,11 +86,12 @@ func (s *FlowService) CreateFlow(ctx context.Context, userID string, req *models
 	}
 
 	flow := &models.ChatbotFlow{
-		IDDevice: deviceIdentifier, // Use the user-friendly identifier
-		Name:     req.FlowName,
-		Niche:    req.Niche,
-		Nodes:    nodes, // Parsed from NodesData
-		Edges:    edges, // Parsed from NodesData
+		IDDevice:  deviceIdentifier, // Use the user-friendly identifier
+		Name:      req.FlowName,
+		Niche:     req.Niche,
+		NodesData: req.NodesData, // Save complete flow JSON
+		Nodes:     nodes,          // Parsed from NodesData
+		Edges:     edges,          // Parsed from NodesData
 	}
 
 	if err := s.flowRepo.CreateFlow(ctx, flow); err != nil {
@@ -346,6 +347,7 @@ func (s *FlowService) UpdateFlow(ctx context.Context, userID, flowID string, req
 			}
 		}
 
+		updates["nodes_data"] = *req.NodesData // Save complete flow JSON
 		updates["nodes"] = nodes
 		updates["edges"] = edges
 	}

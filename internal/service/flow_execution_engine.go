@@ -52,9 +52,17 @@ func (s *FlowProcessorService) ExecuteFlow(
 ) error {
 	log.Printf("🚀 Starting flow execution for conversation: %s", conversationID)
 
+	// Check if NodesData is empty
+	if flow.NodesData == "" {
+		log.Printf("⚠️  Flow NodesData is empty - flow not configured yet")
+		return fmt.Errorf("flow has no nodes configured")
+	}
+
 	// Parse flow data
 	var flowData FlowData
 	if err := json.Unmarshal([]byte(flow.NodesData), &flowData); err != nil {
+		log.Printf("❌ Failed to parse flow data: %v", err)
+		log.Printf("📝 NodesData content: %s", flow.NodesData)
 		return fmt.Errorf("failed to parse flow data: %w", err)
 	}
 
