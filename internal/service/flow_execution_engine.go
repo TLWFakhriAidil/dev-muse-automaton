@@ -9,6 +9,8 @@ import (
 	"log"
 	"math/rand"
 	"net/http"
+	"net/url"
+	"regexp"
 	"strings"
 	"time"
 
@@ -44,6 +46,19 @@ type FlowEdge struct {
 type FlowData struct {
 	Nodes       []FlowNode `json:"nodes"`
 	Connections []FlowEdge `json:"connections"`
+}
+
+// AIResponsePart represents a single part of AI response (text or image)
+type AIResponsePart struct {
+	Type    string `json:"type"`
+	Jenis   string `json:"Jenis,omitempty"`
+	Content string `json:"content"`
+}
+
+// AIResponse represents the parsed AI response
+type AIResponse struct {
+	Stage    string           `json:"Stage"`
+	Response []AIResponsePart `json:"Response"`
 }
 
 // ExecuteFlow processes the flow starting from a specific node
@@ -579,12 +594,84 @@ func (s *FlowProcessorService) executeAIPrompt(
 	log.Printf("🤖 AI Response received: %d characters", len(replyContent))
 	log.Printf("📄 Raw response: %s", replyContent)
 
-	// TODO: Step 2 - Sanitize and parse response
-	// TODO: Step 3 - Extract and update stage
-	// TODO: Step 4 - Process and send messages
+	// Step 2: Sanitize content - remove ```json markers
+	sanitizedContent := regexp.MustCompile("^```json|```$").ReplaceAllString(strings.TrimSpace(replyContent), "")
 
-	// Temporary placeholder - will be replaced in next steps
-	return true, nil
+	// Try to parse as JSON
+	var stage string
+	var replyParts []AIResponsePart
+
+	// Attempt 1: Try as JSON with Stage and Response
+	var aiResp AIResponse
+	if err := json.Unmarshal([]byte(sanitizedContent), &aiResp); err == nil {
+		if aiResp.Stage != "" && len(aiResp.Response) > 0 {
+			stage = aiResp.Stage
+			replyParts = aiResp.Response
+			log.Printf("✅ Parsed as JSON format - Stage: %s, Parts: %d", stage, len(replyParts))
+		}
+	}
+
+	// Attempt 2: Try old format (Stage:\nResponse:)
+	if len(replyParts) == 0 {
+		re := regexp.MustCompile(`Stage:\s*(.+?)\nResponse:\s*(\[.*?\])$`)
+		matches := re.FindStringSubmatch(replyContent)
+		if len(matches) == 3 {
+			stage = strings.TrimSpace(matches[1])
+			responseJSON := matches[2]
+			if err := json.Unmarshal([]byte(responseJSON), &replyParts); err == nil {
+				log.Printf("✅ Parsed as old format - Stage: %s, Parts: %d", stage, len(replyParts))
+			}
+		}
+	}
+
+	// Attempt 3: Check if encapsulated JSON within triple backticks
+	if len(replyParts) == 0 {
+		re := regexp.MustCompile(`^\s*\{\s*"Stage":\s*".+?",\s*"Response":\s*\[.*\]\s*}\s*$`)
+		if re.MatchString(sanitizedContent) {
+			var aiResp2 AIResponse
+			if err := json.Unmarshal([]byte(sanitizedContent), &aiResp2); err == nil {
+				if aiResp2.Stage != "" && len(aiResp2.Response) > 0 {
+					stage = aiResp2.Stage
+					replyParts = aiResp2.Response
+					log.Printf("✅ Parsed as encapsulated JSON - Stage: %s, Parts: %d", stage, len(replyParts))
+				}
+			}
+		}
+	}
+
+	// Attempt 4: Plain text fallback
+	if len(replyParts) == 0 {
+		log.Printf("⚠️  Plain text response detected, using fallback")
+		if stage == "" {
+			stage = "Problem Identification" // Default stage
+		}
+		replyParts = []AIResponsePart{
+			{Type: "text", Content: strings.TrimSpace(replyContent)},
+		}
+	}
+
+	// Validate replyParts
+	if len(replyParts) == 0 {
+		log.Printf("❌ Failed to parse response parts")
+		return true, fmt.Errorf("failed to parse response")
+	}
+
+	log.Printf("✅ Final parsed - Stage: %s, Parts: %d", stage, len(replyParts))
+
+	// Step 3: Update stage if present
+	if stage != "" {
+		updates := map[string]interface{}{
+			"stage": stage,
+		}
+		if err := s.convRepo.UpdateConversation(ctx, conversationID, updates); err != nil {
+			log.Printf("⚠️  Failed to update stage: %v", err)
+		} else {
+			log.Printf("✅ Updated stage to: %s", stage)
+		}
+	}
+
+	// Step 4: Process and send messages
+	return s.processAIResponseParts(ctx, flow, conversationID, conversation, replyParts)
 }
 
 // executeStage updates the conversation stage
@@ -674,6 +761,151 @@ func (s *FlowProcessorService) executeConditions(
 	// Conditions are handled in findNextNode
 	// This node just passes through
 	return true, nil
+}
+
+// processAIResponseParts processes AI response parts and sends messages
+func (s *FlowProcessorService) processAIResponseParts(
+	ctx context.Context,
+	flow *models.ChatbotFlow,
+	conversationID string,
+	conversation *models.AIWhatsapp,
+	replyParts []AIResponsePart,
+) (bool, error) {
+	log.Printf("📤 Processing %d AI response parts", len(replyParts))
+
+	var textParts []string
+	isOnemessageActive := false
+
+	for index, part := range replyParts {
+		if part.Type == "" || part.Content == "" {
+			log.Printf("⚠️  Invalid response part structure at index %d", index)
+			continue
+		}
+
+		// Check if this is a onemessage text part
+		if part.Type == "text" && part.Jenis == "onemessage" {
+			// Start collecting text parts
+			textParts = append(textParts, part.Content)
+			isOnemessageActive = true
+
+			// Check if next part is also onemessage
+			isLastOnemessage := true
+			if index+1 < len(replyParts) {
+				nextPart := replyParts[index+1]
+				if nextPart.Type == "text" && nextPart.Jenis == "onemessage" {
+					isLastOnemessage = false
+				}
+			}
+
+			// If this is the last onemessage in sequence, send combined message
+			if isLastOnemessage {
+				combinedMessage := strings.Join(textParts, "\n")
+				log.Printf("📨 Sending combined onemessage: %s", combinedMessage)
+
+				// Send WhatsApp message
+				err := s.whatsappService.SendMessage(ctx, flow.IDDevice, conversation.ProspectNum, combinedMessage, "", "")
+				if err != nil {
+					log.Printf("❌ Failed to send combined message: %v", err)
+				} else {
+					log.Printf("✅ Combined message sent")
+
+					// Update conv_last
+					newBotEntry := fmt.Sprintf("Bot: %s", combinedMessage)
+					if err := s.appendToConvLast(ctx, conversationID, newBotEntry); err != nil {
+						log.Printf("⚠️  Failed to update conv_last: %v", err)
+					}
+				}
+
+				// Reset
+				textParts = []string{}
+				isOnemessageActive = false
+			}
+		} else {
+			// If we were collecting onemessage parts, send them first
+			if isOnemessageActive {
+				combinedMessage := strings.Join(textParts, "\n")
+				log.Printf("📨 Sending combined onemessage (interrupted): %s", combinedMessage)
+
+				err := s.whatsappService.SendMessage(ctx, flow.IDDevice, conversation.ProspectNum, combinedMessage, "", "")
+				if err != nil {
+					log.Printf("❌ Failed to send combined message: %v", err)
+				} else {
+					newBotEntry := fmt.Sprintf("Bot: %s", combinedMessage)
+					if err := s.appendToConvLast(ctx, conversationID, newBotEntry); err != nil {
+						log.Printf("⚠️  Failed to update conv_last: %v", err)
+					}
+				}
+
+				textParts = []string{}
+				isOnemessageActive = false
+			}
+
+			// Now handle the current part (normal text or image)
+			if part.Type == "text" {
+				log.Printf("📨 Sending text message: %s", part.Content)
+
+				err := s.whatsappService.SendMessage(ctx, flow.IDDevice, conversation.ProspectNum, part.Content, "", "")
+				if err != nil {
+					log.Printf("❌ Failed to send text message: %v", err)
+				} else {
+					log.Printf("✅ Text message sent")
+
+					newBotEntry := fmt.Sprintf("Bot: %s", part.Content)
+					if err := s.appendToConvLast(ctx, conversationID, newBotEntry); err != nil {
+						log.Printf("⚠️  Failed to update conv_last: %v", err)
+					}
+				}
+			} else if part.Type == "image" {
+				// Decode URL if needed
+				currentImageURL := strings.TrimSpace(part.Content)
+				if decodedURL, err := url.QueryUnescape(currentImageURL); err == nil {
+					currentImageURL = decodedURL
+				}
+
+				log.Printf("📨 Sending image: %s", currentImageURL)
+
+				err := s.whatsappService.SendMessage(ctx, flow.IDDevice, conversation.ProspectNum, "", currentImageURL, "")
+				if err != nil {
+					log.Printf("❌ Failed to send image: %v", err)
+				} else {
+					log.Printf("✅ Image sent")
+
+					newBotEntry := fmt.Sprintf("Bot: %s", currentImageURL)
+					if err := s.appendToConvLast(ctx, conversationID, newBotEntry); err != nil {
+						log.Printf("⚠️  Failed to update conv_last: %v", err)
+					}
+				}
+			}
+		}
+	}
+
+	log.Printf("✅ All AI response parts processed")
+	return true, nil
+}
+
+// appendToConvLast appends a new entry to conv_last
+func (s *FlowProcessorService) appendToConvLast(ctx context.Context, conversationID string, entry string) error {
+	conv, err := s.convRepo.GetConversationByID(ctx, conversationID)
+	if err != nil {
+		return err
+	}
+
+	convLast := ""
+	if conv.ConvLast != nil {
+		convLast = *conv.ConvLast
+	}
+
+	if convLast != "" {
+		convLast += "\n" + entry
+	} else {
+		convLast = entry
+	}
+
+	updates := map[string]interface{}{
+		"conv_last": convLast,
+	}
+
+	return s.convRepo.UpdateConversation(ctx, conversationID, updates)
 }
 
 // findNextNode finds the next node to execute based on edges
