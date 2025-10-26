@@ -11,11 +11,12 @@ import (
 )
 
 type FlowProcessorService struct {
-	webhookService  *WebhookService
-	whatsappService *WhatsAppService
-	flowRepo        *repository.FlowRepository
-	deviceRepo      *repository.DeviceRepository
-	convRepo        *repository.ConversationRepository
+	webhookService   *WebhookService
+	whatsappService  *WhatsAppService
+	flowRepo         *repository.FlowRepository
+	deviceRepo       *repository.DeviceRepository
+	convRepo         *repository.ConversationRepository
+	wasapbotRepo     *repository.WasapbotRepository
 }
 
 func NewFlowProcessorService(
@@ -24,6 +25,7 @@ func NewFlowProcessorService(
 	flowRepo *repository.FlowRepository,
 	deviceRepo *repository.DeviceRepository,
 	convRepo *repository.ConversationRepository,
+	wasapbotRepo *repository.WasapbotRepository,
 ) *FlowProcessorService {
 	return &FlowProcessorService{
 		webhookService:  webhookService,
@@ -31,6 +33,7 @@ func NewFlowProcessorService(
 		flowRepo:        flowRepo,
 		deviceRepo:      deviceRepo,
 		convRepo:        convRepo,
+		wasapbotRepo:    wasapbotRepo,
 	}
 }
 
@@ -199,6 +202,22 @@ func (s *FlowProcessorService) ProcessIncomingMessage(ctx context.Context, webho
 			}
 			_ = s.convRepo.UpdateWasapBotContact(ctx, contactID, updates)
 		}
+
+		// Execute Whatsapp Bot flow and return early
+		// Don't run the Chatbot AI state-checking code below
+		log.Printf("🔄 Executing flow for contact %s at stage: %s", contactID, currentStage)
+		log.Printf("📊 Contact exists: %v, New contact: %v", contactExists, !contactExists)
+
+		// Create wasapbot flow engine and execute
+		wasapbotEngine := NewWasapbotFlowEngine(s.deviceRepo, s.wasapbotRepo, s.whatsappService)
+		err = wasapbotEngine.ExecuteWasapbotFlow(ctx, &flow, contactID, extractedMsg.Message, currentStage)
+		if err != nil {
+			log.Printf("❌ Wasapbot flow execution error: %v", err)
+			return fmt.Errorf("failed to execute wasapbot flow: %w", err)
+		}
+
+		log.Printf("✅ Wasapbot flow execution completed")
+		return nil // Return early - don't run Chatbot AI code
 
 	} else if flowType == "Chatbot AI" {
 		// Use ai_whatsapp table
