@@ -120,6 +120,17 @@ func (s *FlowProcessorService) ResumeFlow(
 
 	log.Printf("✅ Found current node: %s (Type: %s)", currentNode.ID, currentNode.Type)
 
+	// Add user's reply to conversation history
+	if userMessage != "" {
+		err := s.updateConvLast(ctx, conversationID, "User", userMessage)
+		if err != nil {
+			log.Printf("⚠️  Failed to update conv_last with user message: %v", err)
+			// Don't fail the flow, just log the error
+		} else {
+			log.Printf("✅ Added user message to conv_last: %s", userMessage)
+		}
+	}
+
 	// Find next node from current node
 	nextNode := s.findNextNode(&flowData, currentNode, userMessage)
 	if nextNode == nil {
