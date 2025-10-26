@@ -158,10 +158,16 @@ function createFlowNode(type, label, icon, x, y) {
     node.style.left = `${x}px`;
     node.style.top = `${y}px`;
 
-    // Set default body text based on node type
+    // Set default body text and config based on node type
     let bodyText = 'Click edit to configure';
+    let defaultConfig = {};
+
     if (type === 'waiting_reply') {
-        bodyText = '<p style="color: #4CAF50;">✓ Ready (No config needed)</p>';
+        bodyText = '<p style="color: #4CAF50;">✓ Configured (8s timeout)</p>';
+        defaultConfig = { timeout: 8 };
+    } else if (type === 'delay') {
+        bodyText = '<p style="color: #4CAF50;">✓ Configured (3s delay)</p>';
+        defaultConfig = { delay: 3 };
     }
 
     node.innerHTML = `
@@ -203,14 +209,14 @@ function createFlowNode(type, label, icon, x, y) {
 
     document.getElementById('flowCanvas').appendChild(node);
 
-    // Add to flow data
+    // Add to flow data with pre-configured values for delay and waiting_reply
     flowData.nodes.push({
         id: nodeId,
         type: type,
         label: label,
         x: x,
         y: y,
-        config: {}
+        config: defaultConfig
     });
 
     // Initialize connectors for this new node
@@ -662,7 +668,17 @@ function loadFlowFromData(data) {
         // Determine body text - check if node has config or use default
         let bodyText = 'Click edit to configure';
         if (nodeData.type === 'waiting_reply') {
-            bodyText = '<p style="color: #4CAF50;">✓ Ready (No config needed)</p>';
+            bodyText = '<p style="color: #4CAF50;">✓ Configured (8s timeout)</p>';
+            // Ensure config has timeout value
+            if (!nodeData.config || !nodeData.config.timeout) {
+                nodeData.config = { timeout: 8 };
+            }
+        } else if (nodeData.type === 'delay') {
+            bodyText = '<p style="color: #4CAF50;">✓ Configured (3s delay)</p>';
+            // Ensure config has delay value
+            if (!nodeData.config || !nodeData.config.delay) {
+                nodeData.config = { delay: 3 };
+            }
         } else if (nodeData.config && Object.keys(nodeData.config).length > 0) {
             bodyText = '<p style="color: #4CAF50;">✓ Configured</p>';
         }
