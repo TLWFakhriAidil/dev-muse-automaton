@@ -163,8 +163,11 @@ function createFlowNode(type, label, icon, x, y) {
     let defaultConfig = {};
 
     if (type === 'waiting_reply') {
+        bodyText = '<p style="color: #4CAF50;">✓ Ready (waits for reply)</p>';
+        defaultConfig = {}; // No timeout - just waits for user reply
+    } else if (type === 'waiting_times') {
         bodyText = '<p style="color: #4CAF50;">✓ Configured (8s timeout)</p>';
-        defaultConfig = { timeout: 8 };
+        defaultConfig = { delay: 8 };
     } else if (type === 'delay') {
         bodyText = '<p style="color: #4CAF50;">✓ Configured (3s delay)</p>';
         defaultConfig = { delay: 3 };
@@ -668,14 +671,18 @@ function loadFlowFromData(data) {
         // Determine body text - check if node has config or use default
         let bodyText = 'Click edit to configure';
         if (nodeData.type === 'waiting_reply') {
+            bodyText = '<p style="color: #4CAF50;">✓ Ready (waits for reply)</p>';
+            // No config needed - just waits for user reply
+            nodeData.config = nodeData.config || {};
+        } else if (nodeData.type === 'waiting_times') {
             bodyText = '<p style="color: #4CAF50;">✓ Configured (8s timeout)</p>';
-            // Ensure config has timeout value
-            if (!nodeData.config || !nodeData.config.timeout) {
-                nodeData.config = { timeout: 8 };
+            // Ensure config has delay value (8 seconds)
+            if (!nodeData.config || !nodeData.config.delay) {
+                nodeData.config = { delay: 8 };
             }
         } else if (nodeData.type === 'delay') {
             bodyText = '<p style="color: #4CAF50;">✓ Configured (3s delay)</p>';
-            // Ensure config has delay value
+            // Ensure config has delay value (3 seconds)
             if (!nodeData.config || !nodeData.config.delay) {
                 nodeData.config = { delay: 3 };
             }
@@ -884,7 +891,8 @@ function getConfigFieldsForType(type, config = {}) {
             return `
                 <div class="form-group">
                     <p style="color: rgba(255, 255, 255, 0.7); text-align: center; padding: 2rem;">
-                        This node waits for user reply with a timeout of <strong style="color: #e50914;">8 seconds</strong>.<br>
+                        This node waits for user reply with <strong style="color: #e50914;">no timeout</strong>.<br>
+                        Flow will pause until user responds.<br>
                         No configuration needed.
                     </p>
                 </div>
@@ -994,8 +1002,7 @@ function saveNodeConfig(event) {
             break;
 
         case 'waiting_reply':
-            // Hardcoded to 8 seconds timeout
-            config.timeout = 8;
+            // No configuration needed - just waits for user reply (no timeout)
             break;
 
         case 'conditions':
