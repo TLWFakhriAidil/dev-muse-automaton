@@ -1189,13 +1189,26 @@ function handleConnectorClick(connector) {
     if (!connectionStart) {
         // Start connection from output connector
         if (connectorType === 'output') {
-            connectionStart = { nodeId, connector };
+            // Capture condition data if this is a condition connector
+            const conditionType = connector.getAttribute('data-condition-type');
+            const conditionIndex = connector.getAttribute('data-condition-index');
+
+            connectionStart = {
+                nodeId,
+                connector,
+                conditionType: conditionType || null,
+                conditionIndex: conditionIndex || null
+            };
+
             connector.style.background = '#e50914';
             connector.style.boxShadow = '0 0 10px #e50914';
             connector.style.transform = 'translateX(-50%) scale(1.5)';
             connector.style.zIndex = '100';
 
             console.log('✓ Connection started from node:', nodeId);
+            if (conditionType) {
+                console.log('✓ Condition type:', conditionType, 'Index:', conditionIndex);
+            }
         } else {
             console.log('✗ Cannot start connection from input connector');
         }
@@ -1203,7 +1216,14 @@ function handleConnectorClick(connector) {
         // Complete connection to input connector
         if (connectorType === 'input' && nodeId !== connectionStart.nodeId) {
             console.log('✓ Creating connection:', connectionStart.nodeId, '->', nodeId);
-            createConnection(connectionStart.nodeId, nodeId);
+
+            // Pass condition info to createConnection
+            createConnection(
+                connectionStart.nodeId,
+                nodeId,
+                connectionStart.conditionType,
+                connectionStart.conditionIndex
+            );
 
             // Reset start connector style
             connectionStart.connector.style.background = '';
@@ -1226,7 +1246,7 @@ function handleConnectorClick(connector) {
     }
 }
 
-function createConnection(fromNodeId, toNodeId) {
+function createConnection(fromNodeId, toNodeId, conditionType = null, conditionIndex = null) {
     // Check if connection already exists
     const exists = flowData.connections.find(c => c.from === fromNodeId && c.to === toNodeId);
     if (exists) {
@@ -1234,9 +1254,28 @@ function createConnection(fromNodeId, toNodeId) {
         return;
     }
 
+    // Create connection object
+    const connection = { from: fromNodeId, to: toNodeId };
+
+    // If this is a condition connection, get the condition value from the node config
+    if (conditionType && conditionIndex !== null) {
+        const fromNode = flowData.nodes.find(n => n.id === fromNodeId);
+        if (fromNode && fromNode.config && fromNode.config.conditions) {
+            const condition = fromNode.config.conditions[parseInt(conditionIndex)];
+            if (condition) {
+                connection.conditionType = condition.type;
+                connection.conditionValue = condition.value;
+                console.log('✓ Added condition to connection:', condition.type, '=', condition.value);
+            }
+        }
+    }
+
     // Add connection to data
-    flowData.connections.push({ from: fromNodeId, to: toNodeId });
+    flowData.connections.push(connection);
     console.log('✓ Connection added to flowData:', fromNodeId, '->', toNodeId);
+    if (connection.conditionType) {
+        console.log('  └─ Condition:', connection.conditionType, '=', connection.conditionValue);
+    }
     console.log('Total connections:', flowData.connections.length);
 
     // Redraw all connections
