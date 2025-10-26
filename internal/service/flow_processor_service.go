@@ -11,23 +11,26 @@ import (
 )
 
 type FlowProcessorService struct {
-	webhookService *WebhookService
-	flowRepo       *repository.FlowRepository
-	deviceRepo     *repository.DeviceRepository
-	convRepo       *repository.ConversationRepository
+	webhookService  *WebhookService
+	whatsappService *WhatsAppService
+	flowRepo        *repository.FlowRepository
+	deviceRepo      *repository.DeviceRepository
+	convRepo        *repository.ConversationRepository
 }
 
 func NewFlowProcessorService(
 	webhookService *WebhookService,
+	whatsappService *WhatsAppService,
 	flowRepo *repository.FlowRepository,
 	deviceRepo *repository.DeviceRepository,
 	convRepo *repository.ConversationRepository,
 ) *FlowProcessorService {
 	return &FlowProcessorService{
-		webhookService: webhookService,
-		flowRepo:       flowRepo,
-		deviceRepo:     deviceRepo,
-		convRepo:       convRepo,
+		webhookService:  webhookService,
+		whatsappService: whatsappService,
+		flowRepo:        flowRepo,
+		deviceRepo:      deviceRepo,
+		convRepo:        convRepo,
 	}
 }
 

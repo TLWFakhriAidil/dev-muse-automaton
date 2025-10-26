@@ -222,11 +222,21 @@ func (s *FlowProcessorService) executeSendMessage(
 
 	log.Printf("📤 Sending message: %s", text)
 
-	// TODO: Implement WhatsApp API call to send message
-	// This will need device info and conversation phone number
+	// Get conversation to get phone number
+	conversation, err := s.convRepo.GetConversationByID(ctx, conversationID)
+	if err != nil || conversation == nil {
+		log.Printf("❌ Failed to get conversation for sending: %v", err)
+		return true, fmt.Errorf("failed to get conversation: %w", err)
+	}
 
-	// For now, just log and continue
-	log.Printf("✅ Message sent (simulated)")
+	// Send WhatsApp message
+	err = s.whatsappService.SendMessage(ctx, flow.IDDevice, conversation.ProspectNum, text, "", "")
+	if err != nil {
+		log.Printf("❌ Failed to send WhatsApp message: %v", err)
+		return true, fmt.Errorf("failed to send message: %w", err)
+	}
+
+	log.Printf("✅ Message sent successfully to %s", conversation.ProspectNum)
 
 	// Update conv_last with bot reply
 	return true, s.updateConvLast(ctx, conversationID, "Bot", text)
@@ -357,10 +367,36 @@ func (s *FlowProcessorService) executeSendMedia(
 
 	log.Printf("📤 Sending %s: %s", node.Type, url)
 
-	// TODO: Implement WhatsApp media sending
+	// Get conversation to get phone number
+	conversation, err := s.convRepo.GetConversationByID(ctx, conversationID)
+	if err != nil || conversation == nil {
+		log.Printf("❌ Failed to get conversation for sending media: %v", err)
+		return true, fmt.Errorf("failed to get conversation: %w", err)
+	}
 
-	log.Printf("✅ Media sent (simulated)")
-	return true, nil
+	// Map node type to media type
+	mediaType := ""
+	switch node.Type {
+	case "send_image":
+		mediaType = "image"
+	case "send_audio":
+		mediaType = "audio"
+	case "send_video":
+		mediaType = "video"
+	}
+
+	// Send WhatsApp media
+	err = s.whatsappService.SendMessage(ctx, flow.IDDevice, conversation.ProspectNum, "", mediaType, url)
+	if err != nil {
+		log.Printf("❌ Failed to send WhatsApp media: %v", err)
+		return true, fmt.Errorf("failed to send media: %w", err)
+	}
+
+	log.Printf("✅ Media sent successfully to %s", conversation.ProspectNum)
+
+	// Update conv_last with bot media send
+	mediaDesc := fmt.Sprintf("[%s: %s]", mediaType, url)
+	return true, s.updateConvLast(ctx, conversationID, "Bot", mediaDesc)
 }
 
 // executeConditions evaluates conditions

@@ -50,7 +50,7 @@ func main() {
 	whatsappService := service.NewWhatsAppService(deviceRepo)
 	webhookService := service.NewWebhookService(deviceRepo, flowRepo)
 	flowExecutionService := service.NewFlowExecutionService(flowRepo, conversationRepo, deviceRepo, aiService)
-	flowProcessorService := service.NewFlowProcessorService(webhookService, flowRepo, deviceRepo, conversationRepo)
+	flowProcessorService := service.NewFlowProcessorService(webhookService, whatsappService, flowRepo, deviceRepo, conversationRepo)
 	analyticsService := service.NewAnalyticsService(analyticsRepo, deviceRepo)
 	stageService := service.NewStageService(stageRepo)
 
