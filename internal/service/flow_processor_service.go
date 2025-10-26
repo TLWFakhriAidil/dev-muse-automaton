@@ -155,16 +155,24 @@ func (s *FlowProcessorService) ProcessIncomingMessage(ctx context.Context, webho
 		if contact == nil {
 			// Create new contact
 			log.Printf("➕ Creating new wasapbot contact")
-			stage := "start"
 			nama := extractedMsg.Name
 			status := "Prospek"
+			executionStatus := "active"
+			flowIDStr := flow.ID
+			// Create conv_last with initial message (Chatbot AI format)
+			convLast := fmt.Sprintf("User: %s", extractedMsg.Message)
+
 			newContact := &models.WasapBot{
-				DeviceID:    idDevice,
-				ProspectNum: extractedMsg.PhoneNumber,
-				Niche:       &flow.Niche,
-				Stage:       &stage,
-				Nama:        &nama,
-				Status:      &status,
+				DeviceID:        idDevice,
+				ProspectNum:     extractedMsg.PhoneNumber,
+				Niche:           &flow.Niche,
+				Stage:           nil, // NULL initially, only set when Stage node is found
+				Nama:            &nama,
+				Status:          &status,
+				FlowID:          &flowIDStr,
+				ExecutionStatus: &executionStatus,
+				CurrentNodeID:   nil, // Will be set during flow execution
+				ConvLast:        &convLast,
 			}
 
 			err = s.convRepo.CreateWasapBotContact(ctx, newContact)
@@ -173,7 +181,7 @@ func (s *FlowProcessorService) ProcessIncomingMessage(ctx context.Context, webho
 			}
 
 			contactID = fmt.Sprintf("%d", *newContact.IDProspect)
-			currentStage = "start"
+			currentStage = "" // Empty initially since Stage is NULL
 			contactExists = false
 			log.Printf("✅ Created new wasapbot contact: %s", contactID)
 		} else {
