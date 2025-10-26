@@ -29,24 +29,20 @@ func NewWhacenterProvider(config *ProviderConfig) *WhacenterProvider {
 
 // SendMessage sends a WhatsApp message via Whacenter API
 func (w *WhacenterProvider) SendMessage(ctx context.Context, message *models.SendMessageRequest) (*models.SendMessageResponse, error) {
-	// Whacenter API endpoint
-	url := fmt.Sprintf("%s/send", w.config.BaseURL)
+	// Whacenter API endpoint - always use /api/send
+	url := fmt.Sprintf("%s/api/send", w.config.BaseURL)
 
-	// Build request payload
+	// Build request payload - always include device_id
 	payload := map[string]interface{}{
-		"number":  message.To,
-		"message": message.Body,
+		"device_id": w.config.Instance,
+		"number":    message.To,
+		"message":   message.Body,
 	}
 
-	// Handle media messages
+	// Handle media messages - add type and file fields
 	if message.Type != "" && message.Type != "text" && message.MediaURL != "" {
-		url = fmt.Sprintf("%s/send-media", w.config.BaseURL)
-		payload = map[string]interface{}{
-			"number":  message.To,
-			"url":     message.MediaURL,
-			"caption": message.Body,
-			"type":    message.Type,
-		}
+		payload["file"] = message.MediaURL
+		payload["type"] = message.Type
 	}
 
 	jsonData, err := json.Marshal(payload)

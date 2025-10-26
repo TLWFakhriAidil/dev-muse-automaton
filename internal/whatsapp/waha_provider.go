@@ -39,16 +39,53 @@ func (w *WahaProvider) SendMessage(ctx context.Context, message *models.SendMess
 		"text":    message.Body,
 	}
 
-	// Handle media messages
+	// Handle media messages - use specific endpoints for each type
 	if message.Type != "" && message.Type != "text" && message.MediaURL != "" {
-		url = fmt.Sprintf("%s/api/sendFile", w.config.BaseURL)
-		payload = map[string]interface{}{
-			"session": w.config.Instance,
-			"chatId":  message.To + "@c.us",
-			"file": map[string]interface{}{
-				"url": message.MediaURL,
-			},
-			"caption": message.Body,
+		if message.Type == "video" {
+			url = fmt.Sprintf("%s/api/sendVideo", w.config.BaseURL)
+			payload = map[string]interface{}{
+				"session": w.config.Instance,
+				"chatId":  message.To + "@c.us",
+				"file": map[string]interface{}{
+					"mimetype": "video/mp4",
+					"url":      message.MediaURL,
+					"filename": "Video",
+				},
+				"caption": message.Body,
+			}
+		} else if message.Type == "audio" {
+			url = fmt.Sprintf("%s/api/sendFile", w.config.BaseURL)
+			payload = map[string]interface{}{
+				"session": w.config.Instance,
+				"chatId":  message.To + "@c.us",
+				"file": map[string]interface{}{
+					"mimetype": "audio/mp3",
+					"url":      message.MediaURL,
+					"filename": "Audio",
+				},
+				"caption": message.Body,
+			}
+		} else if message.Type == "image" {
+			url = fmt.Sprintf("%s/api/sendImage", w.config.BaseURL)
+			// Detect image mimetype from URL extension
+			mimetype := "image/jpeg" // default
+			if contains(message.MediaURL, ".png") {
+				mimetype = "image/png"
+			} else if contains(message.MediaURL, ".gif") {
+				mimetype = "image/gif"
+			} else if contains(message.MediaURL, ".webp") {
+				mimetype = "image/webp"
+			}
+			payload = map[string]interface{}{
+				"session": w.config.Instance,
+				"chatId":  message.To + "@c.us",
+				"file": map[string]interface{}{
+					"mimetype": mimetype,
+					"url":      message.MediaURL,
+					"filename": "Image",
+				},
+				"caption": message.Body,
+			}
 		}
 	}
 
@@ -311,4 +348,19 @@ func (w *WahaProvider) ParseWebhook(payload map[string]interface{}) (*models.Web
 // GetProviderName returns the provider name
 func (w *WahaProvider) GetProviderName() string {
 	return "waha"
+}
+
+// contains checks if a string contains a substring (case-insensitive)
+func contains(s, substr string) bool {
+	return len(s) >= len(substr) && (s == substr || len(substr) == 0 ||
+		(len(s) > 0 && len(substr) > 0 && findSubstring(s, substr)))
+}
+
+func findSubstring(s, substr string) bool {
+	for i := 0; i <= len(s)-len(substr); i++ {
+		if s[i:i+len(substr)] == substr {
+			return true
+		}
+	}
+	return false
 }
