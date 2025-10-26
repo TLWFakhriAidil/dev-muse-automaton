@@ -827,10 +827,19 @@ function getConfigFieldsForType(type, config = {}) {
             `;
 
         case 'delay':
+            return `
+                <div class="form-group">
+                    <p style="color: rgba(255, 255, 255, 0.7); text-align: center; padding: 2rem;">
+                        This node delays execution by <strong style="color: #e50914;">3 seconds</strong>.<br>
+                        No configuration needed.
+                    </p>
+                </div>
+            `;
+
         case 'waiting_times':
             return `
                 <div class="form-group">
-                    <label>${type === 'delay' ? 'Delay' : 'Waiting Time'} (seconds) *</label>
+                    <label>Waiting Time (seconds) *</label>
                     <input type="number" id="nodeConfigDelay" required min="0" step="1" value="${config.delay || ''}" style="width: 100%; padding: 0.9rem; background: rgba(51, 51, 51, 0.7); border: 2px solid rgba(255, 255, 255, 0.1); border-radius: 8px; color: white;" placeholder="Enter time in seconds...">
                 </div>
             `;
@@ -839,7 +848,7 @@ function getConfigFieldsForType(type, config = {}) {
             return `
                 <div class="form-group">
                     <p style="color: rgba(255, 255, 255, 0.7); text-align: center; padding: 2rem;">
-                        This node waits for user reply without timeout.<br>
+                        This node waits for user reply with a timeout of <strong style="color: #e50914;">8 seconds</strong>.<br>
                         No configuration needed.
                     </p>
                 </div>
@@ -940,13 +949,17 @@ function saveNodeConfig(event) {
             break;
 
         case 'delay':
+            // Hardcoded to 3 seconds
+            config.delay = 3;
+            break;
+
         case 'waiting_times':
             config.delay = parseInt(document.getElementById('nodeConfigDelay').value);
             break;
 
         case 'waiting_reply':
-            // No configuration needed - just waits for user reply
-            config.note = 'Waits for user reply without timeout';
+            // Hardcoded to 8 seconds timeout
+            config.timeout = 8;
             break;
 
         case 'conditions':
