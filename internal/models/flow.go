@@ -8,6 +8,7 @@ type ChatbotFlow struct {
 	IDDevice  string                 `json:"id_device"`
 	Name      string                 `json:"name"`
 	Niche     string                 `json:"niche"`
+	NodesData string                 `json:"nodes_data"` // JSON string containing complete flow structure
 	Nodes     map[string]interface{} `json:"nodes,omitempty"` // JSONB - React Flow nodes
 	Edges     map[string]interface{} `json:"edges,omitempty"` // JSONB - React Flow edges
 	CreatedAt time.Time              `json:"created_at"`

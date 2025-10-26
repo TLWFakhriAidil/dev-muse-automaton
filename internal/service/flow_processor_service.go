@@ -253,16 +253,17 @@ func (s *FlowProcessorService) ProcessIncomingMessage(ctx context.Context, webho
 		return fmt.Errorf("unsupported flow type: %s", flowType)
 	}
 
-	// Step 6: Process the flow (to be implemented in next phase)
-	log.Printf("🔄 Ready to process flow for contact %s at stage: %s", contactID, currentStage)
-	log.Printf("📊 Contact exists: %v", contactExists)
+	// Step 6: Execute the flow
+	log.Printf("🔄 Executing flow for contact %s at stage: %s", contactID, currentStage)
+	log.Printf("📊 Contact exists: %v, New contact: %v", contactExists, !contactExists)
 
-	// TODO: Implement flow execution logic
-	// This will involve:
-	// 1. Finding the current node based on stage
-	// 2. Executing node actions (send message, condition check, etc.)
-	// 3. Moving to next node based on edges
-	// 4. Updating contact stage
+	// Execute flow starting from current stage
+	err = s.ExecuteFlow(ctx, &flow, contactID, extractedMsg.Message, currentStage)
+	if err != nil {
+		log.Printf("❌ Flow execution error: %v", err)
+		return fmt.Errorf("failed to execute flow: %w", err)
+	}
 
+	log.Printf("✅ Flow execution completed successfully for contact: %s", contactID)
 	return nil
 }
