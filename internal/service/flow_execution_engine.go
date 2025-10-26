@@ -394,9 +394,8 @@ func (s *FlowProcessorService) executeSendMedia(
 
 	log.Printf("✅ Media sent successfully to %s", conversation.ProspectNum)
 
-	// Update conv_last with bot media send
-	mediaDesc := fmt.Sprintf("[%s: %s]", mediaType, url)
-	return true, s.updateConvLast(ctx, conversationID, "Bot", mediaDesc)
+	// Update conv_last with bot media send (just the URL)
+	return true, s.updateConvLast(ctx, conversationID, "Bot", url)
 }
 
 // executeConditions evaluates conditions
