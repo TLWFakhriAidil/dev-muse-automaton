@@ -746,6 +746,11 @@ function loadFlowFromData(data) {
 
         document.getElementById('flowCanvas').appendChild(nodeElement);
 
+        // If this is a conditions node, recreate the condition connectors
+        if (nodeData.type === 'conditions' && nodeData.config && nodeData.config.conditions) {
+            updateConditionNodeConnectors(nodeElement, nodeData.config.conditions);
+        }
+
         // Update counter
         const idNum = parseInt(nodeData.id.split('-')[1]);
         if (idNum >= nodeIdCounter) {
