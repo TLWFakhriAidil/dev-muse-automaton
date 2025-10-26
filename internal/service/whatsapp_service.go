@@ -43,18 +43,29 @@ func (s *WhatsAppService) SendMessage(ctx context.Context, deviceID string, to s
 		provider = "waha" // Default
 	}
 
-	// API Key from device settings or use default
-	apiKey := "dckr_pat_vxeqEu_CqRi5O3CBHnD7FxhnBz0" // Your WAHA API Key
-	if device.APIKey != nil && *device.APIKey != "" {
-		apiKey = *device.APIKey
-	}
+	// Base URL and API Key configuration based on provider
+	var baseURL string
+	var apiKey string
 
-	// Base URL from device settings or use default
-	baseURL := "https://waha-plus-production-705f.up.railway.app" // Your WAHA URL
-	if device.APIURL != nil && *device.APIURL != "" {
-		baseURL = *device.APIURL
+	if provider == "waha" {
+		// WAHA: Hardcoded URL and API key (not from database)
+		baseURL = "https://waha-plus-production-705f.up.railway.app"
+		apiKey = "dckr_pat_vxeqEu_CqRi5O3CBHnD7FxhnBz0"
 	} else if provider == "whacenter" {
-		baseURL = "https://api.whacenter.com" // Whacenter default
+		// Whacenter: Use default URL, get API key from database
+		baseURL = "https://api.whacenter.com"
+		if device.APIKey != nil && *device.APIKey != "" {
+			apiKey = *device.APIKey
+		}
+	} else {
+		// Other providers: Get both from database if available
+		baseURL = "https://api.waha.pro" // Fallback
+		if device.APIURL != nil && *device.APIURL != "" {
+			baseURL = *device.APIURL
+		}
+		if device.APIKey != nil && *device.APIKey != "" {
+			apiKey = *device.APIKey
+		}
 	}
 
 	instance := deviceID
