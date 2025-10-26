@@ -43,14 +43,19 @@ func (s *WhatsAppService) SendMessage(ctx context.Context, deviceID string, to s
 		provider = "waha" // Default
 	}
 
-	apiKey := ""
-	if device.APIKey != nil {
+	// API Key from device settings or use default
+	apiKey := "dckr_pat_vxeqEu_CqRi5O3CBHnD7FxhnBz0" // Your WAHA API Key
+	if device.APIKey != nil && *device.APIKey != "" {
 		apiKey = *device.APIKey
 	}
 
-	// Base URL - you may want to add this field to DeviceSetting model or use a config
-	baseURL := "https://api.waha.pro" // Default Waha URL
-	// TODO: Add APIURL field to DeviceSetting model for custom base URLs
+	// Base URL from device settings or use default
+	baseURL := "https://waha-plus-production-705f.up.railway.app" // Your WAHA URL
+	if device.APIURL != nil && *device.APIURL != "" {
+		baseURL = *device.APIURL
+	} else if provider == "whacenter" {
+		baseURL = "https://api.whacenter.com" // Whacenter default
+	}
 
 	instance := deviceID
 	if device.Instance != nil && *device.Instance != "" {

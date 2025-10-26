@@ -9,6 +9,7 @@ type DeviceSetting struct {
 	Instance     *string    `json:"instance,omitempty"`
 	WebhookID    *string    `json:"webhook_id,omitempty"`
 	Provider     string     `json:"provider"` // waha, wablas, whacenter
+	APIURL       *string    `json:"api_url,omitempty"` // Base URL for provider API
 	APIKeyOption string     `json:"api_key_option"` // openai/gpt-4.1, etc.
 	APIKey       *string    `json:"api_key,omitempty"`
 	IDDevice     *string    `json:"id_device,omitempty"`
@@ -25,6 +26,7 @@ type CreateDeviceRequest struct {
 	DeviceID     string  `json:"device_id"` // Only required for wablas provider
 	WebhookURL   string  `json:"webhook_url"`
 	Provider     string  `json:"provider" validate:"required,oneof=waha wablas whacenter"`
+	APIURL       *string `json:"api_url,omitempty"` // Base URL for provider API
 	APIKeyOption string  `json:"api_key_option" validate:"required"`
 	APIKey       *string `json:"api_key,omitempty"`
 	PhoneNumber  string  `json:"phone_number" validate:"required"`
@@ -38,6 +40,7 @@ type CreateDeviceRequest struct {
 type UpdateDeviceRequest struct {
 	WebhookURL   *string `json:"webhook_url,omitempty"`
 	Provider     *string `json:"provider,omitempty"`
+	APIURL       *string `json:"api_url,omitempty"` // Base URL for provider API
 	APIKeyOption *string `json:"api_key_option,omitempty"`
 	APIKey       *string `json:"api_key,omitempty"`
 	PhoneNumber  *string `json:"phone_number,omitempty"`
