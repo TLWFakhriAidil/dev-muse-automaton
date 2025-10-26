@@ -159,9 +159,6 @@ func main() {
 	webhook.Post("/whacenter/:deviceId", webhookHandler.HandleWhacenterWebhook)
 	webhook.Post("/start-flow", webhookHandler.StartFlow)
 
-	// Catch-all webhook route for custom URL patterns like /:userid/:flowname
-	app.Post("/:webhook_id/:flow_name", webhookHandler.ReceiveWebhook)
-
 	// Analytics routes (requires authentication)
 	analytics := api.Group("/analytics")
 	analytics.Get("/dashboard", analyticsHandler.GetDashboard)
@@ -216,6 +213,10 @@ func main() {
 	app.Static("/", "./frontend", fiber.Static{
 		Index: "index.html",
 	})
+
+	// Catch-all webhook route for custom URL patterns like /:userid/:flowname
+	// This must be AFTER all /api routes to avoid conflicts
+	app.Post("/:webhook_id/:flow_name", webhookHandler.ReceiveWebhook)
 
 	// SPA fallback - serve index.html for all non-API routes
 	app.Use(func(c *fiber.Ctx) error {
