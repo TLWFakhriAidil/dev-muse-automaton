@@ -10,6 +10,7 @@ import (
 	"math/rand"
 	"net/http"
 	"net/url"
+	"path/filepath"
 	"regexp"
 	"strings"
 	"time"
@@ -855,22 +856,35 @@ func (s *FlowProcessorService) processAIResponseParts(
 						log.Printf("⚠️  Failed to update conv_last: %v", err)
 					}
 				}
-			} else if part.Type == "image" {
+			} else if part.Type == "image" || part.Type == "video" || part.Type == "audio" {
 				// Decode URL if needed
-				currentImageURL := strings.TrimSpace(part.Content)
-				if decodedURL, err := url.QueryUnescape(currentImageURL); err == nil {
-					currentImageURL = decodedURL
+				mediaURL := strings.TrimSpace(part.Content)
+				if decodedURL, err := url.QueryUnescape(mediaURL); err == nil {
+					mediaURL = decodedURL
 				}
 
-				log.Printf("📨 Sending image: %s", currentImageURL)
+				// Detect MIME type and determine actual media type
+				actualType, mimeType := s.detectMediaType(ctx, mediaURL)
+				log.Printf("📨 Sending %s (MIME: %s): %s", actualType, mimeType, mediaURL)
 
-				err := s.whatsappService.SendMessage(ctx, flow.IDDevice, conversation.ProspectNum, "", currentImageURL, "")
+				// Send based on actual detected type
+				var err error
+				if actualType == "image" {
+					err = s.whatsappService.SendMessage(ctx, flow.IDDevice, conversation.ProspectNum, "", mediaURL, "")
+				} else if actualType == "video" {
+					err = s.whatsappService.SendMessage(ctx, flow.IDDevice, conversation.ProspectNum, "", "", mediaURL)
+				} else if actualType == "audio" {
+					// For audio, we might need to send as document or handle differently
+					// For now, send as image parameter (adjust based on your WhatsApp service implementation)
+					err = s.whatsappService.SendMessage(ctx, flow.IDDevice, conversation.ProspectNum, "", mediaURL, "")
+				}
+
 				if err != nil {
-					log.Printf("❌ Failed to send image: %v", err)
+					log.Printf("❌ Failed to send %s: %v", actualType, err)
 				} else {
-					log.Printf("✅ Image sent")
+					log.Printf("✅ %s sent", actualType)
 
-					newBotEntry := fmt.Sprintf("Bot: %s", currentImageURL)
+					newBotEntry := fmt.Sprintf("Bot: %s", mediaURL)
 					if err := s.appendToConvLast(ctx, conversationID, newBotEntry); err != nil {
 						log.Printf("⚠️  Failed to update conv_last: %v", err)
 					}
@@ -881,6 +895,94 @@ func (s *FlowProcessorService) processAIResponseParts(
 
 	log.Printf("✅ All AI response parts processed")
 	return true, nil
+}
+
+// detectMediaType detects the media type (image/video/audio) from URL
+func (s *FlowProcessorService) detectMediaType(ctx context.Context, fileURL string) (string, string) {
+	// Step 1: Try to get extension from URL path
+	parsedURL, err := url.Parse(fileURL)
+	if err == nil {
+		path := parsedURL.Path
+		ext := strings.ToLower(strings.TrimPrefix(filepath.Ext(path), "."))
+
+		// Map of extensions to MIME types
+		extMap := map[string]string{
+			// Images
+			"jpg":  "image/jpeg",
+			"jpeg": "image/jpeg",
+			"png":  "image/png",
+			"gif":  "image/gif",
+			"webp": "image/webp",
+			"bmp":  "image/bmp",
+			"svg":  "image/svg+xml",
+			// Videos
+			"mp4":  "video/mp4",
+			"avi":  "video/x-msvideo",
+			"mov":  "video/quicktime",
+			"wmv":  "video/x-ms-wmv",
+			"flv":  "video/x-flv",
+			"webm": "video/webm",
+			"mkv":  "video/x-matroska",
+			// Audio
+			"mp3":  "audio/mpeg",
+			"wav":  "audio/wav",
+			"ogg":  "audio/ogg",
+			"m4a":  "audio/mp4",
+			"aac":  "audio/aac",
+			"flac": "audio/flac",
+		}
+
+		if ext != "" {
+			if mimeType, ok := extMap[ext]; ok {
+				mediaType := s.mimeToMediaType(mimeType)
+				log.Printf("🔍 Detected from extension: %s -> %s (%s)", ext, mediaType, mimeType)
+				return mediaType, mimeType
+			}
+		}
+	}
+
+	// Step 2: Try to detect from HTTP headers
+	log.Printf("🔍 No extension found, checking HTTP headers for: %s", fileURL)
+	req, err := http.NewRequestWithContext(ctx, "HEAD", fileURL, nil)
+	if err == nil {
+		client := &http.Client{
+			Timeout: 10 * time.Second,
+		}
+		resp, err := client.Do(req)
+		if err == nil {
+			defer resp.Body.Close()
+			contentType := resp.Header.Get("Content-Type")
+			if contentType != "" {
+				// Handle multiple content types (take the last one)
+				parts := strings.Split(contentType, ",")
+				mimeType := strings.TrimSpace(parts[len(parts)-1])
+				// Remove charset if present
+				mimeType = strings.Split(mimeType, ";")[0]
+
+				mediaType := s.mimeToMediaType(mimeType)
+				log.Printf("🔍 Detected from headers: %s -> %s", mimeType, mediaType)
+				return mediaType, mimeType
+			}
+		} else {
+			log.Printf("⚠️  Failed to fetch headers: %v", err)
+		}
+	}
+
+	// Step 3: Fallback to image/jpeg
+	log.Printf("⚠️  Could not detect media type, defaulting to image/jpeg")
+	return "image", "image/jpeg"
+}
+
+// mimeToMediaType converts MIME type to media type (image/video/audio)
+func (s *FlowProcessorService) mimeToMediaType(mimeType string) string {
+	if strings.HasPrefix(mimeType, "image/") {
+		return "image"
+	} else if strings.HasPrefix(mimeType, "video/") {
+		return "video"
+	} else if strings.HasPrefix(mimeType, "audio/") {
+		return "audio"
+	}
+	return "image" // default fallback
 }
 
 // appendToConvLast appends a new entry to conv_last
