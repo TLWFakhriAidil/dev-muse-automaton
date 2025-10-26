@@ -236,6 +236,7 @@ function makeNodeDraggable(node) {
     let initialY;
     let startX;
     let startY;
+    let animationFrameId = null;
 
     node.addEventListener('mousedown', (e) => {
         if (e.target.classList.contains('node-connector') ||
@@ -270,8 +271,10 @@ function makeNodeDraggable(node) {
         currentX = e.clientX - initialX;
         currentY = e.clientY - initialY;
 
-        node.style.left = `${currentX}px`;
-        node.style.top = `${currentY}px`;
+        // Use transform for better performance instead of left/top
+        node.style.transform = `translate(${currentX}px, ${currentY}px)`;
+        node.style.left = '0px';
+        node.style.top = '0px';
 
         // Update flow data
         const nodeData = flowData.nodes.find(n => n.id === node.getAttribute('data-node-id'));
@@ -280,14 +283,31 @@ function makeNodeDraggable(node) {
             nodeData.y = currentY;
         }
 
-        // Redraw connections while dragging
-        drawConnections();
+        // Use requestAnimationFrame for smooth connection updates
+        if (animationFrameId) {
+            cancelAnimationFrame(animationFrameId);
+        }
+        animationFrameId = requestAnimationFrame(() => {
+            drawConnectionsOptimized();
+        });
     });
 
     document.addEventListener('mouseup', () => {
         if (isDragging) {
             isDragging = false;
-            drawConnections(); // Final redraw when released
+
+            // Cancel any pending animation frame
+            if (animationFrameId) {
+                cancelAnimationFrame(animationFrameId);
+                animationFrameId = null;
+            }
+
+            // Update final position to use left/top for consistency
+            node.style.left = `${currentX}px`;
+            node.style.top = `${currentY}px`;
+            node.style.transform = '';
+
+            drawConnectionsOptimized(); // Final redraw when released
 
             // If we didn't move (just clicked), select the node
             if (!hasMoved) {
@@ -1232,108 +1252,116 @@ function deleteConnection(fromNodeId, toNodeId) {
     });
 }
 
-function drawConnections() {
+// Optimized version that only updates path positions without recreating elements
+function drawConnectionsOptimized() {
     const svg = document.getElementById('connectionLayer');
     const canvasContainer = document.querySelector('.canvas-container');
     const canvas = document.getElementById('flowCanvas');
 
-    svg.innerHTML = ''; // Clear existing lines
+    // Update SVG size to match canvas (cached)
+    const canvasWidth = canvas.offsetWidth;
+    const canvasHeight = canvas.offsetHeight;
+    if (svg.getAttribute('width') !== canvasWidth.toString()) {
+        svg.setAttribute('width', canvasWidth);
+        svg.setAttribute('height', canvasHeight);
+    }
 
-    // Update SVG size to match canvas
-    svg.setAttribute('width', canvas.offsetWidth);
-    svg.setAttribute('height', canvas.offsetHeight);
-
-    console.log('Drawing connections:', flowData.connections.length);
+    // Cache container rect (only need to get this once per draw)
+    const containerRect = canvasContainer.getBoundingClientRect();
+    const scrollLeft = canvasContainer.scrollLeft;
+    const scrollTop = canvasContainer.scrollTop;
 
     flowData.connections.forEach(conn => {
+        let path = svg.querySelector(`.connection-line[data-from="${conn.from}"][data-to="${conn.to}"]`);
+        let clickPath = svg.querySelector(`.connection-click-area[data-from="${conn.from}"][data-to="${conn.to}"]`);
+
         const fromNode = document.querySelector(`[data-node-id="${conn.from}"]`);
         const toNode = document.querySelector(`[data-node-id="${conn.to}"]`);
 
-        if (!fromNode || !toNode) {
-            console.log('Node not found:', conn.from, conn.to);
-            return;
-        }
+        if (!fromNode || !toNode) return;
 
         const fromConnector = fromNode.querySelector('.output-connector');
         const toConnector = toNode.querySelector('.input-connector');
 
-        if (!fromConnector || !toConnector) {
-            console.log('Connector not found for nodes:', conn.from, conn.to);
-            return;
-        }
+        if (!fromConnector || !toConnector) return;
 
-        // Get absolute positions relative to canvas
+        // Get positions
         const fromRect = fromConnector.getBoundingClientRect();
         const toRect = toConnector.getBoundingClientRect();
-        const containerRect = canvasContainer.getBoundingClientRect();
 
-        const x1 = fromRect.left - containerRect.left + canvasContainer.scrollLeft + fromRect.width / 2;
-        const y1 = fromRect.top - containerRect.top + canvasContainer.scrollTop + fromRect.height / 2;
-        const x2 = toRect.left - containerRect.left + canvasContainer.scrollLeft + toRect.width / 2;
-        const y2 = toRect.top - containerRect.top + canvasContainer.scrollTop + toRect.height / 2;
+        const x1 = fromRect.left - containerRect.left + scrollLeft + fromRect.width / 2;
+        const y1 = fromRect.top - containerRect.top + scrollTop + fromRect.height / 2;
+        const x2 = toRect.left - containerRect.left + scrollLeft + toRect.width / 2;
+        const y2 = toRect.top - containerRect.top + scrollTop + toRect.height / 2;
 
-        console.log('Drawing line from', conn.from, 'to', conn.to, ':', {x1, y1, x2, y2});
-
-        // Create curved path
-        const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
         const midY = (y1 + y2) / 2;
         const d = `M ${x1} ${y1} C ${x1} ${midY}, ${x2} ${midY}, ${x2} ${y2}`;
 
-        path.setAttribute('d', d);
-        path.setAttribute('class', 'connection-line');
-        path.setAttribute('data-from', conn.from);
-        path.setAttribute('data-to', conn.to);
-        path.setAttribute('stroke', '#ffd700');
-        path.setAttribute('stroke-width', '3');
-        path.setAttribute('fill', 'none');
-        path.setAttribute('stroke-linecap', 'round');
-
-        // Create invisible wider path for easier clicking
-        const clickPath = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-        clickPath.setAttribute('d', d);
-        clickPath.setAttribute('stroke', 'rgba(255,215,0,0.01)'); // Almost transparent but not fully (so pointer-events works)
-        clickPath.setAttribute('stroke-width', '20'); // Much wider for easier clicking
-        clickPath.setAttribute('fill', 'none');
-        clickPath.setAttribute('class', 'connection-click-area');
-        clickPath.style.cursor = 'pointer';
-        clickPath.style.pointerEvents = 'stroke'; // Only stroke responds to events
-
-        // Add click handler to the wider invisible path
-        clickPath.addEventListener('click', (e) => {
-            e.stopPropagation();
-            e.preventDefault();
-            console.log('🗑️ Connection line clicked! From:', conn.from, 'To:', conn.to);
-            deleteConnection(conn.from, conn.to);
-        });
-
-        // Add hover effect to both paths
-        clickPath.addEventListener('mouseenter', () => {
-            console.log('🎯 Hover ENTER on connection:', conn.from, '->', conn.to);
-            path.setAttribute('stroke', '#e50914');
-            path.setAttribute('stroke-width', '4');
-        });
-
-        clickPath.addEventListener('mouseleave', () => {
-            console.log('🎯 Hover LEAVE on connection:', conn.from, '->', conn.to);
+        // Update existing paths or create new ones
+        if (!path) {
+            // Create new paths if they don't exist
+            path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+            path.setAttribute('class', 'connection-line');
+            path.setAttribute('data-from', conn.from);
+            path.setAttribute('data-to', conn.to);
             path.setAttribute('stroke', '#ffd700');
             path.setAttribute('stroke-width', '3');
-        });
+            path.setAttribute('fill', 'none');
+            path.setAttribute('stroke-linecap', 'round');
 
-        svg.appendChild(path);
-        svg.appendChild(clickPath); // Add invisible wider path on top
+            clickPath = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+            clickPath.setAttribute('class', 'connection-click-area');
+            clickPath.setAttribute('data-from', conn.from);
+            clickPath.setAttribute('data-to', conn.to);
+            clickPath.setAttribute('stroke', 'rgba(255,215,0,0.01)');
+            clickPath.setAttribute('stroke-width', '20');
+            clickPath.setAttribute('fill', 'none');
+            clickPath.style.cursor = 'pointer';
+            clickPath.style.pointerEvents = 'stroke';
 
-        console.log('Created connection paths:', {
-            from: conn.from,
-            to: conn.to,
-            visiblePath: path,
-            clickPath: clickPath,
-            pathD: d
-        });
+            // Add event listeners only once
+            clickPath.addEventListener('click', (e) => {
+                e.stopPropagation();
+                e.preventDefault();
+                deleteConnection(conn.from, conn.to);
+            });
+
+            clickPath.addEventListener('mouseenter', () => {
+                path.setAttribute('stroke', '#e50914');
+                path.setAttribute('stroke-width', '4');
+            });
+
+            clickPath.addEventListener('mouseleave', () => {
+                path.setAttribute('stroke', '#ffd700');
+                path.setAttribute('stroke-width', '3');
+            });
+
+            svg.appendChild(path);
+            svg.appendChild(clickPath);
+        }
+
+        // Just update the path data (much faster than recreating)
+        path.setAttribute('d', d);
+        clickPath.setAttribute('d', d);
     });
 
-    console.log('Total SVG paths created:', svg.children.length);
-    console.log('SVG layer z-index:', window.getComputedStyle(svg).zIndex);
-    console.log('SVG layer pointer-events:', window.getComputedStyle(svg).pointerEvents);
+    // Remove paths for deleted connections
+    const existingPaths = svg.querySelectorAll('.connection-line');
+    existingPaths.forEach(path => {
+        const from = path.getAttribute('data-from');
+        const to = path.getAttribute('data-to');
+        const exists = flowData.connections.some(c => c.from === from && c.to === to);
+        if (!exists) {
+            const clickPath = svg.querySelector(`.connection-click-area[data-from="${from}"][data-to="${to}"]`);
+            path.remove();
+            if (clickPath) clickPath.remove();
+        }
+    });
+}
+
+// Wrapper for backward compatibility
+function drawConnections() {
+    drawConnectionsOptimized();
 }
 
 // Canvas Panning and Zoom
