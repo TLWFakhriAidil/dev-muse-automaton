@@ -17,6 +17,7 @@ import (
 type WasapbotFlowEngine struct {
 	deviceRepo       *repository.DeviceRepository
 	convRepo         *repository.WasapbotRepository
+	stageRepo        *repository.StageRepository
 	whatsappService  *WhatsAppService
 }
 
@@ -24,11 +25,13 @@ type WasapbotFlowEngine struct {
 func NewWasapbotFlowEngine(
 	deviceRepo *repository.DeviceRepository,
 	convRepo *repository.WasapbotRepository,
+	stageRepo *repository.StageRepository,
 	whatsappService *WhatsAppService,
 ) *WasapbotFlowEngine {
 	return &WasapbotFlowEngine{
 		deviceRepo:      deviceRepo,
 		convRepo:        convRepo,
+		stageRepo:       stageRepo,
 		whatsappService: whatsappService,
 	}
 }
@@ -374,7 +377,7 @@ func (s *WasapbotFlowEngine) executeWaitingTimes(
 	return true, nil
 }
 
-// executeStage updates the conversation stage
+// executeStage updates the conversation stage with dynamic configuration support
 func (s *WasapbotFlowEngine) executeStage(
 	ctx context.Context,
 	conversationID string,
@@ -387,21 +390,102 @@ func (s *WasapbotFlowEngine) executeStage(
 		return true, nil
 	}
 
-	log.Printf("🎯 Updating stage to: %s for conversation ID: %s", stageName, conversationID)
+	log.Printf("🎯 Processing stage: %s for conversation ID: %s", stageName, conversationID)
 
-	// Update conversation stage
+	// First, get the conversation to retrieve device_id and prospect_num
+	conversation, err := s.convRepo.GetConversationByID(ctx, conversationID)
+	if err != nil {
+		log.Printf("❌ Failed to get conversation: %v", err)
+		return true, fmt.Errorf("failed to get conversation: %w", err)
+	}
+
+	deviceID := conversation.IDDevice
+
+	log.Printf("🔍 Checking stage configuration for device=%s, stage=%s", deviceID, stageName)
+
+	// Check if stage configuration exists for this device and stage
+	stageConfig, err := s.stageRepo.GetStageConfigByDeviceAndStage(ctx, deviceID, stageName)
+	if err != nil {
+		log.Printf("❌ Failed to query stage configuration: %v", err)
+		// Continue with normal stage update on query error
+	}
+
+	// Prepare updates map
 	updates := map[string]interface{}{
 		"stage": stageName,
 	}
 
-	log.Printf("🔍 Calling UpdateConversation with updates: %+v", updates)
-	err := s.convRepo.UpdateConversation(ctx, conversationID, updates)
-	if err != nil {
-		log.Printf("❌ Failed to update stage: %v", err)
-		return true, fmt.Errorf("failed to update stage: %w", err)
+	// If no configuration found, just update stage normally
+	if stageConfig == nil {
+		log.Printf("📝 No stage configuration found, updating stage normally")
+
+		log.Printf("🔍 Calling UpdateConversation with updates: %+v", updates)
+		err = s.convRepo.UpdateConversation(ctx, conversationID, updates)
+		if err != nil {
+			log.Printf("❌ Failed to update stage: %v", err)
+			return true, fmt.Errorf("failed to update stage: %w", err)
+		}
+
+		log.Printf("✅ Stage updated successfully")
+		return true, nil
 	}
 
-	log.Printf("✅ Stage updated successfully in database")
+	// Stage configuration found - apply dynamic updates
+	log.Printf("⚙️  Stage configuration found: type=%s, column=%s", stageConfig.TypeInputData, stageConfig.ColumnsData)
+
+	columnName := stageConfig.ColumnsData
+	var columnValue string
+
+	// Determine value based on type_inputdata
+	if stageConfig.TypeInputData == "Set" {
+		// Use hardcoded value from inputhardcode
+		columnValue = stageConfig.InputHardCode
+		log.Printf("📝 Type=Set: Using hardcoded value '%s' for column '%s'", columnValue, columnName)
+	} else if stageConfig.TypeInputData == "Input" {
+		// Use value from last user reply in conv_last
+		if conversation.ConvLast != nil {
+			convLast := *conversation.ConvLast
+			// Parse conv_last to extract last user message
+			// Format: "User: message\nBot: reply\nUser: message2..."
+			lines := strings.Split(convLast, "\n")
+			var lastUserMessage string
+			for i := len(lines) - 1; i >= 0; i-- {
+				line := strings.TrimSpace(lines[i])
+				if strings.HasPrefix(line, "User: ") {
+					lastUserMessage = strings.TrimPrefix(line, "User: ")
+					break
+				}
+			}
+
+			columnValue = lastUserMessage
+			log.Printf("📝 Type=Input: Using user reply '%s' for column '%s'", columnValue, columnName)
+		} else {
+			log.Printf("⚠️  Type=Input but conv_last is empty, using empty value")
+			columnValue = ""
+		}
+	} else {
+		log.Printf("⚠️  Unknown type_inputdata: %s, skipping column update", stageConfig.TypeInputData)
+		// Just update stage without column update
+		err = s.convRepo.UpdateConversation(ctx, conversationID, updates)
+		if err != nil {
+			log.Printf("❌ Failed to update stage: %v", err)
+			return true, fmt.Errorf("failed to update stage: %w", err)
+		}
+		log.Printf("✅ Stage updated successfully")
+		return true, nil
+	}
+
+	// Add column update to updates map
+	updates[columnName] = columnValue
+
+	log.Printf("🔍 Calling UpdateConversation with updates: %+v", updates)
+	err = s.convRepo.UpdateConversation(ctx, conversationID, updates)
+	if err != nil {
+		log.Printf("❌ Failed to update stage and column: %v", err)
+		return true, fmt.Errorf("failed to update stage and column: %w", err)
+	}
+
+	log.Printf("✅ Stage and column '%s' updated successfully", columnName)
 	return true, nil
 }
 

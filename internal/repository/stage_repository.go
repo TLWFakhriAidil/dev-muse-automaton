@@ -116,3 +116,35 @@ func (r *StageRepository) DeleteStageValue(ctx context.Context, stageID int) err
 
 	return nil
 }
+
+// GetStageConfigByDeviceAndStage retrieves stage configuration by device ID and stage name
+func (r *StageRepository) GetStageConfigByDeviceAndStage(ctx context.Context, deviceID, stageName string) (*models.StageValue, error) {
+	fmt.Printf("🔍 [StageRepo] Querying stagesetvalue: id_device=%s, stage=%s\n", deviceID, stageName)
+
+	data, err := r.supabase.QueryAsAdmin("stagesetvalue", map[string]string{
+		"select":    "*",
+		"id_device": fmt.Sprintf("eq.%s", deviceID),
+		"stage":     fmt.Sprintf("eq.%s", stageName),
+		"limit":     "1",
+	})
+	if err != nil {
+		fmt.Printf("❌ [StageRepo] Query failed: %v\n", err)
+		return nil, fmt.Errorf("failed to get stage configuration: %w", err)
+	}
+
+	fmt.Printf("🔍 [StageRepo] Query response: %s\n", string(data))
+
+	var stages []models.StageValue
+	if err := json.Unmarshal(data, &stages); err != nil {
+		fmt.Printf("❌ [StageRepo] JSON unmarshal failed: %v\n", err)
+		return nil, fmt.Errorf("failed to parse stage configuration: %w", err)
+	}
+
+	if len(stages) == 0 {
+		fmt.Printf("⚠️  [StageRepo] No stage configuration found for device=%s, stage=%s\n", deviceID, stageName)
+		return nil, nil // Not found, return nil without error
+	}
+
+	fmt.Printf("✅ [StageRepo] Found stage config: type=%s, column=%s\n", stages[0].TypeInputData, stages[0].ColumnsData)
+	return &stages[0], nil
+}

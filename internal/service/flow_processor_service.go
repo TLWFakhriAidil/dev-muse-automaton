@@ -17,6 +17,7 @@ type FlowProcessorService struct {
 	deviceRepo       *repository.DeviceRepository
 	convRepo         *repository.ConversationRepository
 	wasapbotRepo     *repository.WasapbotRepository
+	stageRepo        *repository.StageRepository
 }
 
 func NewFlowProcessorService(
@@ -26,6 +27,7 @@ func NewFlowProcessorService(
 	deviceRepo *repository.DeviceRepository,
 	convRepo *repository.ConversationRepository,
 	wasapbotRepo *repository.WasapbotRepository,
+	stageRepo *repository.StageRepository,
 ) *FlowProcessorService {
 	return &FlowProcessorService{
 		webhookService:  webhookService,
@@ -34,6 +36,7 @@ func NewFlowProcessorService(
 		deviceRepo:      deviceRepo,
 		convRepo:        convRepo,
 		wasapbotRepo:    wasapbotRepo,
+		stageRepo:       stageRepo,
 	}
 }
 
@@ -221,7 +224,7 @@ func (s *FlowProcessorService) ProcessIncomingMessage(ctx context.Context, webho
 				_ = s.convRepo.UpdateWasapBotContact(ctx, contactID, updates)
 
 				// Resume flow from current node
-				wasapbotEngine := NewWasapbotFlowEngine(s.deviceRepo, s.wasapbotRepo, s.whatsappService)
+				wasapbotEngine := NewWasapbotFlowEngine(s.deviceRepo, s.wasapbotRepo, s.stageRepo, s.whatsappService)
 				err = wasapbotEngine.ResumeWasapbotFlow(ctx, &flow, contactID, extractedMsg.Message, currentNodeID)
 				if err != nil {
 					log.Printf("❌ Wasapbot flow resume error: %v", err)
@@ -245,7 +248,7 @@ func (s *FlowProcessorService) ProcessIncomingMessage(ctx context.Context, webho
 		log.Printf("📊 Contact exists: %v, New contact: %v", contactExists, !contactExists)
 
 		// Create wasapbot flow engine and execute
-		wasapbotEngine := NewWasapbotFlowEngine(s.deviceRepo, s.wasapbotRepo, s.whatsappService)
+		wasapbotEngine := NewWasapbotFlowEngine(s.deviceRepo, s.wasapbotRepo, s.stageRepo, s.whatsappService)
 		err = wasapbotEngine.ExecuteWasapbotFlow(ctx, &flow, contactID, extractedMsg.Message, currentStage)
 		if err != nil {
 			log.Printf("❌ Wasapbot flow execution error: %v", err)
