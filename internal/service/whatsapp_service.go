@@ -52,11 +52,9 @@ func (s *WhatsAppService) SendMessage(ctx context.Context, deviceID string, to s
 		baseURL = "https://waha-plus-production-705f.up.railway.app"
 		apiKey = "dckr_pat_vxeqEu_CqRi5O3CBHnD7FxhnBz0"
 	} else if provider == "whacenter" {
-		// Whacenter: Use default URL, get API key from database
+		// Whacenter: Only URL, no API key needed
 		baseURL = "https://api.whacenter.com"
-		if device.APIKey != nil && *device.APIKey != "" {
-			apiKey = *device.APIKey
-		}
+		apiKey = "" // Whacenter doesn't use API key
 	} else {
 		// Other providers: Get both from database if available
 		baseURL = "https://api.waha.pro" // Fallback

@@ -63,7 +63,7 @@ func (w *WhacenterProvider) SendMessage(ctx context.Context, message *models.Sen
 
 	// Set headers
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("api-key", w.config.APIKey)
+	// Whacenter doesn't use API key header
 
 	resp, err := w.client.Do(req)
 	if err != nil {
@@ -122,7 +122,7 @@ func (w *WhacenterProvider) GetSessionStatus(ctx context.Context, deviceID strin
 		}, err
 	}
 
-	req.Header.Set("api-key", w.config.APIKey)
+	// Whacenter doesn't use API key header
 
 	resp, err := w.client.Do(req)
 	if err != nil {
@@ -186,7 +186,7 @@ func (w *WhacenterProvider) StartSession(ctx context.Context, deviceID string) (
 		}, err
 	}
 
-	req.Header.Set("api-key", w.config.APIKey)
+	// Whacenter doesn't use API key header
 
 	resp, err := w.client.Do(req)
 	if err != nil {
@@ -219,7 +219,7 @@ func (w *WhacenterProvider) StopSession(ctx context.Context, deviceID string) er
 		return err
 	}
 
-	req.Header.Set("api-key", w.config.APIKey)
+	// Whacenter doesn't use API key header
 
 	resp, err := w.client.Do(req)
 	if err != nil {
