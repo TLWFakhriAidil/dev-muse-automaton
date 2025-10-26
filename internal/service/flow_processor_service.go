@@ -196,7 +196,43 @@ func (s *FlowProcessorService) ProcessIncomingMessage(ctx context.Context, webho
 			contactExists = true
 			log.Printf("✅ Found existing wasapbot contact: %s (Stage: %s)", contactID, currentStage)
 
-			// Update conv_last with the message
+			// Check if waiting for reply
+			if contact.WaitingForReply != nil && *contact.WaitingForReply {
+				log.Printf("▶️  Resuming flow from waiting state")
+
+				// Append user message to existing conv_last
+				existingConvLast := ""
+				if contact.ConvLast != nil {
+					existingConvLast = *contact.ConvLast
+				}
+				newConvLast := existingConvLast + fmt.Sprintf("\nUser: %s", extractedMsg.Message)
+
+				// Get current node ID for resume
+				currentNodeID := ""
+				if contact.CurrentNodeID != nil {
+					currentNodeID = *contact.CurrentNodeID
+				}
+
+				// Update conv_last and reset waiting state
+				updates := map[string]interface{}{
+					"conv_last":         newConvLast,
+					"waiting_for_reply": false,
+				}
+				_ = s.convRepo.UpdateWasapBotContact(ctx, contactID, updates)
+
+				// Resume flow from current node
+				wasapbotEngine := NewWasapbotFlowEngine(s.deviceRepo, s.wasapbotRepo, s.whatsappService)
+				err = wasapbotEngine.ResumeWasapbotFlow(ctx, &flow, contactID, extractedMsg.Message, currentNodeID)
+				if err != nil {
+					log.Printf("❌ Wasapbot flow resume error: %v", err)
+					return fmt.Errorf("failed to resume wasapbot flow: %w", err)
+				}
+
+				log.Printf("✅ Wasapbot flow resumed and completed")
+				return nil
+			}
+
+			// Not waiting for reply - update conv_last with new message
 			updates := map[string]interface{}{
 				"conv_last": fmt.Sprintf("User: %s", extractedMsg.Message),
 			}
