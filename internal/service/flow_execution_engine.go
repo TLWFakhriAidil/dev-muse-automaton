@@ -1,11 +1,14 @@
 package service
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"log"
 	"math/rand"
+	"net/http"
 	"strings"
 	"time"
 
@@ -395,26 +398,193 @@ func (s *FlowProcessorService) executeAIPrompt(
 	conversationID string,
 	userMessage string,
 ) (bool, error) {
-	// Get AI prompt from config
-	prompt, ok := node.Config["text"].(string)
-	if !ok || prompt == "" {
-		log.Printf("⚠️  No prompt configured for AI node")
+	log.Printf("✨ Starting AI Prompt execution")
+
+	// Get promptData from node config
+	promptData, ok := node.Config["text"].(string)
+	if !ok || promptData == "" {
+		log.Printf("❌ No prompt configured for AI node - terminating")
 		return true, nil
 	}
 
-	log.Printf("✨ Processing AI prompt: %s", prompt)
+	// Get device settings to retrieve API key and model
+	device, err := s.deviceRepo.GetDeviceByIDDevice(ctx, flow.IDDevice)
+	if err != nil || device == nil {
+		log.Printf("❌ Failed to get device settings: %v - terminating", err)
+		return true, fmt.Errorf("failed to get device settings: %w", err)
+	}
 
-	// TODO: Implement AI API call (OpenAI, etc.)
-	// This will send prompt + user message to AI and get response
+	// Get API key and model from device settings
+	var apiKey, model string
+	if device.APIKey != nil {
+		apiKey = *device.APIKey
+	}
+	model = device.APIKeyOption
 
-	aiResponse := "AI response placeholder"
-	log.Printf("🤖 AI Response: %s", aiResponse)
+	// Terminate if any required field is null
+	if promptData == "" || apiKey == "" || model == "" {
+		log.Printf("❌ Missing required fields - promptData: %v, apiKey: %v, model: %v - terminating",
+			promptData != "", apiKey != "", model != "")
+		return true, nil
+	}
 
-	// Send AI response back to user
-	// TODO: Implement WhatsApp API call
+	log.Printf("✅ Got API settings - Model: %s", model)
 
-	// Update conv_last with bot reply
-	return true, s.updateConvLast(ctx, conversationID, "Bot", aiResponse)
+	// Get conversation to retrieve conv_last and other data
+	conversation, err := s.convRepo.GetConversationByID(ctx, conversationID)
+	if err != nil || conversation == nil {
+		log.Printf("❌ Failed to get conversation: %v", err)
+		return true, fmt.Errorf("failed to get conversation: %w", err)
+	}
+
+	// Get lasttext from conv_last (whole conversation history)
+	lasttext := ""
+	if conversation.ConvLast != nil {
+		lasttext = *conversation.ConvLast
+	}
+
+	// Get currenttext from userMessage
+	currenttext := userMessage
+
+	log.Printf("📝 Building AI prompt with conv_last length: %d, currenttext: %s", len(lasttext), currenttext)
+
+	// Build content string exactly as specified
+	content := promptData + "\n\n" +
+		"### Instructions:\n" +
+		"1. If the current stage is null or undefined, default to the first stage.\n" +
+		"2. Always analyze the user's input to determine the appropriate stage. If the input context is unclear, guide the user within the default stage context.\n" +
+		"3. Follow all rules and steps strictly. Do not skip or ignore any rules or instructions.\n\n" +
+		"4. **Do not repeat the same sentences or phrases that have been used in the recent conversation history.**\n" +
+		"5. If the input contains the phrase \"I want this section in add response format [onemessage]\":\n" +
+		"   - Add the `Jenis` field with the value `onemessage` at the item level for each text response.\n" +
+		"   - The `Jenis` field is only added to `text` types within the `Response` array.\n" +
+		"   - If the directive is not present, omit the `Jenis` field entirely.\n\n" +
+		"### Response Format:\n" +
+		"{\n" +
+		"  \"Stage\": \"[Stage]\",  // Specify the current stage explicitly.\n" +
+		"  \"Response\": [\n" +
+		"    {\"type\": \"text\", \"Jenis\": \"onemessage\", \"content\": \"Provide the first response message here.\"},\n" +
+		"    {\"type\": \"image\", \"content\": \"https://example.com/image1.jpg\"},\n" +
+		"    {\"type\": \"text\", \"Jenis\": \"onemessage\", \"content\": \"Provide the second response message here.\"}\n" +
+		"  ]\n" +
+		"}\n\n" +
+		"### Example Response:\n" +
+		"// If the directive is present\n" +
+		"{\n" +
+		"  \"Stage\": \"Problem Identification\",\n" +
+		"  \"Response\": [\n" +
+		"    {\"type\": \"text\", \"Jenis\": \"onemessage\", \"content\": \"Maaf kak, Layla kena reconfirm balik dulu masalah utama anak akak ni.\"},\n" +
+		"    {\"type\": \"text\", \"Jenis\": \"onemessage\", \"content\": \"Kurang selera makan, sembelit, atau kerap demam?\"}\n" +
+		"  ]\n" +
+		"}\n\n" +
+		"// If the directive is NOT present\n" +
+		"{\n" +
+		"  \"Stage\": \"Problem Identification\",\n" +
+		"  \"Response\": [\n" +
+		"    {\"type\": \"text\", \"content\": \"Maaf kak, Layla kena reconfirm balik dulu masalah utama anak akak ni.\"},\n" +
+		"    {\"type\": \"text\", \"content\": \"Kurang selera makan, sembelit, atau kerap demam?\"}\n" +
+		"  ]\n" +
+		"}\n\n" +
+		"### Important Rules:\n" +
+		"1. **Include the `Stage` field in every response**:\n" +
+		"   - The `Stage` field must explicitly specify the current stage.\n" +
+		"   - If the stage is unclear or missing, default to first stage.\n\n" +
+		"2. **Use the Correct Response Format**:\n" +
+		"   - Divide long responses into multiple short \"text\" segments for better readability.\n" +
+		"   - Include all relevant images provided in the input, interspersed naturally with text responses.\n" +
+		"   - If multiple images are provided, create separate `image` entries for each.\n\n" +
+		"3. **Dynamic Field for [onemessage]**:\n" +
+		"   - If the input specifies \"I want this section in add response format [onemessage]\":\n" +
+		"      - Add `\"Jenis\": \"onemessage\"` to each `text` type in the `Response` array.\n" +
+		"   - If the directive is not present, omit the `Jenis` field entirely.\n" +
+		"   - Non-text types like `image` never include the `Jenis` field.\n\n"
+
+	// Build payload exactly as specified
+	payload := map[string]interface{}{
+		"model": model,
+		"messages": []map[string]string{
+			{"role": "system", "content": content},
+			{"role": "assistant", "content": lasttext},
+			{"role": "user", "content": currenttext},
+		},
+		"temperature":         0.67,
+		"top_p":              1,
+		"repetition_penalty": 1,
+	}
+
+	// Call OpenRouter API
+	apiURL := "https://openrouter.ai/api/v1/chat/completions"
+
+	payloadBytes, err := json.Marshal(payload)
+	if err != nil {
+		log.Printf("❌ Failed to marshal payload: %v", err)
+		return true, fmt.Errorf("failed to marshal payload: %w", err)
+	}
+
+	req, err := http.NewRequestWithContext(ctx, "POST", apiURL, bytes.NewBuffer(payloadBytes))
+	if err != nil {
+		log.Printf("❌ Failed to create request: %v", err)
+		return true, fmt.Errorf("failed to create request: %w", err)
+	}
+
+	req.Header.Set("Authorization", "Bearer "+apiKey)
+	req.Header.Set("Content-Type", "application/json")
+
+	client := &http.Client{Timeout: 60 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		log.Printf("❌ OpenRouter API error: %v", err)
+		return true, fmt.Errorf("OpenRouter API error: %w", err)
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		log.Printf("❌ Failed to read response body: %v", err)
+		return true, fmt.Errorf("failed to read response body: %w", err)
+	}
+
+	// Parse response
+	var responseBody map[string]interface{}
+	if err := json.Unmarshal(body, &responseBody); err != nil {
+		log.Printf("❌ Failed to parse response: %v", err)
+		return true, fmt.Errorf("failed to parse response: %w", err)
+	}
+
+	// Extract reply content
+	choices, ok := responseBody["choices"].([]interface{})
+	if !ok || len(choices) == 0 {
+		log.Printf("❌ Invalid OpenRouter API response: %v", string(body))
+		return true, fmt.Errorf("invalid OpenRouter API response")
+	}
+
+	firstChoice, ok := choices[0].(map[string]interface{})
+	if !ok {
+		log.Printf("❌ Invalid choice format")
+		return true, fmt.Errorf("invalid choice format")
+	}
+
+	message, ok := firstChoice["message"].(map[string]interface{})
+	if !ok {
+		log.Printf("❌ Invalid message format")
+		return true, fmt.Errorf("invalid message format")
+	}
+
+	replyContent, ok := message["content"].(string)
+	if !ok {
+		log.Printf("❌ Invalid content format")
+		return true, fmt.Errorf("invalid content format")
+	}
+
+	log.Printf("🤖 AI Response received: %d characters", len(replyContent))
+	log.Printf("📄 Raw response: %s", replyContent)
+
+	// TODO: Step 2 - Sanitize and parse response
+	// TODO: Step 3 - Extract and update stage
+	// TODO: Step 4 - Process and send messages
+
+	// Temporary placeholder - will be replaced in next steps
+	return true, nil
 }
 
 // executeStage updates the conversation stage
