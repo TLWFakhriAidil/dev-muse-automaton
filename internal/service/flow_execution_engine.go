@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"math/rand"
 	"strings"
 	"time"
 
@@ -566,7 +567,15 @@ func (s *FlowProcessorService) findNextNode(
 			}
 		}
 
-		log.Printf("⚠️  No conditions matched and no default, flow stops")
+		// No conditions matched and no default - randomly select one of the edges
+		if len(outgoingEdges) > 0 {
+			randomIndex := rand.Intn(len(outgoingEdges))
+			selectedEdge := outgoingEdges[randomIndex]
+			log.Printf("🎲 No conditions matched, randomly selected edge %d/%d (to: %s)", randomIndex+1, len(outgoingEdges), selectedEdge.To)
+			return s.findNodeByID(flowData, selectedEdge.To)
+		}
+
+		log.Printf("⚠️  No edges available, flow stops")
 		return nil
 	}
 
