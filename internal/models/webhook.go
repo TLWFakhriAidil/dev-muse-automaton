@@ -46,7 +46,7 @@ type ExtractedMessage struct {
 type WasapBot struct {
 	ID           string                 `json:"id"`
 	UserID       string                 `json:"user_id"`
-	DeviceID     string                 `json:"device_id"`
+	DeviceID     string                 `json:"id_device"` // Database column: id_device
 	ProspectNum  string                 `json:"prospect_num"`
 	Niche        string                 `json:"niche"`
 	Stage        string                 `json:"stage"`
@@ -59,7 +59,7 @@ type WasapBot struct {
 type AIWhatsApp struct {
 	ID           string                 `json:"id"`
 	UserID       string                 `json:"user_id"`
-	DeviceID     string                 `json:"device_id"`
+	DeviceID     string                 `json:"id_device"` // Database column: id_device
 	ProspectNum  string                 `json:"prospect_num"`
 	Niche        string                 `json:"niche"`
 	Stage        string                 `json:"stage"`

@@ -244,7 +244,7 @@ func (r *ConversationRepository) GetConversationStats(ctx context.Context, devic
 func (r *ConversationRepository) GetWasapBotContact(ctx context.Context, deviceID, prospectNum, niche string) (*models.WasapBot, error) {
 	data, err := r.supabase.QueryAsAdmin("wasapbot", map[string]string{
 		"select":       "*",
-		"device_id":    fmt.Sprintf("eq.%s", deviceID),
+		"id_device":    fmt.Sprintf("eq.%s", deviceID),
 		"prospect_num": fmt.Sprintf("eq.%s", prospectNum),
 		"niche":        fmt.Sprintf("eq.%s", niche),
 		"limit":        "1",
