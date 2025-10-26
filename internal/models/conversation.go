@@ -2,8 +2,33 @@ package models
 
 import "time"
 
-// AIWhatsapp represents a WhatsApp conversation with a prospect
+// AIWhatsapp represents a WhatsApp conversation with a prospect (Chatbot AI)
 type AIWhatsapp struct {
+	IDProspect      *int       `json:"id_prospect,omitempty"`
+	Number          *string    `json:"number,omitempty"`
+	IDDevice        string     `json:"id_device"`
+	Niche           *string    `json:"niche,omitempty"`
+	ProspectName    *string    `json:"prospect_name,omitempty"`
+	ProspectNum     string     `json:"prospect_num"`
+	Intro           *string    `json:"intro,omitempty"`
+	Stage           *string    `json:"stage,omitempty"`
+	ConvLast        *string    `json:"conv_last,omitempty"` // Stores "User: message\nBot: reply"
+	ConvCurrent     *string    `json:"conv_current,omitempty"`
+	ExecutionStatus *string    `json:"execution_status,omitempty"`
+	FlowID          *string    `json:"flow_id,omitempty"`
+	CurrentNodeID   *string    `json:"current_node_id,omitempty"`
+	LastNodeID      *string    `json:"last_node_id,omitempty"`
+	WaitingForReply *bool      `json:"waiting_for_reply,omitempty"`
+	Balas           *string    `json:"balas,omitempty"`
+	Human           *int       `json:"human,omitempty"`
+	KeywordIklan    *string    `json:"keywordiklan,omitempty"`
+	Marketer        *string    `json:"marketer,omitempty"`
+	CreatedAt       *time.Time `json:"created_at,omitempty"`
+	UpdatedAt       *time.Time `json:"updated_at,omitempty"`
+}
+
+// Wasapbot represents a WhatsApp conversation with a prospect (WhatsApp Bot - without AI Prompt)
+type Wasapbot struct {
 	IDProspect      *int       `json:"id_prospect,omitempty"`
 	Number          *string    `json:"number,omitempty"`
 	IDDevice        string     `json:"id_device"`
