@@ -37,8 +37,8 @@ type Wasapbot struct {
 	ProspectNum     string     `json:"prospect_num"`
 	Intro           *string    `json:"intro,omitempty"`
 	Stage           *string    `json:"stage,omitempty"`
-	ConvLast        *string    `json:"conv_last,omitempty"` // Stores "User: message\nBot: reply"
-	ConvCurrent     *string    `json:"conv_current,omitempty"`
+	ConvLast        *string    `json:"conv_last,omitempty"`    // Stores "User: message\nBot: reply"
+	ConvCurrent     *string    `json:"conv_current,omitempty"` // Previously conv_start
 	ExecutionStatus *string    `json:"execution_status,omitempty"`
 	FlowID          *string    `json:"flow_id,omitempty"`
 	CurrentNodeID   *string    `json:"current_node_id,omitempty"`
@@ -48,8 +48,8 @@ type Wasapbot struct {
 	Human           *int       `json:"human,omitempty"`
 	KeywordIklan    *string    `json:"keywordiklan,omitempty"`
 	Marketer        *string    `json:"marketer,omitempty"`
-	CreatedAt       *time.Time `json:"created_at,omitempty"`
-	UpdatedAt       *time.Time `json:"updated_at,omitempty"`
+	CreatedAt       *time.Time `json:"created_at,omitempty"` // Database column: created_at (previously date_start)
+	UpdatedAt       *time.Time `json:"updated_at,omitempty"` // Database column: updated_at (previously updated_at)
 }
 
 // CreateConversationRequest is the request body for creating a conversation
