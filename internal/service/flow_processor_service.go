@@ -144,8 +144,6 @@ func (s *FlowProcessorService) ProcessIncomingMessage(ctx context.Context, webho
 	var contactID string
 	var currentStage string
 
-	userID := getStringValue(device.UserID)
-
 	if flowType == "Whatsapp Bot" {
 		// Use wasapbot table
 		log.Printf("📋 Using Whatsapp Bot flow - checking wasapbot table")
@@ -157,38 +155,39 @@ func (s *FlowProcessorService) ProcessIncomingMessage(ctx context.Context, webho
 		if contact == nil {
 			// Create new contact
 			log.Printf("➕ Creating new wasapbot contact")
+			stage := "start"
+			nama := extractedMsg.Name
+			status := "Prospek"
 			newContact := &models.WasapBot{
-				UserID:      userID,
 				DeviceID:    idDevice,
 				ProspectNum: extractedMsg.PhoneNumber,
-				Niche:       flow.Niche,
-				Stage:       "start", // Initial stage
-				Data:        make(map[string]interface{}),
+				Niche:       &flow.Niche,
+				Stage:       &stage,
+				Nama:        &nama,
+				Status:      &status,
 			}
-			newContact.Data["name"] = extractedMsg.Name
-			newContact.Data["last_message"] = extractedMsg.Message
 
 			err = s.convRepo.CreateWasapBotContact(ctx, newContact)
 			if err != nil {
 				return fmt.Errorf("failed to create wasapbot contact: %w", err)
 			}
 
-			contactID = newContact.ID
+			contactID = fmt.Sprintf("%d", *newContact.IDProspect)
 			currentStage = "start"
 			contactExists = false
 			log.Printf("✅ Created new wasapbot contact: %s", contactID)
 		} else {
 			// Contact exists
-			contactID = contact.ID
-			currentStage = contact.Stage
+			contactID = fmt.Sprintf("%d", *contact.IDProspect)
+			if contact.Stage != nil {
+				currentStage = *contact.Stage
+			}
 			contactExists = true
 			log.Printf("✅ Found existing wasapbot contact: %s (Stage: %s)", contactID, currentStage)
 
-			// Update last message
+			// Update conv_last with the message
 			updates := map[string]interface{}{
-				"data": map[string]interface{}{
-					"last_message": extractedMsg.Message,
-				},
+				"conv_last": fmt.Sprintf("User: %s", extractedMsg.Message),
 			}
 			_ = s.convRepo.UpdateWasapBotContact(ctx, contactID, updates)
 		}

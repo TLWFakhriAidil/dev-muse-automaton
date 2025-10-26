@@ -267,8 +267,9 @@ func (r *ConversationRepository) GetWasapBotContact(ctx context.Context, deviceI
 
 // CreateWasapBotContact creates a new contact in wasapbot table
 func (r *ConversationRepository) CreateWasapBotContact(ctx context.Context, contact *models.WasapBot) error {
-	contact.CreatedAt = time.Now().Format(time.RFC3339)
-	contact.UpdatedAt = time.Now().Format(time.RFC3339)
+	now := time.Now().Format(time.RFC3339)
+	contact.CreatedAt = &now
+	contact.UpdatedAt = &now
 
 	data, err := r.supabase.InsertAsAdmin("wasapbot", contact)
 	if err != nil {
