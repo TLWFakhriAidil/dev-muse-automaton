@@ -22,6 +22,7 @@ type SendMessageRequest struct {
 	Body     string `json:"body" validate:"required"`
 	Type     string `json:"type"` // text, image, document, audio, video
 	MediaURL string `json:"media_url,omitempty"`
+	MimeType string `json:"mime_type,omitempty"` // MIME type of the media file
 	DeviceID string `json:"device_id" validate:"required"`
 }
 

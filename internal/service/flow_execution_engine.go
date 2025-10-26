@@ -867,17 +867,9 @@ func (s *FlowProcessorService) processAIResponseParts(
 				actualType, mimeType := s.detectMediaType(ctx, mediaURL)
 				log.Printf("📨 Sending %s (MIME: %s): %s", actualType, mimeType, mediaURL)
 
-				// Send based on actual detected type
-				var err error
-				if actualType == "image" {
-					err = s.whatsappService.SendMessage(ctx, flow.IDDevice, conversation.ProspectNum, "", mediaURL, "")
-				} else if actualType == "video" {
-					err = s.whatsappService.SendMessage(ctx, flow.IDDevice, conversation.ProspectNum, "", "", mediaURL)
-				} else if actualType == "audio" {
-					// For audio, we might need to send as document or handle differently
-					// For now, send as image parameter (adjust based on your WhatsApp service implementation)
-					err = s.whatsappService.SendMessage(ctx, flow.IDDevice, conversation.ProspectNum, "", mediaURL, "")
-				}
+				// Send message with detected media type and MIME type
+				// SendMessage signature: (ctx, deviceID, to, message, mediaType, mediaURL, mimeType)
+				err := s.whatsappService.SendMessage(ctx, flow.IDDevice, conversation.ProspectNum, "", actualType, mediaURL, mimeType)
 
 				if err != nil {
 					log.Printf("❌ Failed to send %s: %v", actualType, err)

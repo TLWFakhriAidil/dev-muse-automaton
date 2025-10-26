@@ -43,11 +43,16 @@ func (w *WahaProvider) SendMessage(ctx context.Context, message *models.SendMess
 	if message.Type != "" && message.Type != "text" && message.MediaURL != "" {
 		if message.Type == "video" {
 			url = fmt.Sprintf("%s/api/sendVideo", w.config.BaseURL)
+			// Use provided MIME type or default
+			videoMimetype := "video/mp4"
+			if message.MimeType != "" {
+				videoMimetype = message.MimeType
+			}
 			payload = map[string]interface{}{
 				"session": w.config.Instance,
 				"chatId":  message.To + "@c.us",
 				"file": map[string]interface{}{
-					"mimetype": "video/mp4",
+					"mimetype": videoMimetype,
 					"url":      message.MediaURL,
 					"filename": "Video",
 				},
@@ -55,11 +60,16 @@ func (w *WahaProvider) SendMessage(ctx context.Context, message *models.SendMess
 			}
 		} else if message.Type == "audio" {
 			url = fmt.Sprintf("%s/api/sendFile", w.config.BaseURL)
+			// Use provided MIME type or default
+			audioMimetype := "audio/mp3"
+			if message.MimeType != "" {
+				audioMimetype = message.MimeType
+			}
 			payload = map[string]interface{}{
 				"session": w.config.Instance,
 				"chatId":  message.To + "@c.us",
 				"file": map[string]interface{}{
-					"mimetype": "audio/mp3",
+					"mimetype": audioMimetype,
 					"url":      message.MediaURL,
 					"filename": "Audio",
 				},
@@ -67,9 +77,11 @@ func (w *WahaProvider) SendMessage(ctx context.Context, message *models.SendMess
 			}
 		} else if message.Type == "image" {
 			url = fmt.Sprintf("%s/api/sendImage", w.config.BaseURL)
-			// Detect image mimetype from URL extension
+			// Use provided MIME type or detect from URL extension
 			mimetype := "image/jpeg" // default
-			if contains(message.MediaURL, ".png") {
+			if message.MimeType != "" {
+				mimetype = message.MimeType
+			} else if contains(message.MediaURL, ".png") {
 				mimetype = "image/png"
 			} else if contains(message.MediaURL, ".gif") {
 				mimetype = "image/gif"

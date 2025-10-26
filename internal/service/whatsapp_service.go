@@ -23,7 +23,7 @@ func NewWhatsAppService(deviceRepo *repository.DeviceRepository) *WhatsAppServic
 }
 
 // SendMessage sends a WhatsApp message using the appropriate provider
-func (s *WhatsAppService) SendMessage(ctx context.Context, deviceID string, to string, message string, mediaType string, mediaURL string) error {
+func (s *WhatsAppService) SendMessage(ctx context.Context, deviceID string, to string, message string, mediaType string, mediaURL string, mimeType ...string) error {
 	// Get device
 	device, err := s.deviceRepo.GetDeviceByDeviceID(ctx, deviceID)
 	if err != nil {
@@ -90,6 +90,10 @@ func (s *WhatsAppService) SendMessage(ctx context.Context, deviceID string, to s
 	if mediaType != "" && mediaURL != "" {
 		req.Type = mediaType
 		req.MediaURL = mediaURL
+		// Set MIME type if provided
+		if len(mimeType) > 0 && mimeType[0] != "" {
+			req.MimeType = mimeType[0]
+		}
 	}
 
 	// Send message
