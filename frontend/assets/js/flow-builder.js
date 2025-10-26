@@ -235,16 +235,14 @@ function createFlowNode(type, label, icon, x, y) {
     });
 }
 
-// Make node draggable
+// Make node draggable with smooth performance
 function makeNodeDraggable(node) {
     let isDragging = false;
     let hasMoved = false;
-    let currentX;
-    let currentY;
-    let initialX;
-    let initialY;
-    let startX;
-    let startY;
+    let startMouseX = 0;
+    let startMouseY = 0;
+    let startNodeX = 0;
+    let startNodeY = 0;
     let animationFrameId = null;
 
     node.addEventListener('mousedown', (e) => {
@@ -256,10 +254,24 @@ function makeNodeDraggable(node) {
 
         isDragging = true;
         hasMoved = false;
-        startX = e.clientX;
-        startY = e.clientY;
-        initialX = e.clientX - node.offsetLeft;
-        initialY = e.clientY - node.offsetTop;
+
+        // Store starting mouse position
+        startMouseX = e.clientX;
+        startMouseY = e.clientY;
+
+        // Store starting node position (from current left/top or flowData)
+        const nodeData = flowData.nodes.find(n => n.id === node.getAttribute('data-node-id'));
+        if (nodeData) {
+            startNodeX = nodeData.x;
+            startNodeY = nodeData.y;
+        } else {
+            startNodeX = node.offsetLeft;
+            startNodeY = node.offsetTop;
+        }
+
+        // Add visual feedback
+        node.style.cursor = 'grabbing';
+        node.style.zIndex = '1000';
 
         // Prevent text selection during drag
         e.preventDefault();
@@ -270,40 +282,46 @@ function makeNodeDraggable(node) {
 
         e.preventDefault();
 
-        // Check if mouse has moved more than 5 pixels (to distinguish click from drag)
-        const dx = Math.abs(e.clientX - startX);
-        const dy = Math.abs(e.clientY - startY);
-        if (dx > 5 || dy > 5) {
+        // Calculate mouse movement delta
+        const deltaX = e.clientX - startMouseX;
+        const deltaY = e.clientY - startMouseY;
+
+        // Check if mouse has moved more than 3 pixels (to distinguish click from drag)
+        if (Math.abs(deltaX) > 3 || Math.abs(deltaY) > 3) {
             hasMoved = true;
         }
 
-        currentX = e.clientX - initialX;
-        currentY = e.clientY - initialY;
+        // Calculate new position
+        const newX = startNodeX + deltaX;
+        const newY = startNodeY + deltaY;
 
-        // Use transform for better performance instead of left/top
-        node.style.transform = `translate(${currentX}px, ${currentY}px)`;
-        node.style.left = '0px';
-        node.style.top = '0px';
+        // Apply position directly with left/top (no transform switching)
+        node.style.left = `${newX}px`;
+        node.style.top = `${newY}px`;
 
         // Update flow data
         const nodeData = flowData.nodes.find(n => n.id === node.getAttribute('data-node-id'));
         if (nodeData) {
-            nodeData.x = currentX;
-            nodeData.y = currentY;
+            nodeData.x = newX;
+            nodeData.y = newY;
         }
 
-        // Use requestAnimationFrame for smooth connection updates
-        if (animationFrameId) {
-            cancelAnimationFrame(animationFrameId);
+        // Use requestAnimationFrame for smooth connection updates (throttled)
+        if (!animationFrameId) {
+            animationFrameId = requestAnimationFrame(() => {
+                drawConnectionsOptimized();
+                animationFrameId = null;
+            });
         }
-        animationFrameId = requestAnimationFrame(() => {
-            drawConnectionsOptimized();
-        });
     });
 
     document.addEventListener('mouseup', () => {
         if (isDragging) {
             isDragging = false;
+
+            // Reset cursor and z-index
+            node.style.cursor = '';
+            node.style.zIndex = '';
 
             // Cancel any pending animation frame
             if (animationFrameId) {
@@ -311,12 +329,8 @@ function makeNodeDraggable(node) {
                 animationFrameId = null;
             }
 
-            // Update final position to use left/top for consistency
-            node.style.left = `${currentX}px`;
-            node.style.top = `${currentY}px`;
-            node.style.transform = '';
-
-            drawConnectionsOptimized(); // Final redraw when released
+            // Final connection redraw
+            drawConnectionsOptimized();
 
             // If we didn't move (just clicked), select the node
             if (!hasMoved) {
