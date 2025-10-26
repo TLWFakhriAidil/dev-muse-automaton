@@ -1356,7 +1356,25 @@ function drawConnectionsOptimized() {
 
         if (!fromNode || !toNode) return;
 
-        const fromConnector = fromNode.querySelector('.output-connector');
+        // For condition connections, find the specific condition connector
+        let fromConnector;
+        if (conn.conditionValue) {
+            // Find connector by matching the condition value in the label
+            const conditionWrappers = fromNode.querySelectorAll('.condition-connector-wrapper');
+            for (const wrapper of conditionWrappers) {
+                const label = wrapper.querySelector('.condition-label');
+                if (label && label.textContent === conn.conditionValue) {
+                    fromConnector = wrapper.querySelector('.output-connector');
+                    break;
+                }
+            }
+        }
+
+        // Fallback to first output connector if not a condition or not found
+        if (!fromConnector) {
+            fromConnector = fromNode.querySelector('.output-connector');
+        }
+
         const toConnector = toNode.querySelector('.input-connector');
 
         if (!fromConnector || !toConnector) return;
