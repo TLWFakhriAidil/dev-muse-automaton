@@ -22,18 +22,29 @@ func NewStageRepository(supabase *database.SupabaseClient) *StageRepository {
 
 // CreateStageValue creates a new stage value
 func (r *StageRepository) CreateStageValue(ctx context.Context, stage *models.StageValue) error {
+	// Log the data being sent
+	stageJSON, _ := json.Marshal(stage)
+	fmt.Printf("🔍 Creating stage value: %s\n", string(stageJSON))
+
 	data, err := r.supabase.InsertAsAdmin("stagesetvalue", stage)
 	if err != nil {
+		fmt.Printf("❌ Database error: %v\n", err)
 		return fmt.Errorf("failed to create stage value: %w", err)
 	}
 
+	fmt.Printf("✅ Database response: %s\n", string(data))
+
 	var stages []models.StageValue
 	if err := json.Unmarshal(data, &stages); err != nil {
+		fmt.Printf("❌ JSON parse error: %v\n", err)
 		return fmt.Errorf("failed to parse created stage value: %w", err)
 	}
 
 	if len(stages) > 0 {
 		*stage = stages[0]
+		fmt.Printf("✅ Stage value created with ID: %d\n", stage.ID)
+	} else {
+		fmt.Printf("⚠️  No stage returned from database\n")
 	}
 
 	return nil
