@@ -3,6 +3,7 @@ package handler
 import (
 	"chatbot-automation/internal/models"
 	"chatbot-automation/internal/service"
+	"context"
 	"log"
 
 	"github.com/gofiber/fiber/v2"
@@ -368,9 +369,11 @@ func (h *WebhookHandler) ReceiveWebhook(c *fiber.Ctx) error {
 	log.Printf("📦 Webhook data received: %d fields", len(webhookData))
 	log.Printf("📦 PARSED WEBHOOK DATA: %+v", webhookData)
 
-	// Process the message asynchronously
+	// Process the message asynchronously with background context
+	// Note: Cannot use c.Context() as it becomes invalid after response is sent
 	go func() {
-		err := h.flowProcessor.ProcessIncomingMessage(c.Context(), webhookID, webhookData)
+		ctx := context.Background()
+		err := h.flowProcessor.ProcessIncomingMessage(ctx, webhookID, webhookData)
 		if err != nil {
 			log.Printf("❌ Failed to process webhook message: %v", err)
 		}
