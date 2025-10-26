@@ -387,19 +387,21 @@ func (s *WasapbotFlowEngine) executeStage(
 		return true, nil
 	}
 
-	log.Printf("🎯 Updating stage to: %s", stageName)
+	log.Printf("🎯 Updating stage to: %s for conversation ID: %s", stageName, conversationID)
 
 	// Update conversation stage
 	updates := map[string]interface{}{
 		"stage": stageName,
 	}
 
+	log.Printf("🔍 Calling UpdateConversation with updates: %+v", updates)
 	err := s.convRepo.UpdateConversation(ctx, conversationID, updates)
 	if err != nil {
+		log.Printf("❌ Failed to update stage: %v", err)
 		return true, fmt.Errorf("failed to update stage: %w", err)
 	}
 
-	log.Printf("✅ Stage updated successfully")
+	log.Printf("✅ Stage updated successfully in database")
 	return true, nil
 }
 

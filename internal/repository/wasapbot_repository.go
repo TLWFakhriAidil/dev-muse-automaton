@@ -47,24 +47,34 @@ func (r *WasapbotRepository) CreateConversation(ctx context.Context, conversatio
 
 // GetConversationByID retrieves a wasapbot conversation by prospect ID
 func (r *WasapbotRepository) GetConversationByID(ctx context.Context, prospectID string) (*models.Wasapbot, error) {
+	fmt.Printf("🔍 [WasapbotRepo] GetConversationByID called with prospectID=%s\n", prospectID)
+
 	data, err := r.supabase.QueryAsAdmin("wasapbot", map[string]string{
 		"select":      "*",
 		"id_prospect": fmt.Sprintf("eq.%s", prospectID),
 		"limit":       "1",
 	})
 	if err != nil {
+		fmt.Printf("❌ [WasapbotRepo] Query failed: %v\n", err)
 		return nil, fmt.Errorf("failed to get wasapbot conversation: %w", err)
 	}
 
+	fmt.Printf("🔍 [WasapbotRepo] Query response: %s\n", string(data))
+
 	var conversations []models.Wasapbot
 	if err := json.Unmarshal(data, &conversations); err != nil {
+		fmt.Printf("❌ [WasapbotRepo] JSON unmarshal failed: %v\n", err)
 		return nil, fmt.Errorf("failed to parse wasapbot conversation: %w", err)
 	}
 
+	fmt.Printf("🔍 [WasapbotRepo] Found %d conversation(s)\n", len(conversations))
+
 	if len(conversations) == 0 {
+		fmt.Printf("❌ [WasapbotRepo] Conversation not found for id_prospect=%s\n", prospectID)
 		return nil, fmt.Errorf("wasapbot conversation not found")
 	}
 
+	fmt.Printf("✅ [WasapbotRepo] Retrieved conversation: %+v\n", conversations[0])
 	return &conversations[0], nil
 }
 
@@ -123,14 +133,18 @@ func (r *WasapbotRepository) UpdateConversation(ctx context.Context, prospectID 
 	// Add updated_at timestamp
 	updates["updated_at"] = time.Now()
 
-	_, err := r.supabase.UpdateAsAdmin("wasapbot", map[string]string{
+	fmt.Printf("🔍 [WasapbotRepo] Updating prospect_id=%s with updates=%+v\n", prospectID, updates)
+
+	data, err := r.supabase.UpdateAsAdmin("wasapbot", map[string]string{
 		"id_prospect": prospectID,
 	}, updates)
 
 	if err != nil {
+		fmt.Printf("❌ [WasapbotRepo] Update failed: %v\n", err)
 		return fmt.Errorf("failed to update wasapbot conversation: %w", err)
 	}
 
+	fmt.Printf("✅ [WasapbotRepo] Update response: %s\n", string(data))
 	return nil
 }
 
