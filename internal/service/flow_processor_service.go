@@ -256,12 +256,45 @@ func (s *FlowProcessorService) ProcessIncomingMessage(ctx context.Context, webho
 		return fmt.Errorf("unsupported flow type: %s", flowType)
 	}
 
-	// Step 6: Execute the flow
-	log.Printf("🔄 Executing flow for contact %s at stage: %s", contactID, currentStage)
-	log.Printf("📊 Contact exists: %v, New contact: %v", contactExists, !contactExists)
+	// Step 6: Check execution status and waiting state
+	conversation, err := s.convRepo.GetConversationByID(ctx, contactID)
+	if err != nil {
+		log.Printf("❌ Failed to get conversation: %v", err)
+		return fmt.Errorf("failed to get conversation: %w", err)
+	}
 
-	// Execute flow starting from current stage
-	err = s.ExecuteFlow(ctx, &flow, contactID, extractedMsg.Message, currentStage)
+	// Check if flow already completed
+	if conversation.ExecutionStatus != nil && *conversation.ExecutionStatus == "completed" {
+		log.Printf("⏹️  Flow already completed for contact %s, ignoring message", contactID)
+		return nil
+	}
+
+	// Check if waiting for reply
+	if conversation.WaitingForReply != nil && *conversation.WaitingForReply {
+		log.Printf("▶️  Resuming flow from waiting state for contact %s", contactID)
+
+		// Get current node ID
+		currentNodeID := ""
+		if conversation.CurrentNodeID != nil {
+			currentNodeID = *conversation.CurrentNodeID
+		}
+
+		// Reset waiting state
+		updates := map[string]interface{}{
+			"waiting_for_reply": false,
+		}
+		_ = s.convRepo.UpdateConversation(ctx, contactID, updates)
+
+		// Resume flow from current node
+		err = s.ResumeFlow(ctx, &flow, contactID, extractedMsg.Message, currentNodeID)
+	} else {
+		// Start flow from beginning
+		log.Printf("🔄 Executing flow for contact %s at stage: %s", contactID, currentStage)
+		log.Printf("📊 Contact exists: %v, New contact: %v", contactExists, !contactExists)
+
+		err = s.ExecuteFlow(ctx, &flow, contactID, extractedMsg.Message, currentStage)
+	}
+
 	if err != nil {
 		log.Printf("❌ Flow execution error: %v", err)
 		return fmt.Errorf("failed to execute flow: %w", err)

@@ -81,6 +81,62 @@ func (s *FlowProcessorService) ExecuteFlow(
 	return s.executeFromNode(ctx, flow, &flowData, startNode, conversationID, userMessage, currentStage)
 }
 
+// ResumeFlow resumes flow execution from a specific node (used after waiting_reply)
+func (s *FlowProcessorService) ResumeFlow(
+	ctx context.Context,
+	flow *models.ChatbotFlow,
+	conversationID string,
+	userMessage string,
+	currentNodeID string,
+) error {
+	log.Printf("▶️  Resuming flow execution from node: %s", currentNodeID)
+
+	// Check if NodesData is empty
+	if flow.NodesData == "" {
+		log.Printf("⚠️  Flow NodesData is empty - flow not configured yet")
+		return fmt.Errorf("flow has no nodes configured")
+	}
+
+	// Parse flow data
+	var flowData FlowData
+	if err := json.Unmarshal([]byte(flow.NodesData), &flowData); err != nil {
+		log.Printf("❌ Failed to parse flow data: %v", err)
+		return fmt.Errorf("failed to parse flow data: %w", err)
+	}
+
+	// Find the current node
+	var currentNode *FlowNode
+	for i := range flowData.Nodes {
+		if flowData.Nodes[i].ID == currentNodeID {
+			currentNode = &flowData.Nodes[i]
+			break
+		}
+	}
+
+	if currentNode == nil {
+		log.Printf("❌ Current node %s not found in flow", currentNodeID)
+		return fmt.Errorf("current node not found: %s", currentNodeID)
+	}
+
+	log.Printf("✅ Found current node: %s (Type: %s)", currentNode.ID, currentNode.Type)
+
+	// Find next node from current node
+	nextNode := s.findNextNode(&flowData, currentNode, userMessage)
+	if nextNode == nil {
+		log.Printf("✅ No next node - flow completed")
+
+		// Mark as completed
+		updates := map[string]interface{}{
+			"execution_status": "completed",
+			"current_node_id":  "completed",
+		}
+		return s.convRepo.UpdateConversation(ctx, conversationID, updates)
+	}
+
+	// Execute from next node
+	return s.executeFromNode(ctx, flow, &flowData, nextNode, conversationID, userMessage, "")
+}
+
 // findStartingNode finds the node to start execution from
 func (s *FlowProcessorService) findStartingNode(flowData FlowData, currentStage string) *FlowNode {
 	// If no current stage, find the first node (after start node if exists)
@@ -158,7 +214,22 @@ func (s *FlowProcessorService) executeFromNode(
 	nextNode := s.findNextNode(flowData, node, userMessage)
 	if nextNode == nil {
 		log.Printf("✅ Flow completed - no more nodes")
-		return s.updateConversationNode(ctx, conversationID, "completed")
+
+		// Mark flow as completed
+		updates := map[string]interface{}{
+			"execution_status":  "completed",
+			"current_node_id":   "completed",
+			"waiting_for_reply": false,
+		}
+
+		err := s.convRepo.UpdateConversation(ctx, conversationID, updates)
+		if err != nil {
+			log.Printf("❌ Failed to mark flow as completed: %v", err)
+			return fmt.Errorf("failed to mark flow as completed: %w", err)
+		}
+
+		log.Printf("✅ Flow marked as 'completed'")
+		return nil
 	}
 
 	// Continue to next node
@@ -266,6 +337,18 @@ func (s *FlowProcessorService) executeWaitingReply(
 	log.Printf("⏸️  Waiting for user reply (no timeout)")
 
 	// Update conversation to waiting state
+	updates := map[string]interface{}{
+		"waiting_for_reply": true,
+		"current_node_id":   node.ID,
+	}
+
+	err := s.convRepo.UpdateConversation(ctx, conversationID, updates)
+	if err != nil {
+		return false, fmt.Errorf("failed to update waiting state: %w", err)
+	}
+
+	log.Printf("✅ Set waiting_for_reply=true, current_node_id=%s", node.ID)
+
 	// Flow will resume when next webhook message arrives
 	return false, nil // false = stop flow execution
 }
@@ -435,10 +518,49 @@ func (s *FlowProcessorService) findNextNode(
 		return s.findNodeByID(flowData, outgoingEdges[0].To)
 	}
 
-	// Multiple edges - check conditions
-	// TODO: Implement condition matching
-	// For now, just follow the first edge
-	log.Printf("⚠️  Multiple edges found, following first one")
+	// Multiple edges - check if this is a Conditions node
+	if currentNode.Type == "conditions" {
+		log.Printf("🔀 Conditions node with %d edges", len(outgoingEdges))
+
+		// Match user message against conditions
+		for _, edge := range outgoingEdges {
+			if edge.ConditionType == "" || edge.ConditionValue == "" {
+				log.Printf("⚠️  Edge has no condition type/value, skipping")
+				continue
+			}
+
+			matched := false
+			switch strings.ToLower(edge.ConditionType) {
+			case "equal":
+				matched = strings.ToLower(userMessage) == strings.ToLower(edge.ConditionValue)
+			case "contains":
+				matched = strings.Contains(strings.ToLower(userMessage), strings.ToLower(edge.ConditionValue))
+			case "match":
+				matched = strings.Contains(strings.ToLower(userMessage), strings.ToLower(edge.ConditionValue))
+			case "default":
+				matched = true // Default always matches
+			}
+
+			if matched {
+				log.Printf("✅ Condition matched: %s '%s'", edge.ConditionType, edge.ConditionValue)
+				return s.findNodeByID(flowData, edge.To)
+			}
+		}
+
+		// No conditions matched, look for default
+		for _, edge := range outgoingEdges {
+			if strings.ToLower(edge.ConditionType) == "default" {
+				log.Printf("✅ Using default condition")
+				return s.findNodeByID(flowData, edge.To)
+			}
+		}
+
+		log.Printf("⚠️  No conditions matched and no default, flow stops")
+		return nil
+	}
+
+	// Not a conditions node, but multiple edges - follow first one
+	log.Printf("⚠️  Multiple edges from non-condition node, following first one")
 	return s.findNodeByID(flowData, outgoingEdges[0].To)
 }
 
