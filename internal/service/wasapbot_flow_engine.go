@@ -433,7 +433,10 @@ func (s *WasapbotFlowEngine) executeStage(
 	// Stage configuration found - apply dynamic updates
 	log.Printf("⚙️  Stage configuration found: type=%s, column=%s", stageConfig.TypeInputData, stageConfig.ColumnsData)
 
-	columnName := stageConfig.ColumnsData
+	// Normalize column name to match database schema
+	columnName := normalizeColumnName(stageConfig.ColumnsData)
+	log.Printf("📝 Normalized column name: '%s' -> '%s'", stageConfig.ColumnsData, columnName)
+
 	var columnValue string
 
 	// Determine value based on type_inputdata
@@ -487,6 +490,32 @@ func (s *WasapbotFlowEngine) executeStage(
 
 	log.Printf("✅ Stage and column '%s' updated successfully", columnName)
 	return true, nil
+}
+
+// normalizeColumnName converts UI column names to database column names
+// Mappings: Nama->nama, Alamat->alamat, Pakej->pakej, No Fon->no_fon, Tarikh Gaji->tarikh_gaji
+// Also supports: cara_bayaran, peringkat_sekolah (already lowercase)
+func normalizeColumnName(columnName string) string {
+	// Mapping from UI names to database column names
+	columnMap := map[string]string{
+		"Nama":          "nama",
+		"Alamat":        "alamat",
+		"Pakej":         "pakej",
+		"No Fon":        "no_fon",
+		"Tarikh Gaji":   "tarikh_gaji",
+		"Cara Bayaran":  "cara_bayaran",
+		"Peringkat Sekolah": "peringkat_sekolah",
+	}
+
+	// Check if there's a mapping
+	if dbColumn, exists := columnMap[columnName]; exists {
+		return dbColumn
+	}
+
+	// If no mapping found, convert to lowercase and replace spaces with underscores
+	normalized := strings.ToLower(columnName)
+	normalized = strings.ReplaceAll(normalized, " ", "_")
+	return normalized
 }
 
 // executeSendMedia sends media (image/audio/video)
