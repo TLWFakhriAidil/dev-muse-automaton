@@ -76,8 +76,11 @@ func (r *AnalyticsRepository) GetConversationMetrics(ctx context.Context, device
 		metrics.ConversationsByStatus[status]++
 
 		// Count by stage
+		// NULL stage means the conversation is at "Welcome Message" stage
 		if conv.Stage != nil {
 			metrics.ConversationsByStage[*conv.Stage]++
+		} else {
+			metrics.ConversationsByStage["Welcome Message"]++
 		}
 
 		// Count by niche
