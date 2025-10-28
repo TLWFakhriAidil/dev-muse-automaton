@@ -364,3 +364,29 @@ func (h *ConversationHandler) GetConversationStats(c *fiber.Ctx) error {
 		"stats":   stats,
 	})
 }
+
+// GetAllConversations retrieves all AI WhatsApp conversations for the authenticated user
+// GET /api/conversations/all
+func (h *ConversationHandler) GetAllConversations(c *fiber.Ctx) error {
+	// Get user ID from token
+	userID, err := h.getUserIDFromToken(c)
+	if err != nil {
+		return err
+	}
+
+	// Get all conversations for user
+	resp, err := h.conversationService.GetAllConversationsForUser(c.Context(), userID)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"success": false,
+			"message": "Failed to get conversations",
+			"error":   err.Error(),
+		})
+	}
+
+	if !resp.Success {
+		return c.Status(fiber.StatusInternalServerError).JSON(resp)
+	}
+
+	return c.Status(fiber.StatusOK).JSON(resp)
+}

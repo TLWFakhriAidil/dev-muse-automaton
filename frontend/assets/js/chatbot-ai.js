@@ -10,78 +10,56 @@ async function loadConversations() {
     }
 
     try {
-        // First, get all user devices
-        const devicesResponse = await fetch(`${API_BASE_URL}/devices`, {
+        // Call single endpoint to get all conversations
+        const response = await fetch(`${API_BASE_URL}/conversations/all`, {
             headers: {
                 'Authorization': `Bearer ${token}`
             }
         });
 
-        const devicesData = await devicesResponse.json();
-
-        if (!devicesData.success || !devicesData.devices || devicesData.devices.length === 0) {
-            document.getElementById('conversationsList').innerHTML = `
-                <div class="empty-state">
-                    <div class="empty-state-icon">📱</div>
-                    <h2 class="empty-state-title">No Devices Found</h2>
-                    <p class="empty-state-text">Please add a device first to start Chatbot AI conversations</p>
-                </div>
-            `;
-            return;
-        }
-
-        // Get conversations for all devices
-        let allConversations = [];
-        for (const device of devicesData.devices) {
-            const deviceId = device.id_device || device.device_id;
-            try {
-                const convResponse = await fetch(`${API_BASE_URL}/conversations/device/${deviceId}`, {
-                    headers: {
-                        'Authorization': `Bearer ${token}`
-                    }
-                });
-                const convData = await convResponse.json();
-
-                if (convData.success && convData.conversations) {
-                    allConversations = allConversations.concat(convData.conversations);
-                }
-            } catch (err) {
-                console.error(`Error loading conversations for device ${deviceId}:`, err);
-            }
-        }
+        const data = await response.json();
 
         const conversationsList = document.getElementById('conversationsList');
 
-        if (allConversations.length > 0) {
+        if (data.success && data.conversations && data.conversations.length > 0) {
             conversationsList.innerHTML = `
-                <table class="stage-table">
+                <table class="device-table">
                     <thead>
                         <tr>
-                            <th>ID</th>
-                            <th>Device ID</th>
+                            <th>No</th>
+                            <th>Created At</th>
+                            <th>Device</th>
                             <th>Phone Number</th>
                             <th>Name</th>
                             <th>Niche</th>
                             <th>Stage</th>
                             <th>Status</th>
-                            <th>Created At</th>
                             <th>Actions</th>
                         </tr>
                     </thead>
                     <tbody>
-                        ${allConversations.map(conv => `
+                        ${data.conversations.map((conv, index) => `
                             <tr>
-                                <td><strong>${conv.id_prospect || '-'}</strong></td>
+                                <td><strong>${index + 1}</strong></td>
+                                <td>${conv.created_at ? new Date(conv.created_at).toLocaleString('en-US', {
+                                    month: '2-digit',
+                                    day: '2-digit',
+                                    year: 'numeric',
+                                    hour: '2-digit',
+                                    minute: '2-digit',
+                                    hour12: true
+                                }) : '-'}</td>
                                 <td>${conv.id_device || '-'}</td>
-                                <td>${conv.prospect_num || '-'}</td>
+                                <td><strong>${conv.prospect_num || '-'}</strong></td>
                                 <td>${conv.prospect_name || '-'}</td>
-                                <td>${conv.niche || '-'}</td>
-                                <td><span class="column-badge">${conv.stage || 'Welcome Message'}</span></td>
-                                <td><span class="type-badge type-${(conv.execution_status || 'active').toLowerCase()}">${conv.execution_status || 'active'}</span></td>
-                                <td>${conv.created_at ? new Date(conv.created_at).toLocaleString() : '-'}</td>
+                                <td><span class="niche-badge">${conv.niche || '-'}</span></td>
+                                <td><span class="stage-badge">${conv.stage || 'Welcome Message'}</span></td>
+                                <td><span class="status-badge status-${(conv.execution_status || 'active').toLowerCase()}">${conv.execution_status || 'active'}</span></td>
                                 <td>
-                                    <div class="btn-action-group">
-                                        <button class="btn-edit" onclick='viewConversation(${JSON.stringify(conv)})'>View</button>
+                                    <div class="action-buttons">
+                                        <button class="btn-view" onclick='viewConversation(${JSON.stringify(conv).replace(/'/g, "&#39;")})' title="View Details">
+                                            👁️
+                                        </button>
                                     </div>
                                 </td>
                             </tr>
@@ -124,6 +102,7 @@ function viewConversation(conv) {
             <div style="text-align: left; color: #ffffff;">
                 <p><strong>Phone:</strong> ${conv.prospect_num || '-'}</p>
                 <p><strong>Name:</strong> ${conv.prospect_name || '-'}</p>
+                <p><strong>Device:</strong> ${conv.id_device || '-'}</p>
                 <p><strong>Niche:</strong> ${conv.niche || '-'}</p>
                 <p><strong>Stage:</strong> ${conv.stage || 'Welcome Message'}</p>
                 <p><strong>Status:</strong> ${conv.execution_status || 'active'}</p>
@@ -134,7 +113,7 @@ function viewConversation(conv) {
                 </div>
             </div>
         `,
-        width: '600px',
+        width: '700px',
         background: '#141414',
         color: '#ffffff',
         confirmButtonColor: '#e50914',

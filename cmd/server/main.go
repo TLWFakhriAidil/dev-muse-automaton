@@ -136,6 +136,7 @@ func main() {
 
 	// Conversation management routes (requires authentication)
 	conversations := api.Group("/conversations")
+	conversations.Get("/all", conversationHandler.GetAllConversations)
 	conversations.Post("/", conversationHandler.CreateConversation)
 	conversations.Get("/:id", conversationHandler.GetConversation)
 	conversations.Put("/:id", conversationHandler.UpdateConversation)
