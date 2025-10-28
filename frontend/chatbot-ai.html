@@ -102,6 +102,10 @@
                                 <option value="">All Stages</option>
                             </select>
                         </div>
+                        <div class="filter-group">
+                            <label for="dateFilter">Date</label>
+                            <input type="date" id="dateFilter" class="filter-input" onchange="applyFilters()">
+                        </div>
                         <div class="filter-group filter-search">
                             <label for="searchInput">Search</label>
                             <input type="text" id="searchInput" class="filter-input" placeholder="Search by name, phone, or niche..." oninput="applyFilters()">

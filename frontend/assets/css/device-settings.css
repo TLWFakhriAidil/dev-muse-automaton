@@ -661,10 +661,6 @@
     box-shadow: 0 0 0 3px rgba(229, 9, 20, 0.1);
 }
 
-.filter-search {
-    grid-column: span 2;
-}
-
 .filter-actions {
     display: flex;
     gap: 1rem;

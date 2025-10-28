@@ -132,7 +132,7 @@ function displayConversations(conversations) {
                                 </td>
                                 <td><span class="badge ${replyBadgeClass}">${replyStatus}</span></td>
                                 <td>
-                                    <button class="btn-delete" onclick="deleteConversation('${conv.id}')" title="Delete">🗑️</button>
+                                    <button class="btn-delete" onclick="deleteConversation('${conv.prospect_num}')" title="Delete">🗑️</button>
                                 </td>
                             </tr>
                         `;
@@ -147,6 +147,7 @@ function displayConversations(conversations) {
 function applyFilters() {
     const deviceFilter = document.getElementById('deviceFilter').value;
     const stageFilter = document.getElementById('stageFilter').value;
+    const dateFilter = document.getElementById('dateFilter').value;
     const searchInput = document.getElementById('searchInput').value.toLowerCase();
 
     filteredConversations = allConversations.filter(conv => {
@@ -156,6 +157,16 @@ function applyFilters() {
         // Stage filter
         const convStage = conv.stage || 'Welcome Message';
         if (stageFilter && convStage !== stageFilter) return false;
+
+        // Date filter (Y-m-d format)
+        if (dateFilter && conv.created_at) {
+            const convDate = new Date(conv.created_at);
+            const year = convDate.getFullYear();
+            const month = String(convDate.getMonth() + 1).padStart(2, '0');
+            const day = String(convDate.getDate()).padStart(2, '0');
+            const convDateStr = `${year}-${month}-${day}`;
+            if (convDateStr !== dateFilter) return false;
+        }
 
         // Search filter (search in name, phone, niche)
         if (searchInput) {
@@ -176,6 +187,7 @@ function applyFilters() {
 function resetFilters() {
     document.getElementById('deviceFilter').value = '';
     document.getElementById('stageFilter').value = '';
+    document.getElementById('dateFilter').value = '';
     document.getElementById('searchInput').value = '';
     filteredConversations = [...allConversations];
     displayConversations(filteredConversations);
@@ -196,7 +208,7 @@ function exportToCSV() {
     }
 
     // CSV headers
-    let csv = 'No,ID Device,Date,Name,Phone Number,Niche,Stage,Reply Status\n';
+    let csv = 'No,ID Device,Date,Name,Phone Number,Niche,Stage,Conversation History,Reply Status\n';
 
     // CSV rows
     filteredConversations.forEach((conv, index) => {
@@ -212,7 +224,11 @@ function exportToCSV() {
 
         const replyStatus = conv.human === 1 ? 'Human' : 'AI';
 
-        csv += `${index + 1},"${conv.id_device || '-'}","${dateFormatted}","${conv.prospect_name || '-'}","${conv.prospect_num || '-'}","${conv.niche || '-'}","${conv.stage || 'Welcome Message'}","${replyStatus}"\n`;
+        // Clean conversation history for CSV (remove line breaks, escape quotes)
+        let convHistory = conv.conv_last || '';
+        convHistory = convHistory.replace(/"/g, '""').replace(/\n/g, ' | ');
+
+        csv += `${index + 1},"${conv.id_device || '-'}","${dateFormatted}","${conv.prospect_name || '-'}","${conv.prospect_num || '-'}","${conv.niche || '-'}","${conv.stage || 'Welcome Message'}","${convHistory}","${replyStatus}"\n`;
     });
 
     // Download CSV
@@ -269,7 +285,7 @@ function viewConversation(conv) {
 }
 
 // Delete conversation
-async function deleteConversation(conversationId) {
+async function deleteConversation(prospectNum) {
     const result = await Swal.fire({
         title: 'Are you sure?',
         text: "You won't be able to revert this!",
@@ -292,7 +308,7 @@ async function deleteConversation(conversationId) {
     }
 
     try {
-        const response = await fetch(`${API_BASE_URL}/conversations/${conversationId}`, {
+        const response = await fetch(`${API_BASE_URL}/conversations/${prospectNum}`, {
             method: 'DELETE',
             headers: {
                 'Authorization': `Bearer ${token}`
