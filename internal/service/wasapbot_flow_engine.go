@@ -493,12 +493,12 @@ func (s *WasapbotFlowEngine) executeStage(
 }
 
 // normalizeColumnName converts UI column names to database column names
-// Mappings: Nama->nama, Alamat->alamat, Pakej->pakej, No Fon->no_fon, Tarikh Gaji->tarikh_gaji
+// Mappings: Nama->prospect_name, Alamat->alamat, Pakej->pakej, No Fon->no_fon, Tarikh Gaji->tarikh_gaji
 // Also supports: cara_bayaran, peringkat_sekolah (already lowercase)
 func normalizeColumnName(columnName string) string {
 	// Mapping from UI names to database column names
 	columnMap := map[string]string{
-		"Nama":          "nama",
+		"Nama":          "prospect_name",
 		"Alamat":        "alamat",
 		"Pakej":         "pakej",
 		"No Fon":        "no_fon",

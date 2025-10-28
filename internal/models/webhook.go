@@ -55,7 +55,7 @@ type WasapBot struct {
 	Niche               *string `json:"niche,omitempty"`
 	PeringkatSekolah    *string `json:"peringkat_sekolah,omitempty"`
 	Alamat              *string `json:"alamat,omitempty"`
-	Nama                *string `json:"nama,omitempty"`
+	ProspectName        *string `json:"prospect_name,omitempty"`
 	Pakej               *string `json:"pakej,omitempty"`
 	NoFon               *string `json:"no_fon,omitempty"`
 	CaraBayaran         *string `json:"cara_bayaran,omitempty"`

@@ -161,7 +161,7 @@ func (s *FlowProcessorService) ProcessIncomingMessage(ctx context.Context, webho
 		if contact == nil {
 			// Create new contact
 			log.Printf("➕ Creating new wasapbot contact")
-			nama := extractedMsg.Name
+			prospectName := extractedMsg.Name
 			status := "Prospek"
 			executionStatus := "active"
 			flowIDStr := flow.ID
@@ -173,7 +173,7 @@ func (s *FlowProcessorService) ProcessIncomingMessage(ctx context.Context, webho
 				ProspectNum:     extractedMsg.PhoneNumber,
 				Niche:           &flow.Niche,
 				Stage:           nil, // NULL initially, only set when Stage node is found
-				Nama:            &nama,
+				ProspectName:    &prospectName,
 				Status:          &status,
 				FlowID:          &flowIDStr,
 				ExecutionStatus: &executionStatus,
