@@ -231,9 +231,9 @@ function exportToCSV() {
 
         const replyStatus = conv.human === 1 ? 'Human' : 'AI';
 
-        // Clean conversation history for CSV (remove line breaks, escape quotes)
+        // Clean conversation history for CSV (keep line breaks, escape quotes)
         let convHistory = conv.conv_last || '';
-        convHistory = convHistory.replace(/"/g, '""').replace(/\n/g, ' | ');
+        convHistory = convHistory.replace(/"/g, '""');
 
         csv += `${index + 1},"${conv.id_device || '-'}","${dateFormatted}","${conv.prospect_name || '-'}","${conv.prospect_num || '-'}","${conv.niche || '-'}","${conv.stage || 'Welcome Message'}","${convHistory}","${replyStatus}"\n`;
     });
