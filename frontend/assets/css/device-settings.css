@@ -148,6 +148,18 @@
     border: 1px solid rgba(34, 197, 94, 0.3);
 }
 
+.badge-ai {
+    background: rgba(59, 130, 246, 0.2);
+    color: #60a5fa;
+    border: 1px solid rgba(59, 130, 246, 0.3);
+}
+
+.badge-human {
+    background: rgba(251, 146, 60, 0.2);
+    color: #fb923c;
+    border: 1px solid rgba(251, 146, 60, 0.3);
+}
+
 /* Status Button */
 .btn-status {
     background: transparent;
@@ -560,6 +572,140 @@
     background: linear-gradient(135deg, #ff0a16 0%, var(--netflix-red) 100%);
     transform: translateY(-2px);
     box-shadow: 0 6px 25px rgba(229, 9, 20, 0.6);
+}
+
+/* View Button (for Conversation History) */
+.btn-view {
+    background: transparent;
+    border: 2px solid #60a5fa;
+    color: #60a5fa;
+    padding: 0.4rem 0.8rem;
+    border-radius: 6px;
+    font-size: 1.2rem;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.btn-view:hover {
+    background: #60a5fa;
+    color: var(--netflix-black);
+    transform: scale(1.1);
+}
+
+/* Delete Button */
+.btn-delete {
+    background: transparent;
+    border: 2px solid #ef4444;
+    color: #ef4444;
+    padding: 0.4rem 0.8rem;
+    border-radius: 6px;
+    font-size: 1.2rem;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.btn-delete:hover {
+    background: #ef4444;
+    color: var(--netflix-white);
+    transform: scale(1.1);
+}
+
+/* Filter Section */
+.filter-section {
+    margin-bottom: 2rem;
+}
+
+.filter-container {
+    background: rgba(20, 20, 20, 0.8);
+    border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    padding: 1.5rem;
+}
+
+.filter-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+    margin-bottom: 1rem;
+}
+
+.filter-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.filter-group label {
+    color: var(--netflix-gold);
+    font-weight: 600;
+    font-size: 0.9rem;
+}
+
+.filter-select,
+.filter-input {
+    padding: 0.7rem 1rem;
+    background: rgba(51, 51, 51, 0.7);
+    border: 2px solid rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    color: var(--netflix-white);
+    font-size: 0.95rem;
+    transition: all 0.3s ease;
+    font-family: 'Inter', sans-serif;
+}
+
+.filter-select:focus,
+.filter-input:focus {
+    outline: none;
+    border-color: var(--netflix-red);
+    background: rgba(51, 51, 51, 0.9);
+    box-shadow: 0 0 0 3px rgba(229, 9, 20, 0.1);
+}
+
+.filter-search {
+    grid-column: span 2;
+}
+
+.filter-actions {
+    display: flex;
+    gap: 1rem;
+    justify-content: flex-end;
+}
+
+.btn-filter-reset,
+.btn-export {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.7rem 1.5rem;
+    border-radius: 8px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-size: 0.9rem;
+}
+
+.btn-filter-reset {
+    background: transparent;
+    border: 2px solid var(--netflix-gray);
+    color: var(--netflix-white);
+}
+
+.btn-filter-reset:hover {
+    background: rgba(255, 255, 255, 0.05);
+    border-color: var(--netflix-white);
+}
+
+.btn-export {
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    color: var(--netflix-white);
+    border: none;
+    box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);
+}
+
+.btn-export:hover {
+    background: linear-gradient(135deg, #059669 0%, #10b981 100%);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 25px rgba(16, 185, 129, 0.5);
 }
 
 /* Responsive */

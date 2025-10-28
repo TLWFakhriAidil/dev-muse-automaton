@@ -84,18 +84,44 @@
                     <h1 class="page-title">Chatbot AI Conversations</h1>
                     <p class="page-subtitle">Monitor and manage your AI-powered chatbot interactions</p>
                 </div>
-                <button class="btn-refresh" onclick="loadConversations()">
-                    <span class="btn-icon">🔄</span>
-                    <span>Refresh</span>
-                </button>
+            </div>
+
+            <!-- Filter Section -->
+            <div class="filter-section">
+                <div class="filter-container">
+                    <div class="filter-row">
+                        <div class="filter-group">
+                            <label for="deviceFilter">Device</label>
+                            <select id="deviceFilter" class="filter-select" onchange="applyFilters()">
+                                <option value="">All Devices</option>
+                            </select>
+                        </div>
+                        <div class="filter-group">
+                            <label for="stageFilter">Stage</label>
+                            <select id="stageFilter" class="filter-select" onchange="applyFilters()">
+                                <option value="">All Stages</option>
+                            </select>
+                        </div>
+                        <div class="filter-group filter-search">
+                            <label for="searchInput">Search</label>
+                            <input type="text" id="searchInput" class="filter-input" placeholder="Search by name, phone, or niche..." oninput="applyFilters()">
+                        </div>
+                    </div>
+                    <div class="filter-actions">
+                        <button class="btn-filter-reset" onclick="resetFilters()">
+                            <span>🔄</span>
+                            <span>Reset</span>
+                        </button>
+                        <button class="btn-export" onclick="exportToCSV()">
+                            <span>📥</span>
+                            <span>Export CSV</span>
+                        </button>
+                    </div>
+                </div>
             </div>
 
             <!-- Conversations Table -->
             <div class="stage-section">
-                <div class="section-header">
-                    <h2 class="section-title">AI WhatsApp Conversations</h2>
-                    <p class="section-subtitle">All conversations from ai_whatsapp table</p>
-                </div>
                 <div id="conversationsList" class="table-container">
                     <div class="empty-state">
                         <div class="empty-state-icon">💬</div>
