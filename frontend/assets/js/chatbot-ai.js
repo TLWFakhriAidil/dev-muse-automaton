@@ -281,6 +281,22 @@ function viewConversation(conv) {
     Swal.fire({
         title: `Conversation History`,
         html: `
+            <style>
+                .conversation-scroll::-webkit-scrollbar {
+                    width: 8px;
+                }
+                .conversation-scroll::-webkit-scrollbar-track {
+                    background: rgba(255, 255, 255, 0.05);
+                    border-radius: 4px;
+                }
+                .conversation-scroll::-webkit-scrollbar-thumb {
+                    background: rgba(229, 9, 20, 0.3);
+                    border-radius: 4px;
+                }
+                .conversation-scroll::-webkit-scrollbar-thumb:hover {
+                    background: rgba(229, 9, 20, 0.5);
+                }
+            </style>
             <div style="text-align: left; color: #ffffff;">
                 <p><strong>Phone:</strong> ${conv.prospect_num || '-'}</p>
                 <p><strong>Name:</strong> ${conv.prospect_name || '-'}</p>
@@ -289,7 +305,7 @@ function viewConversation(conv) {
                 <p><strong>Stage:</strong> ${conv.stage || 'Welcome Message'}</p>
                 <hr style="border-color: #333;">
                 <p><strong>Conversation:</strong></p>
-                <div style="background: #1a1a1a; padding: 10px; border-radius: 5px; max-height: 300px; overflow-y: auto;">
+                <div class="conversation-scroll" style="background: #1a1a1a; padding: 10px; border-radius: 5px; max-height: 300px; overflow-y: auto;">
                     ${convHistory}
                 </div>
             </div>
