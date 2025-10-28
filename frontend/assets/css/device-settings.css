@@ -720,6 +720,72 @@
     padding: 0 0.5rem;
 }
 
+/* Custom Calendar Picker Styling - Netflix Theme */
+input[type="date"]::-webkit-calendar-picker-indicator {
+    filter: invert(1) brightness(1.2);
+    cursor: pointer;
+    opacity: 0.9;
+    transition: all 0.3s ease;
+}
+
+input[type="date"]::-webkit-calendar-picker-indicator:hover {
+    opacity: 1;
+    transform: scale(1.1);
+}
+
+/* Calendar Popup Styling (Webkit browsers) */
+::-webkit-datetime-edit {
+    padding: 0;
+    color: var(--netflix-white);
+}
+
+::-webkit-datetime-edit-fields-wrapper {
+    background: transparent;
+}
+
+::-webkit-datetime-edit-text {
+    color: rgba(255, 255, 255, 0.5);
+    padding: 0 0.2em;
+}
+
+::-webkit-datetime-edit-month-field,
+::-webkit-datetime-edit-day-field,
+::-webkit-datetime-edit-year-field {
+    padding: 0.2em 0.4em;
+    border-radius: 4px;
+    background: transparent;
+    color: var(--netflix-white);
+    transition: all 0.2s ease;
+}
+
+::-webkit-datetime-edit-month-field:focus,
+::-webkit-datetime-edit-day-field:focus,
+::-webkit-datetime-edit-year-field:focus {
+    background: rgba(229, 9, 20, 0.2);
+    color: var(--netflix-white);
+    outline: none;
+}
+
+/* Custom scrollbar for date pickers */
+input[type="date"]::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+input[type="date"]::-webkit-scrollbar-track {
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: 4px;
+}
+
+input[type="date"]::-webkit-scrollbar-thumb {
+    background: #e50914;
+    border-radius: 4px;
+}
+
+input[type="date"]::-webkit-scrollbar-thumb:hover {
+    background: #b00710;
+}
+
 .filter-actions {
     display: flex;
     gap: 1rem;

@@ -360,7 +360,24 @@ async function deleteConversation(prospectNum) {
     }
 }
 
+// Set default date filters
+function setDefaultDates() {
+    const today = new Date();
+    const year = today.getFullYear();
+    const month = String(today.getMonth() + 1).padStart(2, '0');
+    const day = String(today.getDate()).padStart(2, '0');
+
+    // Start date: first day of current month
+    const startDate = `${year}-${month}-01`;
+    document.getElementById('startDateFilter').value = startDate;
+
+    // End date: current date
+    const endDate = `${year}-${month}-${day}`;
+    document.getElementById('endDateFilter').value = endDate;
+}
+
 // Initialize on page load
 document.addEventListener('DOMContentLoaded', function() {
+    setDefaultDates();
     loadConversations();
 });
