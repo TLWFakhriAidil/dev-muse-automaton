@@ -10,17 +10,49 @@ async function loadConversations() {
     }
 
     try {
-        const response = await fetch(`${API_BASE_URL}/analytics/conversations`, {
+        // First, get all user devices
+        const devicesResponse = await fetch(`${API_BASE_URL}/devices`, {
             headers: {
                 'Authorization': `Bearer ${token}`
             }
         });
 
-        const data = await response.json();
+        const devicesData = await devicesResponse.json();
+
+        if (!devicesData.success || !devicesData.devices || devicesData.devices.length === 0) {
+            document.getElementById('conversationsList').innerHTML = `
+                <div class="empty-state">
+                    <div class="empty-state-icon">📱</div>
+                    <h2 class="empty-state-title">No Devices Found</h2>
+                    <p class="empty-state-text">Please add a device first to start Chatbot AI conversations</p>
+                </div>
+            `;
+            return;
+        }
+
+        // Get conversations for all devices
+        let allConversations = [];
+        for (const device of devicesData.devices) {
+            const deviceId = device.id_device || device.device_id;
+            try {
+                const convResponse = await fetch(`${API_BASE_URL}/conversations/device/${deviceId}`, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+                const convData = await convResponse.json();
+
+                if (convData.success && convData.conversations) {
+                    allConversations = allConversations.concat(convData.conversations);
+                }
+            } catch (err) {
+                console.error(`Error loading conversations for device ${deviceId}:`, err);
+            }
+        }
 
         const conversationsList = document.getElementById('conversationsList');
 
-        if (data.success && data.conversations && data.conversations.length > 0) {
+        if (allConversations.length > 0) {
             conversationsList.innerHTML = `
                 <table class="stage-table">
                     <thead>
@@ -37,7 +69,7 @@ async function loadConversations() {
                         </tr>
                     </thead>
                     <tbody>
-                        ${data.conversations.map(conv => `
+                        ${allConversations.map(conv => `
                             <tr>
                                 <td><strong>${conv.id_prospect || '-'}</strong></td>
                                 <td>${conv.id_device || '-'}</td>
