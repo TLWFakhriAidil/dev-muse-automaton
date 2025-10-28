@@ -47,6 +47,7 @@ func main() {
 	deviceService := service.NewDeviceService(deviceRepo)
 	flowService := service.NewFlowService(flowRepo, deviceRepo)
 	conversationService := service.NewConversationService(conversationRepo, deviceRepo)
+	wasapbotService := service.NewWasapbotService(wasapbotRepo, deviceRepo)
 	aiService := service.NewAIService(deviceRepo)
 	whatsappService := service.NewWhatsAppService(deviceRepo)
 	webhookService := service.NewWebhookService(deviceRepo, flowRepo)
@@ -60,6 +61,7 @@ func main() {
 	deviceHandler := handler.NewDeviceHandler(deviceService, authService)
 	flowHandler := handler.NewFlowHandler(flowService, authService)
 	conversationHandler := handler.NewConversationHandler(conversationService, authService)
+	wasapbotHandler := handler.NewWasapbotHandler(wasapbotService, authService)
 	aiHandler := handler.NewAIHandler(aiService, authService)
 	webhookHandler := handler.NewWebhookHandler(flowExecutionService, deviceService, whatsappService, flowProcessorService)
 	analyticsHandler := handler.NewAnalyticsHandler(analyticsService, authService)
@@ -145,6 +147,10 @@ func main() {
 	conversations.Get("/device/:deviceId", conversationHandler.GetConversationsByDevice)
 	conversations.Get("/device/:deviceId/active", conversationHandler.GetActiveConversations)
 	conversations.Get("/device/:deviceId/stats", conversationHandler.GetConversationStats)
+
+	// WhatsApp Bot conversation routes (requires authentication)
+	wasapbot := api.Group("/wasapbot")
+	wasapbot.Get("/all", wasapbotHandler.GetAllWasapbot)
 
 	// AI integration routes (requires authentication)
 	ai := api.Group("/ai")

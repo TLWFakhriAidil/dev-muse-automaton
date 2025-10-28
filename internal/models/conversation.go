@@ -87,6 +87,14 @@ type ConversationResponse struct {
 	Conversations []AIWhatsapp  `json:"conversations,omitempty"`
 }
 
+// WasapbotResponse is the response for wasapbot operations
+type WasapbotResponse struct {
+	Success       bool        `json:"success"`
+	Message       string      `json:"message"`
+	Conversation  *Wasapbot   `json:"conversation,omitempty"`
+	Conversations []Wasapbot  `json:"conversations,omitempty"`
+}
+
 // ConversationStats represents conversation statistics
 type ConversationStats struct {
 	TotalConversations     int            `json:"total_conversations"`

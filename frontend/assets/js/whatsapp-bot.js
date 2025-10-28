@@ -15,9 +15,7 @@ async function loadConversations() {
 
     try {
         // Call endpoint to get all wasapbot conversations
-        // TODO: Create dedicated /api/wasapbot/all endpoint
-        // For now, using conversations/all (will need backend changes)
-        const response = await fetch(`${API_BASE_URL}/conversations/all`, {
+        const response = await fetch(`${API_BASE_URL}/wasapbot/all`, {
             headers: {
                 'Authorization': `Bearer ${token}`
             }
