@@ -147,7 +147,8 @@ function displayConversations(conversations) {
 function applyFilters() {
     const deviceFilter = document.getElementById('deviceFilter').value;
     const stageFilter = document.getElementById('stageFilter').value;
-    const dateFilter = document.getElementById('dateFilter').value;
+    const startDateFilter = document.getElementById('startDateFilter').value;
+    const endDateFilter = document.getElementById('endDateFilter').value;
     const searchInput = document.getElementById('searchInput').value.toLowerCase();
 
     filteredConversations = allConversations.filter(conv => {
@@ -158,14 +159,19 @@ function applyFilters() {
         const convStage = conv.stage || 'Welcome Message';
         if (stageFilter && convStage !== stageFilter) return false;
 
-        // Date filter (Y-m-d format)
-        if (dateFilter && conv.created_at) {
+        // Date range filter (Y-m-d format)
+        if ((startDateFilter || endDateFilter) && conv.created_at) {
             const convDate = new Date(conv.created_at);
             const year = convDate.getFullYear();
             const month = String(convDate.getMonth() + 1).padStart(2, '0');
             const day = String(convDate.getDate()).padStart(2, '0');
             const convDateStr = `${year}-${month}-${day}`;
-            if (convDateStr !== dateFilter) return false;
+
+            // Check start date
+            if (startDateFilter && convDateStr < startDateFilter) return false;
+
+            // Check end date
+            if (endDateFilter && convDateStr > endDateFilter) return false;
         }
 
         // Search filter (search in name, phone, niche)
@@ -187,7 +193,8 @@ function applyFilters() {
 function resetFilters() {
     document.getElementById('deviceFilter').value = '';
     document.getElementById('stageFilter').value = '';
-    document.getElementById('dateFilter').value = '';
+    document.getElementById('startDateFilter').value = '';
+    document.getElementById('endDateFilter').value = '';
     document.getElementById('searchInput').value = '';
     filteredConversations = [...allConversations];
     displayConversations(filteredConversations);
