@@ -30,6 +30,9 @@ async function loadConversations() {
             // Populate filter dropdowns
             populateFilters();
 
+            // Calculate and display analytics
+            calculateAnalytics(allConversations);
+
             // Display table
             displayConversations(filteredConversations);
         } else {
@@ -358,6 +361,178 @@ async function deleteConversation(prospectNum) {
             confirmButtonColor: '#e50914'
         });
     }
+}
+
+// Calculate and display analytics
+let dailyTrendsChart = null;
+
+function calculateAnalytics(conversations) {
+    if (!conversations || conversations.length === 0) {
+        return;
+    }
+
+    // Total conversations
+    const total = conversations.length;
+    document.getElementById('totalConversations').textContent = total;
+
+    // AI vs Human conversations
+    const aiConvs = conversations.filter(c => !c.human || c.human === 0).length;
+    const humanConvs = conversations.filter(c => c.human === 1).length;
+
+    document.getElementById('aiConversations').textContent = aiConvs;
+    document.getElementById('humanConversations').textContent = humanConvs;
+
+    const aiPercent = ((aiConvs / total) * 100).toFixed(1);
+    const humanPercent = ((humanConvs / total) * 100).toFixed(1);
+
+    document.getElementById('aiChange').textContent = `${aiPercent}% of total`;
+    document.getElementById('humanChange').textContent = `${humanPercent}% of total`;
+
+    // Active devices
+    const uniqueDevices = [...new Set(conversations.map(c => c.id_device))].length;
+    document.getElementById('activeDevices').textContent = uniqueDevices;
+
+    // Conversations with stages
+    const withStages = conversations.filter(c => c.stage && c.stage !== '').length;
+    const stagesPercent = ((withStages / total) * 100).toFixed(1);
+
+    document.getElementById('conversationsWithStages').textContent = withStages;
+    document.getElementById('stagesPercentage').textContent = `${stagesPercent}% of total`;
+
+    // Unique niches
+    const uniqueNiches = [...new Set(conversations.filter(c => c.niche).map(c => c.niche))].length;
+    document.getElementById('uniqueNiches').textContent = uniqueNiches;
+
+    // Response rate
+    const responseRate = ((aiConvs / total) * 100).toFixed(1);
+    document.getElementById('responseRate').textContent = `${responseRate}%`;
+    document.getElementById('responseInfo').textContent = `${humanConvs} Human takeovers`;
+
+    // Render charts
+    renderDailyTrendsChart(conversations);
+    renderStageDistribution(conversations);
+}
+
+// Render daily trends chart
+function renderDailyTrendsChart(conversations) {
+    const ctx = document.getElementById('dailyTrendsChart');
+    if (!ctx) return;
+
+    // Group conversations by date
+    const dateGroups = {};
+    conversations.forEach(conv => {
+        if (conv.created_at) {
+            const date = new Date(conv.created_at);
+            const dateStr = `${date.getMonth() + 1}/${date.getDate()}`;
+            dateGroups[dateStr] = (dateGroups[dateStr] || 0) + 1;
+        }
+    });
+
+    // Get last 7 days
+    const labels = [];
+    const data = [];
+    const today = new Date();
+
+    for (let i = 6; i >= 0; i--) {
+        const d = new Date(today);
+        d.setDate(d.getDate() - i);
+        const dateStr = `${d.getMonth() + 1}/${d.getDate()}`;
+        labels.push(dateStr);
+        data.push(dateGroups[dateStr] || 0);
+    }
+
+    // Destroy previous chart if exists
+    if (dailyTrendsChart) {
+        dailyTrendsChart.destroy();
+    }
+
+    // Create new chart
+    dailyTrendsChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'Conversations',
+                data: data,
+                borderColor: '#e50914',
+                backgroundColor: 'rgba(229, 9, 20, 0.1)',
+                borderWidth: 3,
+                fill: true,
+                tension: 0.4
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    display: false
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        color: '#ffffff',
+                        stepSize: 1
+                    },
+                    grid: {
+                        color: 'rgba(255, 255, 255, 0.1)'
+                    }
+                },
+                x: {
+                    ticks: {
+                        color: '#ffffff'
+                    },
+                    grid: {
+                        color: 'rgba(255, 255, 255, 0.1)'
+                    }
+                }
+            }
+        }
+    });
+}
+
+// Render stage distribution
+function renderStageDistribution(conversations) {
+    const stageDistDiv = document.getElementById('stageDistribution');
+    if (!stageDistDiv) return;
+
+    // Count conversations by stage
+    const stageCounts = {};
+    conversations.forEach(conv => {
+        const stage = conv.stage || 'Welcome Message';
+        stageCounts[stage] = (stageCounts[stage] || 0) + 1;
+    });
+
+    // Sort by count
+    const sortedStages = Object.entries(stageCounts)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 5); // Top 5 stages
+
+    const total = conversations.length;
+
+    // Render as horizontal bars
+    stageDistDiv.innerHTML = sortedStages.map(([stage, count]) => {
+        const percentage = ((count / total) * 100).toFixed(1);
+        return `
+            <div class="stage-bar-item">
+                <div class="stage-bar-label">
+                    <span class="stage-name">${stage}</span>
+                    <span class="stage-count">${count} conversations</span>
+                </div>
+                <div class="stage-bar-wrapper">
+                    <div class="stage-bar-fill" style="width: ${percentage}%"></div>
+                    <span class="stage-percentage">${percentage}%</span>
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+// Refresh stage chart
+function refreshStageChart() {
+    renderStageDistribution(allConversations);
 }
 
 // Set default date filters
