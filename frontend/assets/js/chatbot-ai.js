@@ -189,6 +189,10 @@ function applyFilters() {
         return true;
     });
 
+    // Update analytics based on filtered data
+    calculateAnalytics(filteredConversations);
+
+    // Display filtered conversations
     displayConversations(filteredConversations);
 }
 
@@ -196,10 +200,14 @@ function applyFilters() {
 function resetFilters() {
     document.getElementById('deviceFilter').value = '';
     document.getElementById('stageFilter').value = '';
-    document.getElementById('startDateFilter').value = '';
-    document.getElementById('endDateFilter').value = '';
+    setDefaultDates(); // Reset to default dates
     document.getElementById('searchInput').value = '';
     filteredConversations = [...allConversations];
+
+    // Update analytics based on all conversations
+    calculateAnalytics(allConversations);
+
+    // Display all conversations
     displayConversations(filteredConversations);
 }
 
@@ -391,22 +399,6 @@ function calculateAnalytics(conversations) {
     // Active devices
     const uniqueDevices = [...new Set(conversations.map(c => c.id_device))].length;
     document.getElementById('activeDevices').textContent = uniqueDevices;
-
-    // Conversations with stages
-    const withStages = conversations.filter(c => c.stage && c.stage !== '').length;
-    const stagesPercent = ((withStages / total) * 100).toFixed(1);
-
-    document.getElementById('conversationsWithStages').textContent = withStages;
-    document.getElementById('stagesPercentage').textContent = `${stagesPercent}% of total`;
-
-    // Unique niches
-    const uniqueNiches = [...new Set(conversations.filter(c => c.niche).map(c => c.niche))].length;
-    document.getElementById('uniqueNiches').textContent = uniqueNiches;
-
-    // Response rate
-    const responseRate = ((aiConvs / total) * 100).toFixed(1);
-    document.getElementById('responseRate').textContent = `${responseRate}%`;
-    document.getElementById('responseInfo').textContent = `${humanConvs} Human takeovers`;
 
     // Render charts
     renderDailyTrendsChart(conversations);

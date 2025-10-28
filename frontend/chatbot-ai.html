@@ -87,6 +87,48 @@
                 </div>
             </div>
 
+            <!-- Filter Section -->
+            <div class="filter-section">
+                <div class="filter-container">
+                    <div class="filter-row">
+                        <div class="filter-group">
+                            <label for="deviceFilter">Device</label>
+                            <select id="deviceFilter" class="filter-select" onchange="applyFilters()">
+                                <option value="">All Devices</option>
+                            </select>
+                        </div>
+                        <div class="filter-group">
+                            <label for="stageFilter">Stage</label>
+                            <select id="stageFilter" class="filter-select" onchange="applyFilters()">
+                                <option value="">All Stages</option>
+                            </select>
+                        </div>
+                        <div class="filter-group">
+                            <label for="startDateFilter">Start Date</label>
+                            <input type="date" id="startDateFilter" class="filter-date-input" onchange="applyFilters()">
+                        </div>
+                        <div class="filter-group">
+                            <label for="endDateFilter">End Date</label>
+                            <input type="date" id="endDateFilter" class="filter-date-input" onchange="applyFilters()">
+                        </div>
+                        <div class="filter-group filter-search">
+                            <label for="searchInput">Search</label>
+                            <input type="text" id="searchInput" class="filter-input" placeholder="Search by name, phone, or niche..." oninput="applyFilters()">
+                        </div>
+                    </div>
+                    <div class="filter-actions">
+                        <button class="btn-filter-reset" onclick="resetFilters()">
+                            <span>🔄</span>
+                            <span>Reset</span>
+                        </button>
+                        <button class="btn-export" onclick="exportToCSV()">
+                            <span>📥</span>
+                            <span>Export CSV</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
             <!-- Analytics Cards -->
             <div class="analytics-grid">
                 <div class="analytics-card">
@@ -156,78 +198,6 @@
                     </div>
                     <div class="chart-content">
                         <div id="stageDistribution" class="stage-bars"></div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Bottom Analytics Cards -->
-            <div class="analytics-grid-bottom">
-                <div class="analytics-card-small">
-                    <div class="card-icon-small">📝</div>
-                    <div class="card-content-small">
-                        <div class="card-value-small" id="conversationsWithStages">0</div>
-                        <div class="card-label-small">Conversations with Stages</div>
-                        <div class="card-percentage" id="stagesPercentage">0% of total</div>
-                    </div>
-                </div>
-
-                <div class="analytics-card-small">
-                    <div class="card-icon-small">🏷️</div>
-                    <div class="card-content-small">
-                        <div class="card-value-small" id="uniqueNiches">0</div>
-                        <div class="card-label-small">Unique Niches</div>
-                        <div class="card-percentage" id="nichesInfo">Different conversation topics</div>
-                    </div>
-                </div>
-
-                <div class="analytics-card-small">
-                    <div class="card-icon-small">📊</div>
-                    <div class="card-content-small">
-                        <div class="card-value-small" id="responseRate">0.0%</div>
-                        <div class="card-label-small">Response Rate</div>
-                        <div class="card-percentage" id="responseInfo">3 Human takeovers</div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Filter Section -->
-            <div class="filter-section">
-                <div class="filter-container">
-                    <div class="filter-row">
-                        <div class="filter-group">
-                            <label for="deviceFilter">Device</label>
-                            <select id="deviceFilter" class="filter-select" onchange="applyFilters()">
-                                <option value="">All Devices</option>
-                            </select>
-                        </div>
-                        <div class="filter-group">
-                            <label for="stageFilter">Stage</label>
-                            <select id="stageFilter" class="filter-select" onchange="applyFilters()">
-                                <option value="">All Stages</option>
-                            </select>
-                        </div>
-                        <div class="filter-group">
-                            <label for="startDateFilter">Start Date</label>
-                            <input type="date" id="startDateFilter" class="filter-date-input" onchange="applyFilters()">
-                        </div>
-                        <div class="filter-group">
-                            <label for="endDateFilter">End Date</label>
-                            <input type="date" id="endDateFilter" class="filter-date-input" onchange="applyFilters()">
-                        </div>
-                        <div class="filter-group filter-search">
-                            <label for="searchInput">Search</label>
-                            <input type="text" id="searchInput" class="filter-input" placeholder="Search by name, phone, or niche..." oninput="applyFilters()">
-                        </div>
-                    </div>
-                    <div class="filter-actions">
-                        <button class="btn-filter-reset" onclick="resetFilters()">
-                            <span>🔄</span>
-                            <span>Reset</span>
-                        </button>
-                        <button class="btn-export" onclick="exportToCSV()">
-                            <span>📥</span>
-                            <span>Export CSV</span>
-                        </button>
                     </div>
                 </div>
             </div>
