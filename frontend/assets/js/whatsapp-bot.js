@@ -254,7 +254,7 @@ function exportToCSV() {
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `chatbot-ai-conversations-${new Date().getTime()}.csv`;
+    a.download = `wasapbot-conversations-${new Date().getTime()}.csv`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
