@@ -23,49 +23,47 @@ async function loadConversations() {
 
         if (data.success && data.conversations && data.conversations.length > 0) {
             conversationsList.innerHTML = `
-                <table class="device-table">
-                    <thead>
-                        <tr>
-                            <th>No</th>
-                            <th>Created At</th>
-                            <th>Device</th>
-                            <th>Phone Number</th>
-                            <th>Name</th>
-                            <th>Niche</th>
-                            <th>Stage</th>
-                            <th>Status</th>
-                            <th>Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        ${data.conversations.map((conv, index) => `
+                <div class="table-container">
+                    <table class="devices-table">
+                        <thead>
                             <tr>
-                                <td><strong>${index + 1}</strong></td>
-                                <td>${conv.created_at ? new Date(conv.created_at).toLocaleString('en-US', {
-                                    month: '2-digit',
-                                    day: '2-digit',
-                                    year: 'numeric',
-                                    hour: '2-digit',
-                                    minute: '2-digit',
-                                    hour12: true
-                                }) : '-'}</td>
-                                <td>${conv.id_device || '-'}</td>
-                                <td><strong>${conv.prospect_num || '-'}</strong></td>
-                                <td>${conv.prospect_name || '-'}</td>
-                                <td><span class="niche-badge">${conv.niche || '-'}</span></td>
-                                <td><span class="stage-badge">${conv.stage || 'Welcome Message'}</span></td>
-                                <td><span class="status-badge status-${(conv.execution_status || 'active').toLowerCase()}">${conv.execution_status || 'active'}</span></td>
-                                <td>
-                                    <div class="action-buttons">
-                                        <button class="btn-view" onclick='viewConversation(${JSON.stringify(conv).replace(/'/g, "&#39;")})' title="View Details">
-                                            👁️
-                                        </button>
-                                    </div>
-                                </td>
+                                <th>No</th>
+                                <th>Created At</th>
+                                <th>Device</th>
+                                <th>Phone Number</th>
+                                <th>Name</th>
+                                <th>Niche</th>
+                                <th>Stage</th>
+                                <th>Status</th>
+                                <th>Action</th>
                             </tr>
-                        `).join('')}
-                    </tbody>
-                </table>
+                        </thead>
+                        <tbody>
+                            ${data.conversations.map((conv, index) => `
+                                <tr>
+                                    <td><strong>${index + 1}</strong></td>
+                                    <td>${conv.created_at ? new Date(conv.created_at).toLocaleString('en-US', {
+                                        month: '2-digit',
+                                        day: '2-digit',
+                                        year: 'numeric',
+                                        hour: '2-digit',
+                                        minute: '2-digit',
+                                        hour12: true
+                                    }) : '-'}</td>
+                                    <td>${conv.id_device || '-'}</td>
+                                    <td><strong>${conv.prospect_num || '-'}</strong></td>
+                                    <td>${conv.prospect_name || '-'}</td>
+                                    <td><span class="badge badge-niche">${conv.niche || '-'}</span></td>
+                                    <td><span class="badge badge-stage">${conv.stage || 'Welcome Message'}</span></td>
+                                    <td><span class="badge ${(conv.execution_status || 'active').toLowerCase() === 'active' ? 'status-connected' : 'status-disconnected'}">${conv.execution_status || 'active'}</span></td>
+                                    <td>
+                                        <button class="btn-action" onclick='viewConversation(${JSON.stringify(conv).replace(/'/g, "&#39;")})'>View</button>
+                                    </td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                </div>
             `;
         } else {
             conversationsList.innerHTML = `
