@@ -549,8 +549,58 @@ function editDevice(device) {
     openDeviceModal();
 }
 
+// Load user info for sidebar
+async function loadUserInfo() {
+    const token = localStorage.getItem('auth_token');
+    if (!token) {
+        window.location.href = '/';
+        return;
+    }
+
+    try {
+        const response = await fetch(`${API_BASE_URL}/auth/profile`, {
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        });
+
+        if (!response.ok) {
+            // Token is invalid, redirect to login
+            localStorage.removeItem('auth_token');
+            window.location.href = '/';
+            return;
+        }
+
+        const data = await response.json();
+        if (data.user && data.user.email) {
+            document.getElementById('userEmail').textContent = data.user.email;
+        }
+    } catch (error) {
+        console.error('Error loading user info:', error);
+        // On error, redirect to login
+        localStorage.removeItem('auth_token');
+        window.location.href = '/';
+    }
+}
+
+// Logout function
+function logout() {
+    localStorage.removeItem('auth_token');
+    localStorage.removeItem('user_id');
+    localStorage.removeItem('user_email');
+    window.location.href = '/';
+}
+
 // Initialize on page load
 document.addEventListener('DOMContentLoaded', function() {
+    // Check authentication and load user info first
+    const token = localStorage.getItem('auth_token');
+    if (!token) {
+        window.location.href = '/';
+        return;
+    }
+
+    loadUserInfo();
     loadDevices();
 
     // Add input restriction to phone number field
