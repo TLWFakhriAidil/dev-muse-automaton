@@ -530,20 +530,6 @@ function renderSourceComparisonChart() {
     });
 }
 
-// Show coming soon modal
-function showComingSoon(event) {
-    event.preventDefault();
-    Swal.fire({
-        title: 'Coming Soon!',
-        text: 'This feature is under development. Stay tuned!',
-        icon: 'info',
-        background: '#141414',
-        color: '#ffffff',
-        confirmButtonColor: '#e50914',
-        confirmButtonText: 'OK'
-    });
-}
-
 // Logout function
 function logout() {
     localStorage.removeItem('auth_token');
