@@ -41,6 +41,7 @@ func main() {
 	wasapbotRepo := repository.NewWasapbotRepository(supabase)
 	analyticsRepo := repository.NewAnalyticsRepository(supabase)
 	stageRepo := repository.NewStageRepository(supabase)
+	orderRepo := repository.NewOrderRepository(supabase)
 
 	// Initialize services
 	authService := service.NewAuthService(userRepo, cfg.JWTSecret)
@@ -55,6 +56,7 @@ func main() {
 	flowProcessorService := service.NewFlowProcessorService(webhookService, whatsappService, flowRepo, deviceRepo, conversationRepo, wasapbotRepo, stageRepo)
 	analyticsService := service.NewAnalyticsService(analyticsRepo, deviceRepo)
 	stageService := service.NewStageService(stageRepo)
+	orderService := service.NewOrderService(orderRepo, userRepo, cfg.BillplzAPIKey, cfg.BillplzCollectionID, cfg.BillplzXSignatureKey, cfg.ServerURL)
 
 	// Initialize handlers
 	authHandler := handler.NewAuthHandler(authService)
@@ -67,6 +69,7 @@ func main() {
 	webhookHandler := handler.NewWebhookHandler(flowExecutionService, deviceService, whatsappService, flowProcessorService)
 	analyticsHandler := handler.NewAnalyticsHandler(analyticsService, authService)
 	stageHandler := handler.NewStageHandler(stageService)
+	orderHandler := handler.NewOrderHandler(orderService, authService)
 	log.Printf("✅ Authentication system initialized")
 	log.Printf("✅ Device management system initialized")
 	log.Printf("✅ Flow builder system initialized")
@@ -76,6 +79,7 @@ func main() {
 	log.Printf("✅ Flow execution engine initialized")
 	log.Printf("✅ Analytics & reporting system initialized")
 	log.Printf("✅ Stage value management system initialized")
+	log.Printf("✅ Billing & payment system initialized (Billplz)")
 
 	// Create Fiber app
 	app := fiber.New(fiber.Config{
@@ -186,6 +190,14 @@ func main() {
 	stages.Get("/:id", stageHandler.GetStageValue)
 	stages.Put("/:id", stageHandler.UpdateStageValue)
 	stages.Delete("/:id", stageHandler.DeleteStageValue)
+
+	// Billing & payment routes
+	billing := api.Group("/billing")
+	billing.Post("/orders", orderHandler.CreateOrder)              // Create new order (requires authentication)
+	billing.Get("/orders", orderHandler.GetUserOrders)             // Get user's orders (requires authentication)
+	billing.Get("/orders/:id", orderHandler.GetOrderByID)          // Get specific order (requires authentication)
+	billing.Post("/callback", orderHandler.BillplzCallback)         // Billplz callback (public)
+	billing.Get("/orders/all", orderHandler.GetAllOrders)          // Get all orders (admin only)
 
 	// Status endpoint with database check
 	api.Get("/status", func(c *fiber.Ctx) error {

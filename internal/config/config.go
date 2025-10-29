@@ -8,6 +8,10 @@ type Config struct {
 	SupabaseAnonKey        string
 	SupabaseServiceRoleKey string
 	JWTSecret              string
+	BillplzAPIKey          string
+	BillplzCollectionID    string
+	BillplzXSignatureKey   string
+	ServerURL              string
 }
 
 func Load() *Config {
@@ -22,6 +26,10 @@ func Load() *Config {
 		SupabaseAnonKey:        getEnv("SUPABASE_ANON_KEY", "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJqbmp1Y3dwd2R6Z3NucW1wbWZmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjA0OTk1MzksImV4cCI6MjA3NjA3NTUzOX0.vw1rOUqYWFkPNDwTdEgIfsCO9pyvTsFKaXHq3RcRTNU"),
 		SupabaseServiceRoleKey: os.Getenv("SUPABASE_SERVICE_ROLE_KEY"),
 		JWTSecret:              getEnv("JWT_SECRET", "chatbot-automation-secret-key-change-in-production"),
+		BillplzAPIKey:          os.Getenv("BILLPLZ_API_KEY"),
+		BillplzCollectionID:    os.Getenv("BILLPLZ_COLLECTION_ID"),
+		BillplzXSignatureKey:   os.Getenv("BILLPLZ_X_SIGNATURE_KEY"),
+		ServerURL:              getEnv("SERVER_URL", "http://localhost:8080"),
 	}
 }
 
