@@ -67,6 +67,9 @@ async function loadFlowForDevice() {
     const deviceId = document.getElementById('deviceSelect').value;
 
     if (!deviceId) {
+        // Re-enable fields when no device selected
+        document.getElementById('deviceSelect').disabled = false;
+        document.getElementById('flowNameSelect').disabled = false;
         clearCanvas();
         return;
     }
@@ -84,18 +87,25 @@ async function loadFlowForDevice() {
         const data = await response.json();
 
         if (data.success && data.flow) {
-            // Load existing flow
+            // Load existing flow - DISABLE device and type fields for editing
             document.getElementById('flowNameSelect').value = data.flow.flow_name || '';
             document.getElementById('nicheInput').value = data.flow.niche || '';
+
+            // Disable device and flow type selects (read-only for editing)
+            document.getElementById('deviceSelect').disabled = true;
+            document.getElementById('flowNameSelect').disabled = true;
 
             // Load nodes (if stored as JSON in backend)
             if (data.flow.nodes_data) {
                 loadFlowFromData(JSON.parse(data.flow.nodes_data));
             }
         } else {
-            // No existing flow, clear canvas
+            // No existing flow - ENABLE fields for creating new flow
             document.getElementById('flowNameSelect').value = '';
             document.getElementById('nicheInput').value = '';
+
+            // Enable flow type select for new flow creation
+            document.getElementById('flowNameSelect').disabled = false;
         }
     } catch (error) {
         console.error('Load flow error:', error);
@@ -1586,6 +1596,10 @@ async function loadFlowForEdit(flowId) {
             document.getElementById('deviceSelect').value = flow.id_device;
             document.getElementById('flowNameSelect').value = flow.name;
             document.getElementById('nicheInput').value = flow.niche || '';
+
+            // Disable device and flow type selects (read-only for editing)
+            document.getElementById('deviceSelect').disabled = true;
+            document.getElementById('flowNameSelect').disabled = true;
 
             // Load nodes and connections
             if (flow.nodes && flow.nodes.nodes) {
