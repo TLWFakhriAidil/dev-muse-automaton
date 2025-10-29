@@ -4,17 +4,17 @@ import "time"
 
 // Order represents a billing order in the system
 type Order struct {
-	ID           int       `json:"id" db:"id"`
-	UserID       *string   `json:"user_id" db:"user_id"`
-	CollectionID *string   `json:"collection_id" db:"collection_id"`
-	BillID       *string   `json:"bill_id" db:"bill_id"`
+	ID           int       `json:"id,omitempty" db:"id"` // omitempty allows DB to auto-increment
+	UserID       *string   `json:"user_id,omitempty" db:"user_id"`
+	CollectionID *string   `json:"collection_id,omitempty" db:"collection_id"`
+	BillID       *string   `json:"bill_id,omitempty" db:"bill_id"`
 	Product      string    `json:"product" db:"product"`
 	Method       string    `json:"method" db:"method"` // 'billplz' or 'cod'
 	Amount       float64   `json:"amount" db:"amount"` // Amount in RM
 	Status       string    `json:"status" db:"status"` // 'Pending', 'Processing', 'Success', 'Failed'
-	URL          *string   `json:"url" db:"url"`       // Billplz payment URL
-	CreatedAt    time.Time `json:"created_at" db:"created_at"`
-	UpdatedAt    time.Time `json:"updated_at" db:"updated_at"`
+	URL          *string   `json:"url,omitempty" db:"url"` // Billplz payment URL
+	CreatedAt    time.Time `json:"created_at,omitempty" db:"created_at"`
+	UpdatedAt    time.Time `json:"updated_at,omitempty" db:"updated_at"`
 }
 
 // CreateOrderRequest is the request body for creating an order
