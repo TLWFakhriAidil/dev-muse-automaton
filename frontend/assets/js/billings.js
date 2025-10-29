@@ -79,6 +79,13 @@ async function buyPackage() {
 
         const result = await response.json();
 
+        // Log full response for debugging
+        console.log('Order creation response:', result);
+
+        if (!response.ok) {
+            throw new Error(result.message || result.error || `Server error: ${response.status}`);
+        }
+
         if (result.success && result.url) {
             // Close loading dialog
             Swal.close();
@@ -99,17 +106,20 @@ async function buyPackage() {
                 loadOrders();
             });
         } else {
-            throw new Error(result.message || 'Failed to create order');
+            throw new Error(result.message || result.error || 'Failed to create order');
         }
     } catch (error) {
         console.error('Error creating order:', error);
+        console.error('Full error details:', error);
+
         Swal.fire({
-            title: 'Error',
+            title: 'Error Creating Order',
             text: error.message || 'Failed to create order. Please try again.',
             icon: 'error',
             background: '#141414',
             color: '#ffffff',
-            confirmButtonColor: '#e50914'
+            confirmButtonColor: '#e50914',
+            footer: '<span style="font-size: 0.85rem; color: #999;">Check console for more details</span>'
         });
     }
 }
