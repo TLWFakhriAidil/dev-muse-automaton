@@ -22,10 +22,35 @@ func NewOrderHandler(orderService *service.OrderService, authService *service.Au
 	}
 }
 
+// getUserIDFromToken extracts user ID from JWT token
+func (h *OrderHandler) getUserIDFromToken(c *fiber.Ctx) (string, error) {
+	authHeader := c.Get("Authorization")
+	if authHeader == "" {
+		return "", fiber.NewError(fiber.StatusUnauthorized, "Authorization header required")
+	}
+
+	// Extract token
+	token := authHeader
+	if len(authHeader) > 7 && authHeader[:7] == "Bearer " {
+		token = authHeader[7:]
+	}
+
+	// Validate token
+	claims, err := h.authService.ValidateToken(token)
+	if err != nil {
+		return "", fiber.NewError(fiber.StatusUnauthorized, "Invalid or expired token")
+	}
+
+	return claims.UserID, nil
+}
+
 // CreateOrder handles order creation
 func (h *OrderHandler) CreateOrder(c *fiber.Ctx) error {
-	// Get user ID from context (set by auth middleware)
-	userID := c.Locals("user_id").(string)
+	// Get user ID from token
+	userID, err := h.getUserIDFromToken(c)
+	if err != nil {
+		return err
+	}
 
 	var req models.CreateOrderRequest
 
@@ -68,8 +93,11 @@ func (h *OrderHandler) CreateOrder(c *fiber.Ctx) error {
 
 // GetUserOrders retrieves all orders for the authenticated user
 func (h *OrderHandler) GetUserOrders(c *fiber.Ctx) error {
-	// Get user ID from context
-	userID := c.Locals("user_id").(string)
+	// Get user ID from token
+	userID, err := h.getUserIDFromToken(c)
+	if err != nil {
+		return err
+	}
 
 	orders, err := h.orderService.GetUserOrders(c.Context(), userID)
 	if err != nil {
@@ -88,8 +116,11 @@ func (h *OrderHandler) GetUserOrders(c *fiber.Ctx) error {
 
 // GetOrderByID retrieves a specific order by ID
 func (h *OrderHandler) GetOrderByID(c *fiber.Ctx) error {
-	// Get user ID from context
-	userID := c.Locals("user_id").(string)
+	// Get user ID from token
+	userID, err := h.getUserIDFromToken(c)
+	if err != nil {
+		return err
+	}
 
 	// Get order ID from params
 	orderIDStr := c.Params("id")
