@@ -127,7 +127,7 @@ async function loadOrders() {
     document.getElementById('ordersLoading').style.display = 'flex';
     document.getElementById('ordersError').style.display = 'none';
     document.getElementById('ordersEmpty').style.display = 'none';
-    document.getElementById('ordersGrid').style.display = 'none';
+    document.getElementById('ordersTableContainer').style.display = 'none';
 
     try {
         const response = await fetch(`${API_BASE_URL}/billing/orders`, {
@@ -148,9 +148,9 @@ async function loadOrders() {
                 // Show empty state
                 document.getElementById('ordersEmpty').style.display = 'flex';
             } else {
-                // Show orders grid
-                document.getElementById('ordersGrid').style.display = 'grid';
-                renderOrdersGrid(orders);
+                // Show orders table
+                document.getElementById('ordersTableContainer').style.display = 'block';
+                renderOrdersTable(orders);
             }
         } else {
             throw new Error(result.message || 'Failed to load orders');
@@ -163,10 +163,10 @@ async function loadOrders() {
     }
 }
 
-// Render orders as card grid (like device settings)
-function renderOrdersGrid(orders) {
-    const grid = document.getElementById('ordersGrid');
-    grid.innerHTML = '';
+// Render orders table (matching device settings style)
+function renderOrdersTable(orders) {
+    const tbody = document.getElementById('ordersTableBody');
+    tbody.innerHTML = '';
 
     orders.forEach(order => {
         // Format date
@@ -191,65 +191,42 @@ function renderOrdersGrid(orders) {
         // Action button
         let actionButton = '';
         if (order.status === 'Pending' && order.url) {
-            actionButton = `<button onclick="payNow('${order.url}')" class="device-action-btn" style="
+            actionButton = `<button onclick="payNow('${order.url}')" style="
                 background: linear-gradient(135deg, #e50914 0%, #b00710 100%);
                 border: none;
-                padding: 0.6rem 1.2rem;
-                border-radius: 8px;
+                padding: 0.5rem 1rem;
+                border-radius: 6px;
                 color: white;
                 font-weight: 600;
                 cursor: pointer;
-                font-size: 0.9rem;
+                font-size: 0.85rem;
                 transition: all 0.3s ease;
-                box-shadow: 0 4px 15px rgba(229, 9, 20, 0.3);
-            " onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 6px 20px rgba(229, 9, 20, 0.4)'" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 15px rgba(229, 9, 20, 0.3)'">
-                💳 Pay Now
+                box-shadow: 0 4px 12px rgba(229, 9, 20, 0.3);
+            " onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 6px 16px rgba(229, 9, 20, 0.4)'" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 12px rgba(229, 9, 20, 0.3)'">
+                Pay Now
             </button>`;
         } else if (order.status === 'Success') {
-            actionButton = '<span style="color: #22c55e; font-weight: 600; font-size: 1rem;">✓ Paid</span>';
+            actionButton = '<span style="color: #22c55e; font-weight: 600;">✓ Paid</span>';
         } else if (order.status === 'Failed') {
-            actionButton = '<span style="color: #ef4444; font-weight: 600; font-size: 1rem;">✗ Failed</span>';
+            actionButton = '<span style="color: #ef4444; font-weight: 600;">✗ Failed</span>';
         } else {
-            actionButton = '<span style="color: var(--netflix-light-gray); font-weight: 600;">Processing...</span>';
+            actionButton = '<span style="color: var(--netflix-light-gray);">Processing...</span>';
         }
 
-        // Create card
-        const card = document.createElement('div');
-        card.className = 'device-card';
-        card.innerHTML = `
-            <div class="device-card-header">
-                <div>
-                    <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.5rem;">
-                        <h3 class="device-name" style="font-size: 1.1rem;">Order #${order.id}</h3>
-                        ${statusBadge}
-                    </div>
-                    <p class="device-provider" style="color: var(--netflix-light-gray); font-size: 0.9rem;">
-                        📅 ${formattedDate}
-                    </p>
-                </div>
-            </div>
-            <div class="device-info">
-                <div class="info-item">
-                    <span class="info-label">Product</span>
-                    <span class="info-value">${order.product}</span>
-                </div>
-                <div class="info-item">
-                    <span class="info-label">Amount</span>
-                    <span class="info-value" style="color: var(--netflix-gold); font-weight: 700; font-size: 1.1rem;">
-                        RM ${parseFloat(order.amount).toFixed(2)}
-                    </span>
-                </div>
-                <div class="info-item">
-                    <span class="info-label">Payment Method</span>
-                    <span class="info-value">${methodBadge}</span>
-                </div>
-            </div>
-            <div class="device-actions" style="margin-top: 1rem; display: flex; justify-content: flex-end;">
-                ${actionButton}
-            </div>
+        // Create table row
+        const row = document.createElement('tr');
+        row.style.borderBottom = '1px solid rgba(255, 255, 255, 0.1)';
+        row.innerHTML = `
+            <td style="padding: 1rem; color: var(--netflix-gold); font-weight: 600;">#${order.id}</td>
+            <td style="padding: 1rem; color: var(--netflix-light-gray);">${formattedDate}</td>
+            <td style="padding: 1rem; color: white;">${order.product}</td>
+            <td style="padding: 1rem; color: var(--netflix-gold); font-weight: 700; font-size: 1.05rem;">RM ${parseFloat(order.amount).toFixed(2)}</td>
+            <td style="padding: 1rem;">${methodBadge}</td>
+            <td style="padding: 1rem;">${statusBadge}</td>
+            <td style="padding: 1rem;">${actionButton}</td>
         `;
 
-        grid.appendChild(card);
+        tbody.appendChild(row);
     });
 }
 

@@ -135,7 +135,7 @@
                 </div>
             </div>
 
-            <!-- Orders Grid -->
+            <!-- Orders Table -->
             <div id="ordersLoading" class="empty-state">
                 <div class="empty-state-icon">⏳</div>
                 <h2 class="empty-state-title">Loading Orders</h2>
@@ -154,8 +154,23 @@
                 <p class="empty-state-text">Make your first purchase to see your order history here</p>
             </div>
 
-            <div id="ordersGrid" class="devices-grid" style="display: none;">
-                <!-- Order cards will be inserted here -->
+            <div id="ordersTableContainer" class="table-container" style="display: none;">
+                <table class="devices-table">
+                    <thead>
+                        <tr>
+                            <th>Order ID</th>
+                            <th>Date</th>
+                            <th>Product</th>
+                            <th>Amount</th>
+                            <th>Payment Method</th>
+                            <th>Status</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="ordersTableBody">
+                        <!-- Orders will be inserted here -->
+                    </tbody>
+                </table>
             </div>
         </div>
     </main>
