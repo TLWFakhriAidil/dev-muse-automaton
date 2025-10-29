@@ -1,27 +1,15 @@
 {
   "permissions": {
     "allow": [
-      "Bash(go mod init:*)",
-      "Bash(npm create:*)",
-      "Bash(npm install)",
-      "Bash(npm run build:*)",
-      "Bash(CGO_ENABLED=0 go build:*)",
-      "Bash(go mod tidy:*)",
-      "Bash(git ls-tree:*)",
-      "Bash(go get:*)",
-      "Bash(npm --version:*)",
-      "Bash(npm install:*)",
-      "Bash(node migrate-db.js:*)",
-      "Bash(node migrate-db.cjs:*)",
-      "Bash(cat:*)",
-      "Bash(mkdir:*)",
-      "Bash(git add:*)",
-      "Bash(git commit -m \"$(cat <<''EOF''\nADD NETFLIX-THEMED FRONTEND: Login/Register page with authentication\n\nCreated complete frontend authentication system:\n- Netflix color scheme (black, red, gold, white)\n- Responsive login/register forms\n- JavaScript authentication with JWT\n- Glass-morphism design with animations\n- Form validation and error handling\n\nFiles:\n- frontend/index.html - Landing page with login/register\n- frontend/assets/css/style.css - Netflix theme styling\n- frontend/assets/js/auth.js - Authentication logic\n\nReady for testing!\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>\nEOF\n)\")",
-      "Bash(git push:*)",
-      "Bash(git commit:*)",
-      "Bash(go build:*)",
-      "Bash(.binserver.exe)",
-      "Bash(./bin/server.exe:*)"
+      "Bash(while read file)",
+      "Bash(do echo \"=== $file ===\")",
+      "Bash(del dashboard.js)",
+      "Read(//c/Users/User/Downloads/ai plus biasa/**)",
+      "Bash(for file in dashboard.html device-settings.html profile.html set-stage.html chatbot-ai.html whatsapp-bot.html flow-builder.html flow-manager.html)",
+      "Bash(do if [ -f \"$file\" ])",
+      "Bash(then sed -i 's|<a href=\"\"#\"\" class=\"\"nav-item\"\" onclick=\"\"showComingSoon(event)\"\">|<a href=\"\"/billings.html\"\" class=\"\"nav-item\"\">|g' \"$file\")",
+      "Bash(fi)",
+      "Bash(git reset:*)"
     ],
     "deny": [],
     "ask": []

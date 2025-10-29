@@ -70,6 +70,11 @@ func main() {
 	analyticsHandler := handler.NewAnalyticsHandler(analyticsService, authService)
 	stageHandler := handler.NewStageHandler(stageService, authService)
 	orderHandler := handler.NewOrderHandler(orderService, authService)
+
+	// Debounce service and handler (for Deno Deploy integration)
+	debounceService := service.NewDebounceService(deviceRepo, conversationRepo, whatsappService, aiService)
+	debounceHandler := handler.NewDebounceHandler(debounceService)
+
 	log.Printf("✅ Authentication system initialized")
 	log.Printf("✅ Device management system initialized")
 	log.Printf("✅ Flow builder system initialized")
@@ -80,6 +85,7 @@ func main() {
 	log.Printf("✅ Analytics & reporting system initialized")
 	log.Printf("✅ Stage value management system initialized")
 	log.Printf("✅ Billing & payment system initialized (Billplz)")
+	log.Printf("✅ Message debouncing system initialized (Deno Deploy integration)")
 
 	// Create Fiber app
 	app := fiber.New(fiber.Config{
@@ -198,6 +204,9 @@ func main() {
 	billing.Get("/orders/:id", orderHandler.GetOrderByID)          // Get specific order (requires authentication)
 	billing.Post("/callback", orderHandler.BillplzCallback)         // Billplz callback (public)
 	billing.Get("/orders/all", orderHandler.GetAllOrders)          // Get all orders (admin only)
+
+	// Debounce endpoint (called by Deno Deploy after 30s debounce)
+	api.Post("/debounce/process", debounceHandler.ProcessDebouncedMessages)
 
 	// Status endpoint with database check
 	api.Get("/status", func(c *fiber.Ctx) error {

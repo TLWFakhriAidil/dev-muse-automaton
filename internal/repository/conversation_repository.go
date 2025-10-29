@@ -178,6 +178,31 @@ func (r *ConversationRepository) UpdateLastInteraction(ctx context.Context, pros
 	return nil
 }
 
+// GetConversationByPhoneAndDevice is an alias for GetConversationByProspectNum
+func (r *ConversationRepository) GetConversationByPhoneAndDevice(ctx context.Context, phone, deviceID string) (*models.AIWhatsapp, error) {
+	return r.GetConversationByProspectNum(ctx, phone, deviceID)
+}
+
+// UpdateConversationModel updates a conversation using a model struct
+func (r *ConversationRepository) UpdateConversationModel(ctx context.Context, prospectID int, conversation *models.AIWhatsapp) error {
+	updates := map[string]interface{}{}
+
+	if conversation.ConvLast != nil {
+		updates["conv_last"] = *conversation.ConvLast
+	}
+	if conversation.ConvCurrent != nil {
+		updates["conv_current"] = *conversation.ConvCurrent
+	}
+	if conversation.ProspectName != nil {
+		updates["prospect_name"] = *conversation.ProspectName
+	}
+	if conversation.Stage != nil {
+		updates["stage"] = *conversation.Stage
+	}
+
+	return r.UpdateConversation(ctx, fmt.Sprintf("%d", prospectID), updates)
+}
+
 // DeleteConversation deletes a conversation
 func (r *ConversationRepository) DeleteConversation(ctx context.Context, prospectID string) error {
 	err := r.supabase.Delete("ai_whatsapp", map[string]string{

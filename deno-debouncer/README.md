@@ -1,77 +1,83 @@
-# Deno Deploy AI Message Processor with Debouncing
+# Deno Deploy Message Debouncer
 
-## Purpose
-Handle WhatsApp messages with 30-second debouncing:
-- Customer sends message 1 → Start 30s timer
-- Customer sends message 2 → Reset timer to 30s
-- Customer sends message 3 → Reset timer to 30s
-- After 30s of silence → Process all 3 messages together with AI
-- Send ONE response
+A lightweight message debouncing service deployed on Deno Deploy that prevents multiple rapid messages from triggering multiple AI responses.
 
-## Features
-- ✅ 30-second message debouncing
-- ✅ Deno KV for message queue storage
-- ✅ AI processing (Anthropic Claude or OpenAI GPT)
-- ✅ Conversation history tracking
-- ✅ WhatsApp response sending
-- ✅ Automatic cleanup of old queues
+## How It Works
 
-## Deployment to Deno Deploy
-
-### 1. Install Deno CLI (if not installed)
-```bash
-# Windows (PowerShell)
-irm https://deno.land/install.ps1 | iex
-
-# macOS/Linux
-curl -fsSL https://deno.land/x/install/install.sh | sh
+```
+Customer sends message 1 → Queue created, timer starts (30s)
+Customer sends message 2 → Added to queue, timer RESETS (30s)
+Customer sends message 3 → Added to queue, timer RESETS (30s)
+[30 seconds of silence]
+Timer expires → All 3 messages sent to Go backend
+Go backend → Gets device config, processes with AI, sends ONE response
 ```
 
-### 2. Login to Deno Deploy
+## Architecture
+
+```
+WhatsApp Customer
+    ↓
+Webhook (WhatsApp Provider)
+    ↓
+Deno Deploy (this service)
+    ├─ Queues messages in Deno KV
+    ├─ 30-second debouncing timer
+    └─ After 30s silence → Sends combined messages
+        ↓
+Go Backend (/api/debounce/process)
+    ├─ Gets device configuration from database
+    ├─ Gets AI provider settings (OpenAI/Anthropic)
+    ├─ Processes messages with AI
+    ├─ Tracks conversation history
+    └─ Sends response via WhatsApp (WaHa/WhaCenter)
+```
+
+## Setup
+
+### 1. Deploy to Deno Deploy
+
 ```bash
+# Install Deno Deploy CLI
 deno install --allow-all --name deployctl jsr:@deno/deployctl
-deployctl login
-```
 
-### 3. Deploy
-```bash
+# Login to Deno Deploy
+deployctl login
+
+# Deploy the service
 cd deno-debouncer
 deployctl deploy --project=your-project-name main.ts
 ```
 
-### 4. Set Environment Variables in Deno Deploy Dashboard
-Go to https://dash.deno.com and set:
+### 2. Set Environment Variables
+
+In your Deno Deploy dashboard (https://dash.deno.com):
 
 ```
-ANTHROPIC_API_KEY=your-anthropic-api-key
-# OR
-OPENAI_API_KEY=your-openai-api-key
-
-WHATSAPP_API_URL=https://your-go-backend.railway.app/api/whatsapp/send
+GO_BACKEND_URL=https://chatbot-automation-production.up.railway.app
 ```
 
-## Environment Variables
+### 3. Update WhatsApp Webhook
 
-| Variable | Required | Description |
-|----------|----------|-------------|
-| `ANTHROPIC_API_KEY` | Yes* | Anthropic Claude API key |
-| `OPENAI_API_KEY` | Yes* | OpenAI GPT API key |
-| `WHATSAPP_API_URL` | Yes | Your WhatsApp send message endpoint |
+Update your WhatsApp provider webhook to point to your Deno Deploy URL:
 
-*At least one AI API key is required
+```
+https://your-project-name.deno.dev/webhook
+```
 
 ## API Endpoints
 
 ### POST /webhook
-Receives incoming WhatsApp messages
 
-**Request:**
+Receives incoming WhatsApp messages for debouncing.
+
+**Request Body:**
 ```json
 {
   "phone": "60123456789",
-  "deviceId": "device-uuid",
-  "message": "Hello!",
-  "name": "John Doe"
+  "deviceId": "device-uuid-here",
+  "message": "Hello, I have a question",
+  "name": "Customer Name"
 }
 ```
 
@@ -79,102 +85,133 @@ Receives incoming WhatsApp messages
 ```json
 {
   "success": true,
-  "message": "Message queued"
+  "message": "Message queued for debouncing"
 }
 ```
 
 ### GET /health
-Health check endpoint
+
+Health check endpoint.
 
 **Response:**
 ```json
 {
   "status": "ok",
-  "service": "deno-ai-processor",
-  "debounceDelay": "30000ms"
+  "service": "deno-message-debouncer",
+  "debounceDelay": "30000ms",
+  "goBackend": "https://chatbot-automation-production.up.railway.app"
 }
 ```
 
-## Flow Diagram
+## Features
 
-```
-Customer sends message 1
-    ↓
-Deno receives → Queue created → Timer: 30s
-    ↓
-Customer sends message 2 (10s later)
-    ↓
-Add to queue → Timer RESET → Timer: 30s
-    ↓
-Customer sends message 3 (5s later)
-    ↓
-Add to queue → Timer RESET → Timer: 30s
-    ↓
-[30 seconds of silence]
-    ↓
-Timer expires
-    ↓
-Combine all 3 messages
-    ↓
-Send to AI (Claude/GPT)
-    ↓
-Get AI response
-    ↓
-Send ONE response to WhatsApp
-    ↓
-Clear queue
-```
+- **30-Second Debouncing**: Multiple messages within 30 seconds are combined into one
+- **Timer Reset**: Each new message resets the 30-second timer
+- **Deno KV Storage**: Fast, distributed key-value storage for message queues
+- **Automatic Cleanup**: Old/stuck queues are automatically cleaned every 10 minutes
+- **Device-specific Queues**: Messages are queued per device + phone number
+- **Zero AI Dependencies**: All AI processing handled by Go backend (uses your existing device configs)
 
-## Testing Locally
+## Local Development
 
 ```bash
 # Run locally
-deno task dev
+cd deno-debouncer
+deno run --allow-net --allow-env --unstable-kv main.ts
 
-# Test webhook
+# Test the webhook
 curl -X POST http://localhost:8000/webhook \
   -H "Content-Type: application/json" \
   -d '{
     "phone": "60123456789",
     "deviceId": "test-device",
-    "message": "Hello!"
+    "message": "Test message 1",
+    "name": "Test User"
   }'
 
-# Check health
-curl http://localhost:8000/health
-```
+# Send multiple messages quickly
+curl -X POST http://localhost:8000/webhook -H "Content-Type: application/json" -d '{"phone":"60123456789","deviceId":"test-device","message":"Message 1"}'
+sleep 5
+curl -X POST http://localhost:8000/webhook -H "Content-Type: application/json" -d '{"phone":"60123456789","deviceId":"test-device","message":"Message 2"}'
+sleep 5
+curl -X POST http://localhost:8000/webhook -H "Content-Type: application/json" -d '{"phone":"60123456789","deviceId":"test-device","message":"Message 3"}'
 
-## Connecting to Go Backend
-
-Update your Go webhook handler to forward messages to Deno Deploy:
-
-```go
-// Forward to Deno Deploy instead of processing directly
-denoURL := "https://your-project.deno.dev/webhook"
-
-resp, err := http.Post(denoURL, "application/json", bytes.NewBuffer(jsonData))
+# Wait 30 seconds and check logs - should see ONE combined request to Go backend
 ```
 
 ## Logs
 
-View logs in Deno Deploy dashboard:
-- https://dash.deno.com/projects/your-project-name/logs
+The service logs all activities:
 
-## Monitoring
+- `🆕` New queue created
+- `📩` Message added to existing queue
+- `⏰` Timer expired, processing messages
+- `📤` Sending to Go backend
+- `✅` Successfully processed
+- `🗑️` Queue cleared
+- `🧹` Old queue cleaned up
+- `❌` Error occurred
 
-Monitor your deployment:
-- Queue size: Check Deno KV entries
-- Processing time: Check logs for timing
-- Error rate: Monitor failed requests
+## Go Backend Integration
 
-## Cost
+The Go backend must have this endpoint:
 
-Deno Deploy pricing:
-- Free tier: 100,000 requests/month
-- Deno KV: Included in free tier (10GB storage)
+**POST /api/debounce/process**
 
-## Support
+Request:
+```json
+{
+  "device_id": "device-uuid",
+  "phone": "60123456789",
+  "name": "Customer Name",
+  "messages": [
+    "Message 1",
+    "Message 2",
+    "Message 3"
+  ]
+}
+```
 
-For issues or questions, check:
-- Deno Deploy Docs: https://docs.deno.com/deploy/
-- Deno KV Docs: https://docs.deno.com/kv/manual
+Response:
+```json
+{
+  "success": true,
+  "message": "Messages processed and response sent"
+}
+```
+
+## Benefits
+
+1. **No Duplicate Responses**: Customers get ONE response, not multiple
+2. **Better Context**: AI sees all messages at once, not fragmented
+3. **Cost Savings**: Fewer AI API calls
+4. **Improved UX**: More coherent, context-aware responses
+5. **Simple Setup**: Just one environment variable
+6. **Uses Existing Config**: All device settings, AI configs, and WhatsApp providers from your database
+
+## Troubleshooting
+
+### Messages not being debounced?
+
+Check the logs in Deno Deploy dashboard. Make sure:
+- Webhook is configured correctly
+- GO_BACKEND_URL is set correctly
+- Messages have required fields: phone, deviceId, message
+
+### Timer not working?
+
+Deno Deploy uses isolates that may restart. The timer uses `setTimeout` which persists during the isolate lifecycle. For production, consider using Deno Cron for more reliability.
+
+### Go backend not receiving messages?
+
+Test the Go backend endpoint directly:
+```bash
+curl -X POST https://your-backend.com/api/debounce/process \
+  -H "Content-Type: application/json" \
+  -d '{
+    "device_id": "test",
+    "phone": "60123456789",
+    "name": "Test",
+    "messages": ["Hello"]
+  }'
+```

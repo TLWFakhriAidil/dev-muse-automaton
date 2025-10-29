@@ -1,15 +1,13 @@
-// Deno Deploy Complete Message Processor
+// Deno Deploy Message Debouncer
 // Purpose:
-// 1. Receive webhook messages
-// 2. Queue with 30s debouncing (multiple messages = 1 response)
-// 3. Process with AI (OpenAI/Anthropic)
-// 4. Send response back to WhatsApp
+// 1. Receive webhook messages from WhatsApp
+// 2. Queue messages with 30-second debouncing
+// 3. When timer expires, send combined messages to Go backend
+// 4. Go backend handles: device config, AI processing, WhatsApp sending
 
 // Environment variables
 const DEBOUNCE_DELAY_MS = 30000; // 30 seconds
-const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
-const ANTHROPIC_API_KEY = Deno.env.get("ANTHROPIC_API_KEY");
-const WHATSAPP_API_URL = Deno.env.get("WHATSAPP_API_URL"); // Your WhatsApp API endpoint
+const GO_BACKEND_URL = Deno.env.get("GO_BACKEND_URL") || "https://chatbot-automation-production.up.railway.app";
 
 // Open Deno KV database
 const kv = await Deno.openKv();
@@ -25,7 +23,6 @@ interface QueuedMessage {
   }>;
   lastMessageTime: number;
   timerScheduled: number;
-  conversationHistory?: Array<{ role: string; content: string }>;
 }
 
 // Main HTTP handler
@@ -37,8 +34,9 @@ Deno.serve(async (req: Request) => {
     return new Response(
       JSON.stringify({
         status: "ok",
-        service: "deno-ai-processor",
-        debounceDelay: `${DEBOUNCE_DELAY_MS}ms`
+        service: "deno-message-debouncer",
+        debounceDelay: `${DEBOUNCE_DELAY_MS}ms`,
+        goBackend: GO_BACKEND_URL,
       }),
       { headers: { "Content-Type": "application/json" } }
     );
@@ -51,7 +49,7 @@ Deno.serve(async (req: Request) => {
       await handleIncomingMessage(payload);
 
       return new Response(
-        JSON.stringify({ success: true, message: "Message queued" }),
+        JSON.stringify({ success: true, message: "Message queued for debouncing" }),
         { headers: { "Content-Type": "application/json" } }
       );
     } catch (error) {
@@ -82,28 +80,27 @@ async function handleIncomingMessage(payload: any) {
   let queue: QueuedMessage;
 
   if (result.value) {
-    // Add to existing queue and reset timer
+    // Add to existing queue and RESET timer
     queue = result.value;
     queue.messages.push({ message, timestamp: now });
     queue.lastMessageTime = now;
-    queue.timerScheduled = now + DEBOUNCE_DELAY_MS;
+    queue.timerScheduled = now + DEBOUNCE_DELAY_MS; // Reset timer to 30s from now
 
     console.log(
-      `📩 [${phone}] Message ${queue.messages.length} added. Timer RESET to 30s.`
+      `📩 [${deviceId}/${phone}] Message ${queue.messages.length} added. Timer RESET to 30s.`
     );
   } else {
     // Create new queue
     queue = {
       phone,
       deviceId,
-      name,
+      name: name || "",
       messages: [{ message, timestamp: now }],
       lastMessageTime: now,
       timerScheduled: now + DEBOUNCE_DELAY_MS,
-      conversationHistory: [],
     };
 
-    console.log(`🆕 [${phone}] New queue created. Timer started (30s).`);
+    console.log(`🆕 [${deviceId}/${phone}] New queue created. Timer started (30s).`);
   }
 
   // Save queue
@@ -134,7 +131,7 @@ async function checkAndProcess(
   const result = await kv.get<QueuedMessage>(queueKey);
 
   if (!result.value) {
-    console.log(`⚠️ [${phone}] Queue not found - already processed`);
+    console.log(`⚠️ [${deviceId}/${phone}] Queue not found - already processed`);
     return;
   }
 
@@ -143,175 +140,63 @@ async function checkAndProcess(
 
   // Check if timer was reset by new message
   if (queue.timerScheduled !== scheduledTime) {
-    console.log(`⏭️ [${phone}] Timer was reset - skipping`);
+    console.log(`⏭️ [${deviceId}/${phone}] Timer was reset - skipping this check`);
     return;
   }
 
   // Check if time expired
   if (now >= queue.timerScheduled) {
     console.log(
-      `⏰ [${phone}] Timer EXPIRED! Processing ${queue.messages.length} messages...`
+      `⏰ [${deviceId}/${phone}] Timer EXPIRED! Processing ${queue.messages.length} messages...`
     );
-    await processMessagesWithAI(queue);
+    await processMessages(queue);
   }
 }
 
-// Process messages with AI and send response
-async function processMessagesWithAI(queue: QueuedMessage) {
-  const { phone, deviceId, messages, conversationHistory } = queue;
+// Process messages by sending to Go backend
+async function processMessages(queue: QueuedMessage) {
+  const { phone, deviceId, name, messages } = queue;
 
   try {
-    // Combine all messages
-    const combinedMessage = messages.map((m) => m.message).join("\n\n");
+    // Extract just the message strings
+    const messageTexts = messages.map((m) => m.message);
 
-    console.log(`🤖 [${phone}] Processing with AI...`);
-    console.log(`📝 Combined message:\n${combinedMessage}`);
+    console.log(`📤 [${deviceId}/${phone}] Sending ${messageTexts.length} messages to Go backend...`);
 
-    // Call AI API (OpenAI/Anthropic)
-    const aiResponse = await callAI(combinedMessage, conversationHistory);
-
-    console.log(`✅ [${phone}] AI response: ${aiResponse.substring(0, 100)}...`);
-
-    // Send response via WhatsApp
-    await sendWhatsAppMessage(deviceId, phone, aiResponse);
-
-    console.log(`📤 [${phone}] Response sent!`);
-
-    // Update conversation history
-    const updatedHistory = [
-      ...(conversationHistory || []),
-      { role: "user", content: combinedMessage },
-      { role: "assistant", content: aiResponse },
-    ];
-
-    // Save updated conversation history
-    const queueKey = ["message_queue", deviceId, phone];
-    await kv.set(queueKey, {
-      ...queue,
-      conversationHistory: updatedHistory.slice(-10), // Keep last 10 exchanges
-      messages: [], // Clear processed messages
+    // Call Go backend API
+    const response = await fetch(`${GO_BACKEND_URL}/api/debounce/process`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        device_id: deviceId,
+        phone: phone,
+        name: name || "",
+        messages: messageTexts,
+      }),
     });
 
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Go backend error (${response.status}): ${errorText}`);
+    }
+
+    const result = await response.json();
+    console.log(`✅ [${deviceId}/${phone}] Go backend response:`, result);
+
     // Delete queue after successful processing
+    const queueKey = ["message_queue", deviceId, phone];
     await kv.delete(queueKey);
-    console.log(`🗑️ [${phone}] Queue cleared`);
+    console.log(`🗑️ [${deviceId}/${phone}] Queue cleared`);
   } catch (error) {
-    console.error(`❌ [${phone}] Processing error:`, error);
-    throw error;
+    console.error(`❌ [${deviceId}/${phone}] Processing error:`, error);
+
+    // Optionally: Keep queue for retry or delete it
+    const queueKey = ["message_queue", deviceId, phone];
+    await kv.delete(queueKey);
+    console.log(`🗑️ [${deviceId}/${phone}] Queue cleared after error`);
   }
-}
-
-// Call AI API (OpenAI or Anthropic)
-async function callAI(
-  message: string,
-  history: Array<{ role: string; content: string }> = []
-): Promise<string> {
-  // Try Anthropic first (Claude)
-  if (ANTHROPIC_API_KEY) {
-    return await callAnthropic(message, history);
-  }
-
-  // Fallback to OpenAI
-  if (OPENAI_API_KEY) {
-    return await callOpenAI(message, history);
-  }
-
-  throw new Error("No AI API key configured");
-}
-
-// Call Anthropic Claude API
-async function callAnthropic(
-  message: string,
-  history: Array<{ role: string; content: string }>
-): Promise<string> {
-  const messages = [
-    ...history,
-    { role: "user", content: message },
-  ];
-
-  const response = await fetch("https://api.anthropic.com/v1/messages", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "x-api-key": ANTHROPIC_API_KEY!,
-      "anthropic-version": "2023-06-01",
-    },
-    body: JSON.stringify({
-      model: "claude-3-5-sonnet-20241022",
-      max_tokens: 1024,
-      messages: messages,
-    }),
-  });
-
-  if (!response.ok) {
-    throw new Error(`Anthropic API error: ${response.status}`);
-  }
-
-  const data = await response.json();
-  return data.content[0].text;
-}
-
-// Call OpenAI GPT API
-async function callOpenAI(
-  message: string,
-  history: Array<{ role: string; content: string }>
-): Promise<string> {
-  const messages = [
-    { role: "system", content: "You are a helpful AI assistant." },
-    ...history,
-    { role: "user", content: message },
-  ];
-
-  const response = await fetch("https://api.openai.com/v1/chat/completions", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "Authorization": `Bearer ${OPENAI_API_KEY}`,
-    },
-    body: JSON.stringify({
-      model: "gpt-4",
-      messages: messages,
-      max_tokens: 1024,
-    }),
-  });
-
-  if (!response.ok) {
-    throw new Error(`OpenAI API error: ${response.status}`);
-  }
-
-  const data = await response.json();
-  return data.choices[0].message.content;
-}
-
-// Send message via WhatsApp
-async function sendWhatsAppMessage(
-  deviceId: string,
-  phone: string,
-  message: string
-): Promise<void> {
-  if (!WHATSAPP_API_URL) {
-    console.warn("⚠️ WHATSAPP_API_URL not configured - skipping send");
-    return;
-  }
-
-  // Send to your WhatsApp API endpoint
-  const response = await fetch(WHATSAPP_API_URL, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      device_id: deviceId,
-      phone: phone,
-      message: message,
-    }),
-  });
-
-  if (!response.ok) {
-    throw new Error(`WhatsApp API error: ${response.status}`);
-  }
-
-  console.log(`✅ WhatsApp message sent to ${phone}`);
 }
 
 // Cleanup old queues
@@ -324,11 +209,11 @@ async function cleanupOldQueues() {
     const queue = entry.value;
     const age = now - queue.lastMessageTime;
 
-    // Delete queues older than 10 minutes
+    // Delete queues older than 10 minutes (stuck/failed)
     if (age > 600000) {
       await kv.delete(entry.key);
       cleaned++;
-      console.log(`🧹 Cleaned old queue: ${queue.phone} (age: ${age}ms)`);
+      console.log(`🧹 Cleaned old queue: ${queue.deviceId}/${queue.phone} (age: ${Math.round(age/1000)}s)`);
     }
   }
 
@@ -340,7 +225,8 @@ async function cleanupOldQueues() {
 // Run cleanup every 10 minutes
 setInterval(cleanupOldQueues, 600000);
 
-console.log("🚀 Deno AI Processor with Debouncing Started!");
-console.log(`⏱️  Debounce: ${DEBOUNCE_DELAY_MS}ms (30 seconds)`);
-console.log(`🤖 AI: ${ANTHROPIC_API_KEY ? "Anthropic Claude" : OPENAI_API_KEY ? "OpenAI GPT" : "NOT CONFIGURED"}`);
-console.log(`📱 WhatsApp: ${WHATSAPP_API_URL || "NOT CONFIGURED"}`);
+console.log("🚀 Deno Message Debouncer Started!");
+console.log(`⏱️  Debounce delay: ${DEBOUNCE_DELAY_MS}ms (30 seconds)`);
+console.log(`🔗 Go backend: ${GO_BACKEND_URL}`);
+console.log(`📝 Endpoint: POST /webhook`);
+console.log(`💚 Health check: GET /health`);
