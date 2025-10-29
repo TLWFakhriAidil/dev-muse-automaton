@@ -46,6 +46,21 @@ func (s *OrderService) CreateOrder(ctx context.Context, userID string, req *mode
 		return nil, fmt.Errorf("failed to get user: %w", err)
 	}
 
+	// Validate user has gmail and phone before allowing purchase
+	if user.Gmail == nil || *user.Gmail == "" {
+		return &models.OrderResponse{
+			Success: false,
+			Message: "Please update your Gmail in Profile before making a purchase",
+		}, nil
+	}
+
+	if user.Phone == nil || *user.Phone == "" {
+		return &models.OrderResponse{
+			Success: false,
+			Message: "Please update your Phone Number in Profile before making a purchase",
+		}, nil
+	}
+
 	// HARDCODED PRICE: RM 1.00
 	amount := 1.00
 
