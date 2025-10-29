@@ -89,7 +89,10 @@ func (s *StageService) GetStageValuesByUserID(ctx context.Context, userID string
 	// Create a map of user's device IDs for fast lookup
 	userDeviceIDs := make(map[string]bool)
 	for _, device := range devices {
-		userDeviceIDs[device.ID] = true
+		// Use IDDevice (e.g. "FakhriAidilTLW-001") instead of ID (UUID)
+		if device.IDDevice != nil {
+			userDeviceIDs[*device.IDDevice] = true
+		}
 	}
 
 	// Filter stages to only include user's devices
