@@ -10,8 +10,8 @@ type User struct {
 	Password   string     `json:"password,omitempty"` // Omit in responses
 	Gmail      *string    `json:"gmail,omitempty"`
 	Phone      *string    `json:"phone,omitempty"`
-	Status     string     `json:"status"`
-	Expired    *string    `json:"expired,omitempty"`
+	Status     string     `json:"status"` // "Free", "Pro"
+	Expired    *time.Time `json:"expired,omitempty"` // Pro expiration date
 	IsActive   bool       `json:"is_active"`
 	CreatedAt  time.Time  `json:"created_at"`
 	UpdatedAt  time.Time  `json:"updated_at"`

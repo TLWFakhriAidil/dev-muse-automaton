@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"time"
 )
 
 // OrderService handles billing and payment business logic
@@ -200,7 +201,7 @@ func (s *OrderService) GetOrderByID(ctx context.Context, id int, userID string) 
 // HandleBillplzCallback processes Billplz payment callback
 func (s *OrderService) HandleBillplzCallback(ctx context.Context, callback *models.BillplzCallbackPayload) error {
 	// Get order by bill ID
-	_, err := s.orderRepo.GetOrderByBillID(ctx, callback.ID)
+	order, err := s.orderRepo.GetOrderByBillID(ctx, callback.ID)
 	if err != nil {
 		return fmt.Errorf("failed to get order: %w", err)
 	}
@@ -212,8 +213,20 @@ func (s *OrderService) HandleBillplzCallback(ctx context.Context, callback *mode
 			return fmt.Errorf("failed to update order as successful: %w", err)
 		}
 
-		// TODO: Here you can add logic to extend user subscription/expiry
-		// For example: Update user's expired date based on the product purchased
+		// Upgrade user to Pro status with 30-day expiration
+		if order.UserID != nil {
+			// Calculate expiration: today + 29 days (30 days total including today)
+			expirationDate := time.Now().AddDate(0, 0, 29)
+
+			err = s.userRepo.UpgradeUserToPro(ctx, *order.UserID, expirationDate)
+			if err != nil {
+				// Log error but don't fail the callback
+				// Order is already marked as successful
+				fmt.Printf("Warning: Failed to upgrade user %s to Pro: %v\n", *order.UserID, err)
+			} else {
+				fmt.Printf("✅ User %s upgraded to Pro until %s\n", *order.UserID, expirationDate.Format("2006-01-02"))
+			}
+		}
 
 	} else {
 		err = s.orderRepo.UpdateOrderPaymentFailed(ctx, callback.ID)

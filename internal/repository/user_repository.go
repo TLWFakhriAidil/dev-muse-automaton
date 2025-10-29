@@ -202,3 +202,22 @@ func (r *UserRepository) UpdateProfile(ctx context.Context, userID string, gmail
 
 	return nil
 }
+
+// UpgradeUserToPro upgrades user to Pro status with expiration date
+func (r *UserRepository) UpgradeUserToPro(ctx context.Context, userID string, expirationDate time.Time) error {
+	updateData := map[string]interface{}{
+		"status":     "Pro",
+		"expired":    expirationDate,
+		"updated_at": time.Now(),
+	}
+
+	_, err := r.supabase.UpdateAsAdmin("user", map[string]string{
+		"id": userID,
+	}, updateData)
+
+	if err != nil {
+		return fmt.Errorf("failed to upgrade user to Pro: %w", err)
+	}
+
+	return nil
+}

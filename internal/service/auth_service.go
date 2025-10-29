@@ -40,8 +40,8 @@ func (s *AuthService) Register(ctx context.Context, req *models.RegisterRequest)
 		return nil, fmt.Errorf("failed to hash password: %w", err)
 	}
 
-	// Set expiration date to current date only (YYYY-MM-DD format)
-	currentDate := time.Now().Format("2006-01-02")
+	// Set expiration date to current date (Free users start with today's date)
+	currentDate := time.Now()
 
 	// Create user
 	user := &models.User{
