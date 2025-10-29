@@ -11,13 +11,37 @@ import (
 // StageHandler handles stage value HTTP requests
 type StageHandler struct {
 	stageService *service.StageService
+	authService  *service.AuthService
 }
 
 // NewStageHandler creates a new stage handler
-func NewStageHandler(stageService *service.StageService) *StageHandler {
+func NewStageHandler(stageService *service.StageService, authService *service.AuthService) *StageHandler {
 	return &StageHandler{
 		stageService: stageService,
+		authService:  authService,
 	}
+}
+
+// getUserIDFromToken extracts user ID from JWT token
+func (h *StageHandler) getUserIDFromToken(c *fiber.Ctx) (string, error) {
+	authHeader := c.Get("Authorization")
+	if authHeader == "" {
+		return "", fiber.NewError(fiber.StatusUnauthorized, "Authorization header required")
+	}
+
+	// Extract token
+	token := authHeader
+	if len(authHeader) > 7 && authHeader[:7] == "Bearer " {
+		token = authHeader[7:]
+	}
+
+	// Validate token
+	claims, err := h.authService.ValidateToken(token)
+	if err != nil {
+		return "", fiber.NewError(fiber.StatusUnauthorized, "Invalid or expired token")
+	}
+
+	return claims.UserID, nil
 }
 
 // CreateStageValue handles stage value creation
@@ -89,10 +113,16 @@ func (h *StageHandler) GetStageValue(c *fiber.Ctx) error {
 	return c.Status(fiber.StatusOK).JSON(resp)
 }
 
-// GetAllStageValues handles retrieving all stage values
+// GetAllStageValues handles retrieving all stage values (filtered by user's devices)
 func (h *StageHandler) GetAllStageValues(c *fiber.Ctx) error {
-	// Call service
-	resp, err := h.stageService.GetAllStageValues(c.Context())
+	// Get user ID from token
+	userID, err := h.getUserIDFromToken(c)
+	if err != nil {
+		return err
+	}
+
+	// Call service with user filtering
+	resp, err := h.stageService.GetStageValuesByUserID(c.Context(), userID)
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 			"success": false,

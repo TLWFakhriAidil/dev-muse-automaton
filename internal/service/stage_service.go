@@ -9,13 +9,15 @@ import (
 
 // StageService handles stage value business logic
 type StageService struct {
-	stageRepo *repository.StageRepository
+	stageRepo  *repository.StageRepository
+	deviceRepo *repository.DeviceRepository
 }
 
 // NewStageService creates a new stage service
-func NewStageService(stageRepo *repository.StageRepository) *StageService {
+func NewStageService(stageRepo *repository.StageRepository, deviceRepo *repository.DeviceRepository) *StageService {
 	return &StageService{
-		stageRepo: stageRepo,
+		stageRepo:  stageRepo,
+		deviceRepo: deviceRepo,
 	}
 }
 
@@ -67,6 +69,41 @@ func (s *StageService) GetAllStageValues(ctx context.Context) (*models.StageValu
 		Success:     true,
 		Message:     fmt.Sprintf("Found %d stage values", len(stages)),
 		StageValues: stages,
+	}, nil
+}
+
+// GetStageValuesByUserID retrieves stage values filtered by user's devices
+func (s *StageService) GetStageValuesByUserID(ctx context.Context, userID string) (*models.StageValueResponse, error) {
+	// Get user's devices
+	devices, err := s.deviceRepo.GetDevicesByUserID(ctx, userID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get user devices: %w", err)
+	}
+
+	// Get all stages
+	stages, err := s.stageRepo.GetAllStageValues(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get stage values: %w", err)
+	}
+
+	// Create a map of user's device IDs for fast lookup
+	userDeviceIDs := make(map[string]bool)
+	for _, device := range devices {
+		userDeviceIDs[device.ID] = true
+	}
+
+	// Filter stages to only include user's devices
+	filteredStages := []models.StageValue{}
+	for _, stage := range stages {
+		if userDeviceIDs[stage.IDDevice] {
+			filteredStages = append(filteredStages, stage)
+		}
+	}
+
+	return &models.StageValueResponse{
+		Success:     true,
+		Message:     fmt.Sprintf("Found %d stage values", len(filteredStages)),
+		StageValues: filteredStages,
 	}, nil
 }
 

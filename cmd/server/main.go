@@ -55,7 +55,7 @@ func main() {
 	flowExecutionService := service.NewFlowExecutionService(flowRepo, conversationRepo, deviceRepo, aiService)
 	flowProcessorService := service.NewFlowProcessorService(webhookService, whatsappService, flowRepo, deviceRepo, conversationRepo, wasapbotRepo, stageRepo)
 	analyticsService := service.NewAnalyticsService(analyticsRepo, deviceRepo)
-	stageService := service.NewStageService(stageRepo)
+	stageService := service.NewStageService(stageRepo, deviceRepo)
 	orderService := service.NewOrderService(orderRepo, userRepo, cfg.BillplzAPIKey, cfg.BillplzCollectionID, cfg.ServerURL)
 
 	// Initialize handlers
@@ -68,7 +68,7 @@ func main() {
 	aiHandler := handler.NewAIHandler(aiService, authService)
 	webhookHandler := handler.NewWebhookHandler(flowExecutionService, deviceService, whatsappService, flowProcessorService)
 	analyticsHandler := handler.NewAnalyticsHandler(analyticsService, authService)
-	stageHandler := handler.NewStageHandler(stageService)
+	stageHandler := handler.NewStageHandler(stageService, authService)
 	orderHandler := handler.NewOrderHandler(orderService, authService)
 	log.Printf("✅ Authentication system initialized")
 	log.Printf("✅ Device management system initialized")
