@@ -293,14 +293,17 @@ func (s *WasapbotFlowEngine) executeSendMessage(
 		return true, nil
 	}
 
-	log.Printf("📤 Sending message: %s", text)
-
-	// Get conversation to get phone number
+	// Get conversation to get phone number and customer data
 	conversation, err := s.convRepo.GetConversationByID(ctx, conversationID)
 	if err != nil || conversation == nil {
 		log.Printf("❌ Failed to get conversation for sending: %v", err)
 		return true, fmt.Errorf("failed to get conversation: %w", err)
 	}
+
+	// Check if text matches hardcoded templates and populate customer data
+	text = s.populateCustomerTemplate(text, conversation)
+
+	log.Printf("📤 Sending message: %s", text)
 
 	// Send WhatsApp message
 	err = s.whatsappService.SendMessage(ctx, flow.IDDevice, conversation.ProspectNum, text, "", "")
@@ -313,6 +316,101 @@ func (s *WasapbotFlowEngine) executeSendMessage(
 
 	// Update conv_last with bot reply
 	return true, s.updateConvLast(ctx, conversationID, "Bot", text)
+}
+
+// populateCustomerTemplate checks for hardcoded templates and populates with customer data
+func (s *WasapbotFlowEngine) populateCustomerTemplate(text string, conversation *models.Wasapbot) string {
+	// Helper function to safely get string value or return empty string
+	safeString := func(s *string) string {
+		if s != nil {
+			return *s
+		}
+		return ""
+	}
+
+	// Check for DETAIL CUSTOMER template
+	if text == "DETAIL CUSTOMER" {
+		return fmt.Sprintf(`Detail:
+
+NAMA : %s
+
+ALAMAT : %s
+
+NO FON : %s`,
+			safeString(conversation.ProspectName),
+			safeString(conversation.Alamat),
+			safeString(conversation.NoFon))
+	}
+
+	// Check for DETAIL COD template
+	if text == "DETAIL COD" {
+		return fmt.Sprintf(`Detail:
+
+NAMA : %s
+
+ALAMAT : %s
+
+NO FONE : %s
+
+PAKEJ : %s
+
+*COD @ POSTAGE FREE*
+
+CARA BAYARAN : COD`,
+			safeString(conversation.ProspectName),
+			safeString(conversation.Alamat),
+			safeString(conversation.NoFon),
+			safeString(conversation.Pakej))
+	}
+
+	// Check for DETAIL WAGES template
+	if text == "DETAIL WAGES" {
+		return fmt.Sprintf(`Detail:
+
+NAMA : %s
+
+ALAMAT : %s
+
+NO FONE : %s
+
+PAKEJ : %s
+
+*COD @ POSTAGE FREE*
+
+CARA BAYARAN : %s
+
+TARIKH GAJI : %s`,
+			safeString(conversation.ProspectName),
+			safeString(conversation.Alamat),
+			safeString(conversation.NoFon),
+			safeString(conversation.Pakej),
+			safeString(conversation.CaraBayaran),
+			safeString(conversation.TarikhGaji))
+	}
+
+	// Check for DETAIL CASH template
+	if text == "DETAIL CASH" {
+		return fmt.Sprintf(`Detail:
+
+NAMA : %s
+
+ALAMAT : %s
+
+NO FONE : %s
+
+PAKEJ : %s
+
+*COD @ POSTAGE FREE*
+
+CARA BAYARAN : Online Transfer`,
+			safeString(conversation.ProspectName),
+			safeString(conversation.Alamat),
+			safeString(conversation.NoFon),
+			safeString(conversation.Pakej))
+	}
+
+	// No template matched, return original text
+	return text
 }
 
 // executeDelay pauses execution for specified seconds

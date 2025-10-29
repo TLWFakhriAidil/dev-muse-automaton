@@ -29,27 +29,33 @@ type AIWhatsapp struct {
 
 // Wasapbot represents a WhatsApp conversation with a prospect (WhatsApp Bot - without AI Prompt)
 type Wasapbot struct {
-	IDProspect      *int       `json:"id_prospect,omitempty"`
-	Number          *string    `json:"number,omitempty"`
-	IDDevice        string     `json:"id_device"`
-	Niche           *string    `json:"niche,omitempty"`
-	ProspectName    *string    `json:"prospect_name,omitempty"`
-	ProspectNum     string     `json:"prospect_num"`
-	Intro           *string    `json:"intro,omitempty"`
-	Stage           *string    `json:"stage,omitempty"`
-	ConvLast        *string    `json:"conv_last,omitempty"`    // Stores "User: message\nBot: reply"
-	ConvCurrent     *string    `json:"conv_current,omitempty"` // Previously conv_start
-	ExecutionStatus *string    `json:"execution_status,omitempty"`
-	FlowID          *string    `json:"flow_id,omitempty"`
-	CurrentNodeID   *string    `json:"current_node_id,omitempty"`
-	LastNodeID      *string    `json:"last_node_id,omitempty"`
-	WaitingForReply *bool      `json:"waiting_for_reply,omitempty"`
-	Balas           *string    `json:"balas,omitempty"`
-	Human           *int       `json:"human,omitempty"`
-	KeywordIklan    *string    `json:"keywordiklan,omitempty"`
-	Marketer        *string    `json:"marketer,omitempty"`
-	CreatedAt       *time.Time `json:"created_at,omitempty"` // Database column: created_at (previously date_start)
-	UpdatedAt       *time.Time `json:"updated_at,omitempty"` // Database column: updated_at (previously updated_at)
+	IDProspect       *int       `json:"id_prospect,omitempty"`
+	Number           *string    `json:"number,omitempty"`
+	IDDevice         string     `json:"id_device"`
+	Niche            *string    `json:"niche,omitempty"`
+	ProspectName     *string    `json:"prospect_name,omitempty"`
+	ProspectNum      string     `json:"prospect_num"`
+	Intro            *string    `json:"intro,omitempty"`
+	Stage            *string    `json:"stage,omitempty"`
+	ConvLast         *string    `json:"conv_last,omitempty"`    // Stores "User: message\nBot: reply"
+	ConvCurrent      *string    `json:"conv_current,omitempty"` // Previously conv_start
+	ExecutionStatus  *string    `json:"execution_status,omitempty"`
+	FlowID           *string    `json:"flow_id,omitempty"`
+	CurrentNodeID    *string    `json:"current_node_id,omitempty"`
+	LastNodeID       *string    `json:"last_node_id,omitempty"`
+	WaitingForReply  *bool      `json:"waiting_for_reply,omitempty"`
+	Balas            *string    `json:"balas,omitempty"`
+	Human            *int       `json:"human,omitempty"`
+	KeywordIklan     *string    `json:"keywordiklan,omitempty"`
+	Marketer         *string    `json:"marketer,omitempty"`
+	PeringkatSekolah *string    `json:"peringkat_sekolah,omitempty"` // School level for customer
+	Alamat           *string    `json:"alamat,omitempty"`             // Customer address
+	Pakej            *string    `json:"pakej,omitempty"`              // Package selected
+	NoFon            *string    `json:"no_fon,omitempty"`             // Phone number
+	CaraBayaran      *string    `json:"cara_bayaran,omitempty"`       // Payment method
+	TarikhGaji       *string    `json:"tarikh_gaji,omitempty"`        // Salary date
+	CreatedAt        *time.Time `json:"created_at,omitempty"`         // Database column: created_at (previously date_start)
+	UpdatedAt        *time.Time `json:"updated_at,omitempty"`         // Database column: updated_at (previously updated_at)
 }
 
 // CreateConversationRequest is the request body for creating a conversation
