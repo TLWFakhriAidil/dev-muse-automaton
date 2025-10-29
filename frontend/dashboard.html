@@ -89,15 +89,149 @@
                 </div>
             </div>
 
-            <!-- Empty State / Welcome Message -->
-            <div class="empty-state">
-                <div class="empty-state-icon">🚀</div>
-                <h2 class="empty-state-title">Ready to Start Building?</h2>
-                <p class="empty-state-text">Your workspace is ready. Connect a device or create your first flow to get started.</p>
+            <!-- Filter Section -->
+            <div class="filter-section">
+                <div class="filter-container">
+                    <div class="filter-row">
+                        <div class="filter-group">
+                            <label for="deviceFilter">Device</label>
+                            <select id="deviceFilter" class="filter-select" onchange="applyFilters()">
+                                <option value="">All Devices</option>
+                            </select>
+                        </div>
+                        <div class="filter-group">
+                            <label for="stageFilter">Stage</label>
+                            <select id="stageFilter" class="filter-select" onchange="applyFilters()">
+                                <option value="">All Stages</option>
+                            </select>
+                        </div>
+                        <div class="filter-group">
+                            <label for="startDateFilter">Start Date</label>
+                            <input type="date" id="startDateFilter" class="filter-date-input" onchange="applyFilters()">
+                        </div>
+                        <div class="filter-group">
+                            <label for="endDateFilter">End Date</label>
+                            <input type="date" id="endDateFilter" class="filter-date-input" onchange="applyFilters()">
+                        </div>
+                    </div>
+                    <div class="filter-actions">
+                        <button class="btn-reset" onclick="resetFilters()">Reset Filters</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Analytics Cards -->
+            <div class="analytics-grid">
+                <div class="analytics-card">
+                    <div class="card-icon" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+                        <span>📊</span>
+                    </div>
+                    <div class="card-content">
+                        <div class="card-label">Total Conversations</div>
+                        <div class="card-value" id="totalConversations">0</div>
+                        <div class="card-change" id="totalChange">Chatbot AI + WhatsApp Bot</div>
+                    </div>
+                </div>
+
+                <div class="analytics-card">
+                    <div class="card-icon" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">
+                        <span>🤖</span>
+                    </div>
+                    <div class="card-content">
+                        <div class="card-label">Chatbot AI</div>
+                        <div class="card-value" id="chatbotAICount">0</div>
+                        <div class="card-change" id="chatbotAIPercent">0% of total</div>
+                    </div>
+                </div>
+
+                <div class="analytics-card">
+                    <div class="card-icon" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);">
+                        <span>💬</span>
+                    </div>
+                    <div class="card-content">
+                        <div class="card-label">WhatsApp Bot</div>
+                        <div class="card-value" id="whatsappBotCount">0</div>
+                        <div class="card-change" id="whatsappBotPercent">0% of total</div>
+                    </div>
+                </div>
+
+                <div class="analytics-card">
+                    <div class="card-icon" style="background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);">
+                        <span>📱</span>
+                    </div>
+                    <div class="card-content">
+                        <div class="card-label">Active Devices</div>
+                        <div class="card-value" id="activeDevices">0</div>
+                        <div class="card-change" id="devicesChange">Across both platforms</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Main Combined Line Chart -->
+            <div class="chart-section">
+                <div class="chart-card full-width">
+                    <div class="chart-header">
+                        <h3 class="chart-title">Daily Conversation Trends</h3>
+                        <p class="chart-subtitle">Combined view of Chatbot AI and WhatsApp Bot conversations over time</p>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="combinedTrendsChart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Side by Side Stage Distribution Charts -->
+            <div class="chart-section">
+                <div class="chart-row">
+                    <div class="chart-card">
+                        <div class="chart-header">
+                            <h3 class="chart-title">Chatbot AI - Stage Distribution</h3>
+                            <p class="chart-subtitle">Conversation breakdown by stage</p>
+                        </div>
+                        <div class="chart-container">
+                            <canvas id="chatbotAIStageChart"></canvas>
+                        </div>
+                    </div>
+                    <div class="chart-card">
+                        <div class="chart-header">
+                            <h3 class="chart-title">WhatsApp Bot - Stage Distribution</h3>
+                            <p class="chart-subtitle">Conversation breakdown by stage</p>
+                        </div>
+                        <div class="chart-container">
+                            <canvas id="whatsappBotStageChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Additional Charts Row -->
+            <div class="chart-section">
+                <div class="chart-row">
+                    <div class="chart-card">
+                        <div class="chart-header">
+                            <h3 class="chart-title">Device Distribution</h3>
+                            <p class="chart-subtitle">Conversations per device</p>
+                        </div>
+                        <div class="chart-container">
+                            <canvas id="deviceDistributionChart"></canvas>
+                        </div>
+                    </div>
+                    <div class="chart-card">
+                        <div class="chart-header">
+                            <h3 class="chart-title">Source Comparison</h3>
+                            <p class="chart-subtitle">Chatbot AI vs WhatsApp Bot</p>
+                        </div>
+                        <div class="chart-container">
+                            <canvas id="sourceComparisonChart"></canvas>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     </main>
 
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="/assets/css/device-settings.css">
     <script src="/assets/js/dashboard.js"></script>
 </body>
 </html>

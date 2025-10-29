@@ -62,6 +62,7 @@ func main() {
 	flowHandler := handler.NewFlowHandler(flowService, authService)
 	conversationHandler := handler.NewConversationHandler(conversationService, authService)
 	wasapbotHandler := handler.NewWasapbotHandler(wasapbotService, authService)
+	dashboardHandler := handler.NewDashboardHandler(conversationService, wasapbotService, authService)
 	aiHandler := handler.NewAIHandler(aiService, authService)
 	webhookHandler := handler.NewWebhookHandler(flowExecutionService, deviceService, whatsappService, flowProcessorService)
 	analyticsHandler := handler.NewAnalyticsHandler(analyticsService, authService)
@@ -151,6 +152,10 @@ func main() {
 	// WhatsApp Bot conversation routes (requires authentication)
 	wasapbot := api.Group("/wasapbot")
 	wasapbot.Get("/all", wasapbotHandler.GetAllWasapbot)
+
+	// Dashboard routes (requires authentication)
+	dashboard := api.Group("/dashboard")
+	dashboard.Get("/combined", dashboardHandler.GetCombinedData)
 
 	// AI integration routes (requires authentication)
 	ai := api.Group("/ai")
