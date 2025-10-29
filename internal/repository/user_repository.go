@@ -205,9 +205,12 @@ func (r *UserRepository) UpdateProfile(ctx context.Context, userID string, gmail
 
 // UpgradeUserToPro upgrades user to Pro status with expiration date
 func (r *UserRepository) UpgradeUserToPro(ctx context.Context, userID string, expirationDate time.Time) error {
+	// Format expiration date as YYYY-MM-DD string for database
+	expirationStr := expirationDate.Format("2006-01-02")
+
 	updateData := map[string]interface{}{
 		"status":     "Pro",
-		"expired":    expirationDate,
+		"expired":    expirationStr,
 		"updated_at": time.Now(),
 	}
 

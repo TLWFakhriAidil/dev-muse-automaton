@@ -11,7 +11,7 @@ type User struct {
 	Gmail      *string    `json:"gmail,omitempty"`
 	Phone      *string    `json:"phone,omitempty"`
 	Status     string     `json:"status"` // "Free", "Pro"
-	Expired    *time.Time `json:"expired,omitempty"` // Pro expiration date
+	Expired    *string    `json:"expired,omitempty"` // Pro expiration date (YYYY-MM-DD format)
 	IsActive   bool       `json:"is_active"`
 	CreatedAt  time.Time  `json:"created_at"`
 	UpdatedAt  time.Time  `json:"updated_at"`
