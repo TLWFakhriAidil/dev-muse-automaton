@@ -44,10 +44,55 @@ async function loadUserInfo() {
         const data = await response.json();
         if (data.user && data.user.email) {
             document.getElementById('userEmail').textContent = data.user.email;
+
+            // Update system status based on user status and expiration date
+            updateSystemStatus(data.user);
         }
     } catch (error) {
         console.error('Error loading user info:', error);
     }
+}
+
+// Update system status display
+function updateSystemStatus(user) {
+    const statusElement = document.getElementById('systemStatus');
+    if (!statusElement) return;
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0); // Reset time to start of day for comparison
+
+    let displayStatus = 'System Online';
+
+    // Check if user has expired date
+    if (user.expired) {
+        const expiredDate = new Date(user.expired);
+        expiredDate.setHours(0, 0, 0, 0); // Reset time to start of day
+
+        // If today is after expired date, show Expired
+        if (today > expiredDate) {
+            displayStatus = 'System Online (Expired)';
+        } else {
+            // Check status - display as-is from database
+            if (user.status === 'Pro') {
+                displayStatus = 'System Online (Pro)';
+            } else if (user.status === 'Trial') {
+                displayStatus = 'System Online (Trial)';
+            } else {
+                displayStatus = `System Online (${user.status})`;
+            }
+        }
+    } else {
+        // No expiration date, just show status
+        if (user.status === 'Pro') {
+            displayStatus = 'System Online (Pro)';
+        } else if (user.status === 'Trial') {
+            displayStatus = 'System Online (Trial)';
+        } else {
+            displayStatus = `System Online (${user.status})`;
+        }
+    }
+
+    statusElement.textContent = displayStatus;
 }
 
 // Set default date filters (current month)

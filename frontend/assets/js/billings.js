@@ -198,6 +198,26 @@ function renderOrdersTable(orders) {
             ? '<span style="background: rgba(59, 130, 246, 0.2); color: #3b82f6; padding: 0.4rem 0.8rem; border-radius: 6px; font-size: 0.85rem; font-weight: 600;">💳 Billplz</span>'
             : '<span style="background: rgba(34, 197, 94, 0.2); color: #22c55e; padding: 0.4rem 0.8rem; border-radius: 6px; font-size: 0.85rem; font-weight: 600;">💵 COD</span>';
 
+        // Receipt button
+        let receiptButton = '';
+        if (order.url) {
+            receiptButton = `<button onclick="viewReceipt('${order.url}')" style="
+                background: rgba(255, 255, 255, 0.1);
+                border: 1px solid rgba(255, 255, 255, 0.2);
+                padding: 0.5rem 1rem;
+                border-radius: 6px;
+                color: white;
+                font-weight: 600;
+                cursor: pointer;
+                font-size: 0.85rem;
+                transition: all 0.3s ease;
+            " onmouseover="this.style.background='rgba(255, 255, 255, 0.2)'" onmouseout="this.style.background='rgba(255, 255, 255, 0.1)'">
+                📄 View
+            </button>`;
+        } else {
+            receiptButton = '<span style="color: var(--netflix-light-gray);">-</span>';
+        }
+
         // Action button
         let actionButton = '';
         if (order.status === 'Pending' && order.url) {
@@ -233,6 +253,7 @@ function renderOrdersTable(orders) {
             <td style="padding: 1rem; color: var(--netflix-gold); font-weight: 700; font-size: 1.05rem;">RM ${parseFloat(order.amount).toFixed(2)}</td>
             <td style="padding: 1rem;">${methodBadge}</td>
             <td style="padding: 1rem;">${statusBadge}</td>
+            <td style="padding: 1rem;">${receiptButton}</td>
             <td style="padding: 1rem;">${actionButton}</td>
         `;
 
@@ -273,6 +294,14 @@ function payNow(url) {
             // Reload orders after closing dialog
             loadOrders();
         });
+    }
+}
+
+// View receipt function - Opens receipt in NEW TAB
+function viewReceipt(url) {
+    if (url) {
+        // Open receipt in new tab
+        window.open(url, '_blank');
     }
 }
 
