@@ -10,7 +10,6 @@ type Config struct {
 	JWTSecret              string
 	BillplzAPIKey          string
 	BillplzCollectionID    string
-	BillplzXSignatureKey   string
 	ServerURL              string
 }
 
@@ -28,7 +27,6 @@ func Load() *Config {
 		JWTSecret:              getEnv("JWT_SECRET", "chatbot-automation-secret-key-change-in-production"),
 		BillplzAPIKey:          os.Getenv("BILLPLZ_API_KEY"),
 		BillplzCollectionID:    os.Getenv("BILLPLZ_COLLECTION_ID"),
-		BillplzXSignatureKey:   os.Getenv("BILLPLZ_X_SIGNATURE_KEY"),
 		ServerURL:              getEnv("SERVER_URL", "http://localhost:8080"),
 	}
 }

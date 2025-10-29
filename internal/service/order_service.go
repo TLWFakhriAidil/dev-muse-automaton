@@ -13,12 +13,11 @@ import (
 
 // OrderService handles billing and payment business logic
 type OrderService struct {
-	orderRepo            *repository.OrderRepository
-	userRepo             *repository.UserRepository
-	billplzAPIKey        string
-	billplzCollectionID  string
-	billplzXSignatureKey string
-	serverURL            string
+	orderRepo           *repository.OrderRepository
+	userRepo            *repository.UserRepository
+	billplzAPIKey       string
+	billplzCollectionID string
+	serverURL           string
 }
 
 // NewOrderService creates a new order service
@@ -27,16 +26,14 @@ func NewOrderService(
 	userRepo *repository.UserRepository,
 	billplzAPIKey string,
 	billplzCollectionID string,
-	billplzXSignatureKey string,
 	serverURL string,
 ) *OrderService {
 	return &OrderService{
-		orderRepo:            orderRepo,
-		userRepo:             userRepo,
-		billplzAPIKey:        billplzAPIKey,
-		billplzCollectionID:  billplzCollectionID,
-		billplzXSignatureKey: billplzXSignatureKey,
-		serverURL:            serverURL,
+		orderRepo:           orderRepo,
+		userRepo:            userRepo,
+		billplzAPIKey:       billplzAPIKey,
+		billplzCollectionID: billplzCollectionID,
+		serverURL:           serverURL,
 	}
 }
 

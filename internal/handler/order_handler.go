@@ -129,8 +129,8 @@ func (h *OrderHandler) BillplzCallback(c *fiber.Ctx) error {
 		})
 	}
 
-	// TODO: Verify X-Signature for security
-	// xSignature := c.Get("X-Signature")
+	// Note: X-Signature verification skipped (not used in PHP version)
+	// For production, implement signature verification for security
 
 	// Process callback
 	if err := h.orderService.HandleBillplzCallback(c.Context(), &callback); err != nil {

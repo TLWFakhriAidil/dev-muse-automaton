@@ -56,7 +56,7 @@ func main() {
 	flowProcessorService := service.NewFlowProcessorService(webhookService, whatsappService, flowRepo, deviceRepo, conversationRepo, wasapbotRepo, stageRepo)
 	analyticsService := service.NewAnalyticsService(analyticsRepo, deviceRepo)
 	stageService := service.NewStageService(stageRepo)
-	orderService := service.NewOrderService(orderRepo, userRepo, cfg.BillplzAPIKey, cfg.BillplzCollectionID, cfg.BillplzXSignatureKey, cfg.ServerURL)
+	orderService := service.NewOrderService(orderRepo, userRepo, cfg.BillplzAPIKey, cfg.BillplzCollectionID, cfg.ServerURL)
 
 	// Initialize handlers
 	authHandler := handler.NewAuthHandler(authService)
