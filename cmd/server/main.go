@@ -68,7 +68,7 @@ func main() {
 	wasapbotHandler := handler.NewWasapbotHandler(wasapbotService, authService)
 	dashboardHandler := handler.NewDashboardHandler(conversationService, wasapbotService, authService)
 	aiHandler := handler.NewAIHandler(aiService, authService)
-	webhookHandler := handler.NewWebhookHandler(flowExecutionService, deviceService, whatsappService, flowProcessorService)
+	webhookHandler := handler.NewWebhookHandler(flowExecutionService, deviceService, whatsappService, flowProcessorService, webhookService, deviceRepo)
 	analyticsHandler := handler.NewAnalyticsHandler(analyticsService, authService)
 	stageHandler := handler.NewStageHandler(stageService, authService)
 	orderHandler := handler.NewOrderHandler(orderService, authService)

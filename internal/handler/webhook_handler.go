@@ -20,15 +20,25 @@ type WebhookHandler struct {
 	deviceService        *service.DeviceService
 	whatsappService      *service.WhatsAppService
 	flowProcessor        *service.FlowProcessorService
+	webhookService       *service.WebhookService
+	deviceRepo           interface {
+		GetDeviceByWebhookID(ctx context.Context, webhookID string) (*models.DeviceSetting, error)
+		GetDeviceByIDDevice(ctx context.Context, idDevice string) (*models.DeviceSetting, error)
+	}
 }
 
 // NewWebhookHandler creates a new webhook handler
-func NewWebhookHandler(flowExecutionService *service.FlowExecutionService, deviceService *service.DeviceService, whatsappService *service.WhatsAppService, flowProcessor *service.FlowProcessorService) *WebhookHandler {
+func NewWebhookHandler(flowExecutionService *service.FlowExecutionService, deviceService *service.DeviceService, whatsappService *service.WhatsAppService, flowProcessor *service.FlowProcessorService, webhookService *service.WebhookService, deviceRepo interface {
+	GetDeviceByWebhookID(ctx context.Context, webhookID string) (*models.DeviceSetting, error)
+	GetDeviceByIDDevice(ctx context.Context, idDevice string) (*models.DeviceSetting, error)
+}) *WebhookHandler {
 	return &WebhookHandler{
 		flowExecutionService: flowExecutionService,
 		deviceService:        deviceService,
 		whatsappService:      whatsappService,
 		flowProcessor:        flowProcessor,
+		webhookService:       webhookService,
+		deviceRepo:           deviceRepo,
 	}
 }
 
@@ -469,32 +479,110 @@ func (h *WebhookHandler) ReceiveWebhook(c *fiber.Ctx) error {
 	log.Printf("📦 Webhook data received: %d fields", len(webhookData))
 	log.Printf("📦 PARSED WEBHOOK DATA: %+v", webhookData)
 
-	// Process the message asynchronously with background context
-	// Note: Cannot use c.Context() as it becomes invalid after response is sent
-	go func() {
-		ctx := context.Background()
-		err := h.flowProcessor.ProcessIncomingMessage(ctx, webhookID, webhookData)
-		if err != nil {
-			log.Printf("❌ Failed to process webhook message: %v", err)
+	// NEW: Extract message data and forward to Deno Deploy for debouncing
+	// Step 1: Get device by webhook_id or id_device
+	device, err := h.deviceRepo.GetDeviceByWebhookID(c.Context(), webhookID)
+	if err != nil || device == nil {
+		log.Printf("🔍 Device not found by webhook_id, trying id_device: %s", webhookID)
+		device, err = h.deviceRepo.GetDeviceByIDDevice(c.Context(), webhookID)
+		if err != nil || device == nil {
+			log.Printf("⚠️  Device not found, falling back to direct processing")
+			// Fallback to direct processing without Deno
+			go func() {
+				ctx := context.Background()
+				err := h.flowProcessor.ProcessIncomingMessage(ctx, webhookID, webhookData)
+				if err != nil {
+					log.Printf("❌ Failed to process webhook message: %v", err)
+				}
+			}()
+			return c.Status(fiber.StatusOK).JSON(fiber.Map{
+				"success": true,
+				"message": "webhook received (device not found, direct processing)",
+			})
 		}
-	}()
+	}
+
+	// Step 2: Detect provider
+	provider := device.Provider
+	if provider == "" || provider == "waha" {
+		// Auto-detect from webhook structure
+		if _, hasPayload := webhookData["payload"]; hasPayload {
+			if _, hasSession := webhookData["session"]; hasSession {
+				provider = "waha"
+				log.Printf("🔍 Detected Waha webhook from data structure")
+			}
+		}
+	}
+	if provider == "" {
+		provider = "whacenter" // Default to Whacenter
+	}
+
+	log.Printf("✅ Found device: %s (Provider: %s)", webhookID, provider)
+
+	// Step 3: Extract message data based on provider
+	idDevice := ""
+	if device.IDDevice != nil {
+		idDevice = *device.IDDevice
+	}
+
+	extractedMsg, err := h.webhookService.ExtractMessageData(c.Context(), webhookData, idDevice, provider)
+	if err != nil {
+		log.Printf("⚠️  Failed to extract message data: %v, falling back to direct processing", err)
+		// Fallback to direct processing
+		go func() {
+			ctx := context.Background()
+			err := h.flowProcessor.ProcessIncomingMessage(ctx, webhookID, webhookData)
+			if err != nil {
+				log.Printf("❌ Failed to process webhook message: %v", err)
+			}
+		}()
+		return c.Status(fiber.StatusOK).JSON(fiber.Map{
+			"success": true,
+			"message": "webhook received (extraction failed, direct processing)",
+		})
+	}
+
+	log.Printf("✅ Extracted message: phone=%s, message=%s, name=%s", extractedMsg.PhoneNumber, extractedMsg.Message, extractedMsg.Name)
+
+	// Step 4: Forward to Deno Deploy for debouncing
+	err = h.forwardToDeno(extractedMsg.DeviceID, extractedMsg.PhoneNumber, extractedMsg.Message)
+	if err != nil {
+		log.Printf("⚠️  Failed to forward to Deno (falling back to direct processing): %v", err)
+		// Fallback to direct processing
+		go func() {
+			ctx := context.Background()
+			err := h.flowProcessor.ProcessIncomingMessage(ctx, webhookID, webhookData)
+			if err != nil {
+				log.Printf("❌ Failed to process webhook message: %v", err)
+			}
+		}()
+		return c.Status(fiber.StatusOK).JSON(fiber.Map{
+			"success": true,
+			"message": "webhook received (Deno unavailable, direct processing)",
+		})
+	}
+
+	log.Printf("✅ Message forwarded to Deno for debouncing")
 
 	// Return immediate success response
 	return c.Status(fiber.StatusOK).JSON(fiber.Map{
-		"success": true,
-		"message": "webhook received",
+		"success":   true,
+		"message":   "webhook received and queued for debouncing",
+		"debounced": true,
 	})
 }
 
 // forwardToDeno forwards extracted message data to Deno Deploy for debouncing
 func (h *WebhookHandler) forwardToDeno(deviceID, phone, message string) error {
-	denoURL := "https://chatbot-debouncer.deno.dev/webhook"
+	// NEW: Use /queue endpoint instead of /webhook
+	denoURL := "https://chatbot-debouncer.deno.dev/queue"
 
+	// NEW: Updated payload format matching Deno Deploy's expected structure
 	payload := map[string]interface{}{
-		"deviceId": deviceID,
-		"phone":    phone,
-		"message":  message,
-		"name":     "", // Optional: can extract from payload if available
+		"device_id": deviceID, // Changed from "deviceId"
+		"phone":     phone,
+		"message":   message,
+		"name":      "", // Optional: can extract from payload if available
 	}
 
 	jsonData, err := json.Marshal(payload)
@@ -508,11 +596,26 @@ func (h *WebhookHandler) forwardToDeno(deviceID, phone, message string) error {
 	}
 	defer resp.Body.Close()
 
+	// Read response body for logging
+	body, _ := io.ReadAll(resp.Body)
+
 	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
 		return fmt.Errorf("Deno returned %d: %s", resp.StatusCode, string(body))
 	}
 
-	log.Printf("📮 Forwarded to Deno: device=%s, phone=%s", deviceID, phone)
+	// Parse response to check if message was queued or ignored
+	var denoResp map[string]interface{}
+	if err := json.Unmarshal(body, &denoResp); err == nil {
+		if queued, ok := denoResp["queued"].(bool); ok && !queued {
+			// Message was ignored (processing/cooldown)
+			reason, _ := denoResp["reason"].(string)
+			log.Printf("⏭️  Deno ignored message (reason: %s): device=%s, phone=%s", reason, deviceID, phone)
+		} else {
+			// Message was queued
+			queueSize, _ := denoResp["queueSize"].(float64)
+			log.Printf("📮 Forwarded to Deno (queue size: %.0f): device=%s, phone=%s", queueSize, deviceID, phone)
+		}
+	}
+
 	return nil
 }

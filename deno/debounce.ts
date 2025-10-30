@@ -22,7 +22,7 @@ const messageQueue = new Map<string, Session>();
 // Configuration
 const DEBOUNCE_DELAY = 8000; // 8 seconds (configurable)
 const PROCESSING_COOLDOWN = 30000; // 30 seconds cooldown after processing
-const BACKEND_URL = Deno.env.get("BACKEND_URL") || "http://localhost:8080";
+const BACKEND_URL = Deno.env.get("BACKEND_URL") || "https://chatbot-automation-production.up.railway.app";
 const BACKEND_ENDPOINT = "/api/debounce/process";
 
 // Logging helper with timestamps
