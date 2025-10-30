@@ -471,3 +471,46 @@ func (s *ConversationService) GetAllConversationsForUser(ctx context.Context, us
 		Conversations: allConversations,
 	}, nil
 }
+
+// GetAllConversations retrieves ALL conversations (admin only)
+func (s *ConversationService) GetAllConversations(ctx context.Context) (*models.ConversationResponse, error) {
+	// Get all devices
+	devices, err := s.deviceRepo.GetAllDevices(ctx)
+	if err != nil {
+		return &models.ConversationResponse{
+			Success: false,
+			Message: "Failed to retrieve devices",
+		}, nil
+	}
+
+	// Collect all conversations from all devices
+	var allConversations []models.AIWhatsapp
+
+	for _, device := range devices {
+		deviceID := ""
+		if device.IDDevice != nil {
+			deviceID = *device.IDDevice
+		} else if device.DeviceID != nil {
+			deviceID = *device.DeviceID
+		}
+
+		if deviceID == "" {
+			continue
+		}
+
+		// Get conversations for this device
+		conversations, err := s.conversationRepo.GetConversationsByDevice(ctx, deviceID, 0)
+		if err != nil {
+			// Log error but continue with other devices
+			continue
+		}
+
+		allConversations = append(allConversations, conversations...)
+	}
+
+	return &models.ConversationResponse{
+		Success:       true,
+		Message:       fmt.Sprintf("Found %d conversations (admin view)", len(allConversations)),
+		Conversations: allConversations,
+	}, nil
+}

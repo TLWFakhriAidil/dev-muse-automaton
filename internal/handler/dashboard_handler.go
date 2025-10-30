@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"chatbot-automation/internal/models"
 	"chatbot-automation/internal/service"
 
 	"github.com/gofiber/fiber/v2"
@@ -53,24 +54,57 @@ func (h *DashboardHandler) GetCombinedData(c *fiber.Ctx) error {
 		return err
 	}
 
-	// Get Chatbot AI conversations
-	chatbotResp, err := h.conversationService.GetAllConversationsForUser(c.Context(), userID)
+	// Check if user is admin
+	isAdmin, err := h.authService.IsAdmin(c.Context(), userID)
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 			"success": false,
-			"message": "Failed to get Chatbot AI conversations",
+			"message": "Failed to check admin status",
 			"error":   err.Error(),
 		})
 	}
 
-	// Get WhatsApp Bot conversations
-	wasapbotResp, err := h.wasapbotService.GetAllWasapbotForUser(c.Context(), userID)
-	if err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-			"success": false,
-			"message": "Failed to get WhatsApp Bot conversations",
-			"error":   err.Error(),
-		})
+	var chatbotResp *models.ConversationResponse
+	var wasapbotResp *models.WasapbotResponse
+
+	if isAdmin {
+		// Admin sees ALL conversations
+		chatbotResp, err = h.conversationService.GetAllConversations(c.Context())
+		if err != nil {
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+				"success": false,
+				"message": "Failed to get Chatbot AI conversations",
+				"error":   err.Error(),
+			})
+		}
+
+		wasapbotResp, err = h.wasapbotService.GetAllWasapbot(c.Context())
+		if err != nil {
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+				"success": false,
+				"message": "Failed to get WhatsApp Bot conversations",
+				"error":   err.Error(),
+			})
+		}
+	} else {
+		// Regular user sees only their conversations
+		chatbotResp, err = h.conversationService.GetAllConversationsForUser(c.Context(), userID)
+		if err != nil {
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+				"success": false,
+				"message": "Failed to get Chatbot AI conversations",
+				"error":   err.Error(),
+			})
+		}
+
+		wasapbotResp, err = h.wasapbotService.GetAllWasapbotForUser(c.Context(), userID)
+		if err != nil {
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+				"success": false,
+				"message": "Failed to get WhatsApp Bot conversations",
+				"error":   err.Error(),
+			})
+		}
 	}
 
 	// Return combined data

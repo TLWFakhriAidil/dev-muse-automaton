@@ -63,3 +63,46 @@ func (s *WasapbotService) GetAllWasapbotForUser(ctx context.Context, userID stri
 		Conversations: allConversations,
 	}, nil
 }
+
+// GetAllWasapbot retrieves ALL WhatsApp Bot conversations (admin only)
+func (s *WasapbotService) GetAllWasapbot(ctx context.Context) (*models.WasapbotResponse, error) {
+	// Get all devices
+	devices, err := s.deviceRepo.GetAllDevices(ctx)
+	if err != nil {
+		return &models.WasapbotResponse{
+			Success: false,
+			Message: "Failed to retrieve devices",
+		}, nil
+	}
+
+	// Collect all conversations from all devices
+	var allConversations []models.Wasapbot
+
+	for _, device := range devices {
+		deviceID := ""
+		if device.IDDevice != nil {
+			deviceID = *device.IDDevice
+		} else if device.DeviceID != nil {
+			deviceID = *device.DeviceID
+		}
+
+		if deviceID == "" {
+			continue
+		}
+
+		// Get conversations for this device
+		conversations, err := s.wasapbotRepo.GetConversationsByDevice(ctx, deviceID, 0)
+		if err != nil {
+			// Log error but continue with other devices
+			continue
+		}
+
+		allConversations = append(allConversations, conversations...)
+	}
+
+	return &models.WasapbotResponse{
+		Success:       true,
+		Message:       fmt.Sprintf("Found %d conversations (admin view)", len(allConversations)),
+		Conversations: allConversations,
+	}, nil
+}
