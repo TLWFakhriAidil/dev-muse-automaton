@@ -45,6 +45,14 @@ async function loadUserInfo() {
         if (data.user && data.user.email) {
             document.getElementById('userEmail').textContent = data.user.email;
 
+            // Show Packages tab for admin users
+            if (data.user.email === 'Admin@gmail.com' || data.user.role === 'admin') {
+                const packagesTab = document.getElementById('packagesTab');
+                if (packagesTab) {
+                    packagesTab.style.display = 'flex';
+                }
+            }
+
             // Update system status based on user status and expiration date
             updateSystemStatus(data.user);
         }

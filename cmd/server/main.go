@@ -42,6 +42,7 @@ func main() {
 	analyticsRepo := repository.NewAnalyticsRepository(supabase)
 	stageRepo := repository.NewStageRepository(supabase)
 	orderRepo := repository.NewOrderRepository(supabase)
+	packageRepo := repository.NewPackageRepository(supabase)
 
 	// Initialize services
 	authService := service.NewAuthService(userRepo, cfg.JWTSecret)
@@ -57,6 +58,7 @@ func main() {
 	analyticsService := service.NewAnalyticsService(analyticsRepo, deviceRepo)
 	stageService := service.NewStageService(stageRepo, deviceRepo)
 	orderService := service.NewOrderService(orderRepo, userRepo, cfg.BillplzAPIKey, cfg.BillplzCollectionID, cfg.ServerURL)
+	packageService := service.NewPackageService(packageRepo)
 
 	// Initialize handlers
 	authHandler := handler.NewAuthHandler(authService)
@@ -70,6 +72,7 @@ func main() {
 	analyticsHandler := handler.NewAnalyticsHandler(analyticsService, authService)
 	stageHandler := handler.NewStageHandler(stageService, authService)
 	orderHandler := handler.NewOrderHandler(orderService, authService)
+	packageHandler := handler.NewPackageHandler(packageService, authService)
 
 	// Debounce service and handler (for Deno Deploy integration)
 	debounceService := service.NewDebounceService(deviceRepo, conversationRepo, whatsappService, aiService)
@@ -85,6 +88,7 @@ func main() {
 	log.Printf("✅ Analytics & reporting system initialized")
 	log.Printf("✅ Stage value management system initialized")
 	log.Printf("✅ Billing & payment system initialized (Billplz)")
+	log.Printf("✅ Package management system initialized")
 	log.Printf("✅ Message debouncing system initialized (Deno Deploy integration)")
 
 	// Create Fiber app
@@ -208,6 +212,14 @@ func main() {
 	billing.Get("/orders/:id", orderHandler.GetOrderByID)          // Get specific order (requires authentication)
 	billing.Post("/callback", orderHandler.BillplzCallback)         // Billplz callback (public)
 	billing.Get("/orders/all", orderHandler.GetAllOrders)          // Get all orders (admin only)
+
+	// Package management routes (admin only)
+	packages := api.Group("/packages")
+	packages.Post("/", packageHandler.CreatePackage)               // Create new package (admin only)
+	packages.Get("/", packageHandler.GetAllPackages)               // Get all packages (admin only)
+	packages.Get("/:id", packageHandler.GetPackageByID)            // Get specific package (admin only)
+	packages.Put("/:id", packageHandler.UpdatePackage)             // Update package (admin only)
+	packages.Delete("/:id", packageHandler.DeletePackage)          // Delete package (admin only)
 
 	// Debounce endpoint (called by Deno Deploy after 30s debounce)
 	api.Post("/debounce/process", debounceHandler.ProcessDebouncedMessages)

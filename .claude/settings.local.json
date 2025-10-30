@@ -17,7 +17,12 @@
       "Bash(git push:*)",
       "Bash(dir:*)",
       "Bash(./bin/server.exe:*)",
-      "Bash(del:*)"
+      "Bash(del:*)",
+      "Bash(for file in dashboard.html device-settings.html profile.html billings.html set-stage.html chatbot-ai.html whatsapp-bot.html flow-builder.html flow-manager.html)",
+      "Bash(then sed -i 's|<a href=\"\"/billings.html\"\" class=\"\"nav-item\"\">|<a href=\"\"/billings.html\"\" class=\"\"nav-item\"\">\\n                <span class=\"\"nav-icon\"\">💳</span>\\n                <span class=\"\"nav-text\"\">Billings</span>\\n            </a>\\n            <a href=\"\"/packages.html\"\" class=\"\"nav-item\"\" id=\"\"packagesTab\"\" style=\"\"display: none;\"\">|g' \"$file\")",
+      "Bash(done)",
+      "Bash(for file in device-settings.html profile.html set-stage.html flow-builder.html flow-manager.html chatbot-ai.html whatsapp-bot.html)",
+      "Bash(then sed -i 's|<a href=\"\"/packages.html\"\" class=\"\"nav-item\"\" id=\"\"packagesTab\"\" style=\"\"display: none;\"\">\\s*<span class=\"\"nav-icon\"\">💳</span>\\s*<span class=\"\"nav-text\"\">Billings</span>|<a href=\"\"/packages.html\"\" class=\"\"nav-item\"\" id=\"\"packagesTab\"\" style=\"\"display: none;\"\">\\n                <span class=\"\"nav-icon\"\">📦</span>\\n                <span class=\"\"nav-text\"\">Packages</span>|g' \"$file\")"
     ],
     "deny": [],
     "ask": []
