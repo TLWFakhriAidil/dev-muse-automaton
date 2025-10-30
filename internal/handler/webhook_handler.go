@@ -108,7 +108,8 @@ func (h *WebhookHandler) HandleWhatsAppWebhook(c *fiber.Ctx) error {
 	log.Printf("✅ Processing message from %s: %s", from, body)
 
 	// Forward to Deno Deploy for debouncing instead of processing immediately
-	err := h.forwardToDeno(deviceID, from, body)
+	// Note: This webhook doesn't extract pushName, so pass empty string
+	err := h.forwardToDeno(deviceID, from, body, "")
 	if err != nil {
 		log.Printf("⚠️  Failed to forward to Deno (falling back to direct processing): %v", err)
 
@@ -536,7 +537,7 @@ func (h *WebhookHandler) ReceiveWebhook(c *fiber.Ctx) error {
 	log.Printf("✅ Extracted message: phone=%s, message=%s, name=%s", extractedMsg.PhoneNumber, extractedMsg.Message, extractedMsg.Name)
 
 	// Step 4: Forward to Deno Deploy for debouncing
-	err = h.forwardToDeno(extractedMsg.DeviceID, extractedMsg.PhoneNumber, extractedMsg.Message)
+	err = h.forwardToDeno(extractedMsg.DeviceID, extractedMsg.PhoneNumber, extractedMsg.Message, extractedMsg.Name)
 	if err != nil {
 		log.Printf("⚠️  Failed to forward to Deno (falling back to direct processing): %v", err)
 		// Fallback to direct processing
@@ -564,7 +565,7 @@ func (h *WebhookHandler) ReceiveWebhook(c *fiber.Ctx) error {
 }
 
 // forwardToDeno forwards extracted message data to Deno Deploy for debouncing
-func (h *WebhookHandler) forwardToDeno(deviceID, phone, message string) error {
+func (h *WebhookHandler) forwardToDeno(deviceID, phone, message, name string) error {
 	// NEW: Use /queue endpoint instead of /webhook
 	denoURL := "https://chatbot-debouncer.deno.dev/queue"
 
@@ -573,7 +574,7 @@ func (h *WebhookHandler) forwardToDeno(deviceID, phone, message string) error {
 		"device_id": deviceID, // Changed from "deviceId"
 		"phone":     phone,
 		"message":   message,
-		"name":      "", // Optional: can extract from payload if available
+		"name":      name, // Include user's name from extracted data
 	}
 
 	jsonData, err := json.Marshal(payload)
