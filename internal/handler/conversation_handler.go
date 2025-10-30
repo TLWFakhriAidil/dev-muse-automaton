@@ -374,8 +374,25 @@ func (h *ConversationHandler) GetAllConversations(c *fiber.Ctx) error {
 		return err
 	}
 
-	// Get all conversations for user
-	resp, err := h.conversationService.GetAllConversationsForUser(c.Context(), userID)
+	// Check if user is admin
+	isAdmin, err := h.authService.IsAdmin(c.Context(), userID)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"success": false,
+			"message": "Failed to check admin status",
+			"error":   err.Error(),
+		})
+	}
+
+	var resp *models.ConversationResponse
+	if isAdmin {
+		// Admin sees ALL conversations
+		resp, err = h.conversationService.GetAllConversations(c.Context())
+	} else {
+		// Regular user sees only their conversations
+		resp, err = h.conversationService.GetAllConversationsForUser(c.Context(), userID)
+	}
+
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 			"success": false,

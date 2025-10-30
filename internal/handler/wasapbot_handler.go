@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"chatbot-automation/internal/models"
 	"chatbot-automation/internal/service"
 
 	"github.com/gofiber/fiber/v2"
@@ -51,8 +52,25 @@ func (h *WasapbotHandler) GetAllWasapbot(c *fiber.Ctx) error {
 		return err
 	}
 
-	// Get all wasapbot conversations for user
-	resp, err := h.wasapbotService.GetAllWasapbotForUser(c.Context(), userID)
+	// Check if user is admin
+	isAdmin, err := h.authService.IsAdmin(c.Context(), userID)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"success": false,
+			"message": "Failed to check admin status",
+			"error":   err.Error(),
+		})
+	}
+
+	var resp *models.WasapbotResponse
+	if isAdmin {
+		// Admin sees ALL conversations
+		resp, err = h.wasapbotService.GetAllWasapbot(c.Context())
+	} else {
+		// Regular user sees only their conversations
+		resp, err = h.wasapbotService.GetAllWasapbotForUser(c.Context(), userID)
+	}
+
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 			"success": false,
