@@ -189,8 +189,9 @@ async function loadOrders(fromDate = '', toDate = '') {
         // Hide loading
         document.getElementById('ordersLoading').style.display = 'none';
 
-        if (result.success && result.data) {
-            const orders = result.data;
+        if (result.success) {
+            // Handle null data as empty array
+            const orders = result.data || [];
 
             if (orders.length === 0) {
                 // Show empty state

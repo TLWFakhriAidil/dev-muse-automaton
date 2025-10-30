@@ -131,7 +131,8 @@ func (r *OrderRepository) GetOrdersByUserIDFiltered(ctx context.Context, userID,
 		return allOrders, nil
 	}
 
-	var filteredOrders []models.Order
+	// Initialize with empty slice (not nil) to ensure JSON returns [] not null
+	filteredOrders := make([]models.Order, 0)
 	for _, order := range allOrders {
 		orderDate := order.CreatedAt.Format("2006-01-02")
 
@@ -270,7 +271,8 @@ func (r *OrderRepository) GetAllOrdersFiltered(ctx context.Context, fromDate, to
 		return allOrders, nil
 	}
 
-	var filteredOrders []models.Order
+	// Initialize with empty slice (not nil) to ensure JSON returns [] not null
+	filteredOrders := make([]models.Order, 0)
 	for _, order := range allOrders {
 		orderDate := order.CreatedAt.Format("2006-01-02")
 
