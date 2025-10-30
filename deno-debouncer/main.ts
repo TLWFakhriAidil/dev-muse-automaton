@@ -1,12 +1,12 @@
 // Deno Deploy Message Debouncer
 // Purpose:
 // 1. Receive webhook messages from WhatsApp
-// 2. Queue messages with 30-second debouncing
+// 2. Queue messages with 4-second debouncing
 // 3. When timer expires, send combined messages to Go backend
 // 4. Go backend handles: device config, AI processing, WhatsApp sending
 
 // Environment variables
-const DEBOUNCE_DELAY_MS = 30000; // 30 seconds
+const DEBOUNCE_DELAY_MS = 4000; // 4 seconds
 const GO_BACKEND_URL = Deno.env.get("GO_BACKEND_URL") || "https://chatbot-automation-production.up.railway.app";
 
 // Open Deno KV database
@@ -84,10 +84,10 @@ async function handleIncomingMessage(payload: any) {
     queue = result.value;
     queue.messages.push({ message, timestamp: now });
     queue.lastMessageTime = now;
-    queue.timerScheduled = now + DEBOUNCE_DELAY_MS; // Reset timer to 30s from now
+    queue.timerScheduled = now + DEBOUNCE_DELAY_MS; // Reset timer to 4s from now
 
     console.log(
-      `📩 [${deviceId}/${phone}] Message ${queue.messages.length} added. Timer RESET to 30s.`
+      `📩 [${deviceId}/${phone}] Message ${queue.messages.length} added. Timer RESET to 4s.`
     );
   } else {
     // Create new queue
@@ -100,7 +100,7 @@ async function handleIncomingMessage(payload: any) {
       timerScheduled: now + DEBOUNCE_DELAY_MS,
     };
 
-    console.log(`🆕 [${deviceId}/${phone}] New queue created. Timer started (30s).`);
+    console.log(`🆕 [${deviceId}/${phone}] New queue created. Timer started (4s).`);
   }
 
   // Save queue
@@ -226,7 +226,7 @@ async function cleanupOldQueues() {
 setInterval(cleanupOldQueues, 600000);
 
 console.log("🚀 Deno Message Debouncer Started!");
-console.log(`⏱️  Debounce delay: ${DEBOUNCE_DELAY_MS}ms (30 seconds)`);
+console.log(`⏱️  Debounce delay: ${DEBOUNCE_DELAY_MS}ms (4 seconds)`);
 console.log(`🔗 Go backend: ${GO_BACKEND_URL}`);
 console.log(`📝 Endpoint: POST /webhook`);
 console.log(`💚 Health check: GET /health`);
