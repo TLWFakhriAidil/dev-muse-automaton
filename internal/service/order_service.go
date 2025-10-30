@@ -61,8 +61,8 @@ func (s *OrderService) CreateOrder(ctx context.Context, userID string, req *mode
 		}, nil
 	}
 
-	// HARDCODED PRICE: RM 1.00
-	amount := 1.00
+	// HARDCODED PRICE: RM 100.00
+	amount := 100.00
 
 	// Create order record
 	order := &models.Order{
@@ -122,7 +122,7 @@ func (s *OrderService) CreateOrder(ctx context.Context, userID string, req *mode
 
 // createBillplzBill creates a bill in Billplz
 func (s *OrderService) createBillplzBill(ctx context.Context, order *models.Order, user *models.User) (*models.BillplzCreateBillResponse, error) {
-	// Convert amount to cents (RM 1.00 = 100 cents)
+	// Convert amount to cents (RM 100.00 = 10000 cents)
 	amountInCents := int(order.Amount * 100)
 
 	// Prepare request data

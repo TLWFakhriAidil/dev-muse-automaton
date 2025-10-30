@@ -72,7 +72,7 @@ async function buyPackage() {
                 'Content-Type': 'application/json'
             },
             body: JSON.stringify({
-                product: 'Test Package - RM 1.00',
+                product: 'Pro Package - RM 100.00',
                 method: 'billplz'
             })
         });

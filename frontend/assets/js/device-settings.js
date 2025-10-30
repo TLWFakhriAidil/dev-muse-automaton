@@ -91,9 +91,58 @@ function generateWebhook() {
 
 // Open device modal
 function openDeviceModal() {
-    const modal = document.getElementById('deviceModal');
-    modal.classList.add('active');
-    document.body.style.overflow = 'hidden';
+    // Check if we're in edit mode or creating new device
+    if (!window.editingDeviceId) {
+        // Creating new device - check device count limit
+        const token = localStorage.getItem('auth_token');
+        if (!token) {
+            window.location.href = '/';
+            return;
+        }
+
+        // Check current device count
+        fetch(`${API_BASE_URL}/devices`, {
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success && data.devices && data.devices.length >= 2) {
+                // Show limit reached alert
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'Device Limit Reached',
+                    text: 'You can only create a maximum of 2 devices. Please delete an existing device if you want to add a new one.',
+                    background: '#141414',
+                    color: '#ffffff',
+                    confirmButtonColor: '#e50914'
+                });
+                return;
+            }
+
+            // Proceed to open modal if under limit
+            const modal = document.getElementById('deviceModal');
+            modal.classList.add('active');
+            document.body.style.overflow = 'hidden';
+        })
+        .catch(error => {
+            console.error('Error checking device count:', error);
+            Swal.fire({
+                icon: 'error',
+                title: 'Error',
+                text: 'Failed to check device count. Please try again.',
+                background: '#141414',
+                color: '#ffffff',
+                confirmButtonColor: '#e50914'
+            });
+        });
+    } else {
+        // Edit mode - allow opening modal
+        const modal = document.getElementById('deviceModal');
+        modal.classList.add('active');
+        document.body.style.overflow = 'hidden';
+    }
 }
 
 // Close device modal
@@ -316,6 +365,20 @@ async function loadDevices() {
         const data = await response.json();
 
         const devicesList = document.getElementById('devicesList');
+        const btnNewDevice = document.getElementById('btnNewDevice');
+
+        // Update button state based on device count
+        if (data.success && data.devices && data.devices.length >= 2) {
+            // Disable button when limit reached
+            btnNewDevice.style.opacity = '0.5';
+            btnNewDevice.style.cursor = 'not-allowed';
+            btnNewDevice.title = 'Maximum 2 devices allowed';
+        } else {
+            // Enable button when under limit
+            btnNewDevice.style.opacity = '1';
+            btnNewDevice.style.cursor = 'pointer';
+            btnNewDevice.title = 'Add new device';
+        }
 
         if (data.success && data.devices && data.devices.length > 0) {
             devicesList.innerHTML = `
