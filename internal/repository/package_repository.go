@@ -22,7 +22,7 @@ func NewPackageRepository(supabase *database.SupabaseClient) *PackageRepository 
 
 // CreatePackage creates a new package in the database
 func (r *PackageRepository) CreatePackage(ctx context.Context, pkg *models.Package) error {
-	data, err := r.supabase.InsertAsAdmin("package", map[string]interface{}{
+	data, err := r.supabase.InsertAsAdmin("packages", map[string]interface{}{
 		"name":   pkg.Name,
 		"amount": pkg.Amount,
 	})
@@ -44,7 +44,7 @@ func (r *PackageRepository) CreatePackage(ctx context.Context, pkg *models.Packa
 
 // GetAllPackages retrieves all packages from the database
 func (r *PackageRepository) GetAllPackages(ctx context.Context) ([]models.Package, error) {
-	data, err := r.supabase.QueryAsAdmin("package", map[string]string{
+	data, err := r.supabase.QueryAsAdmin("packages", map[string]string{
 		"select": "*",
 		"order":  "id.asc",
 	})
@@ -67,7 +67,7 @@ func (r *PackageRepository) GetAllPackages(ctx context.Context) ([]models.Packag
 
 // GetPackageByID retrieves a package by ID
 func (r *PackageRepository) GetPackageByID(ctx context.Context, id int) (*models.Package, error) {
-	data, err := r.supabase.QueryAsAdmin("package", map[string]string{
+	data, err := r.supabase.QueryAsAdmin("packages", map[string]string{
 		"select": "*",
 		"id":     fmt.Sprintf("eq.%d", id),
 	})
@@ -89,7 +89,7 @@ func (r *PackageRepository) GetPackageByID(ctx context.Context, id int) (*models
 
 // UpdatePackage updates an existing package
 func (r *PackageRepository) UpdatePackage(ctx context.Context, id int, pkg *models.Package) error {
-	data, err := r.supabase.UpdateAsAdmin("package", map[string]string{
+	data, err := r.supabase.UpdateAsAdmin("packages", map[string]string{
 		"id": fmt.Sprintf("eq.%d", id),
 	}, map[string]interface{}{
 		"name":   pkg.Name,
@@ -113,7 +113,7 @@ func (r *PackageRepository) UpdatePackage(ctx context.Context, id int, pkg *mode
 
 // DeletePackage deletes a package by ID
 func (r *PackageRepository) DeletePackage(ctx context.Context, id int) error {
-	err := r.supabase.DeleteAsAdmin("package", map[string]string{
+	err := r.supabase.DeleteAsAdmin("packages", map[string]string{
 		"id": fmt.Sprintf("eq.%d", id),
 	})
 	if err != nil {
