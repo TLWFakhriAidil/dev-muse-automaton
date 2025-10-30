@@ -198,6 +198,24 @@ func (s *OrderService) GetUserOrders(ctx context.Context, userID string) ([]mode
 	return orders, nil
 }
 
+// GetUserOrdersFiltered retrieves orders for a user with date filtering
+func (s *OrderService) GetUserOrdersFiltered(ctx context.Context, userID, fromDate, toDate string) ([]models.Order, error) {
+	orders, err := s.orderRepo.GetOrdersByUserIDFiltered(ctx, userID, fromDate, toDate)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get filtered user orders: %w", err)
+	}
+	return orders, nil
+}
+
+// GetAllOrdersFiltered retrieves all orders with date filtering (admin only)
+func (s *OrderService) GetAllOrdersFiltered(ctx context.Context, fromDate, toDate string) ([]models.Order, error) {
+	orders, err := s.orderRepo.GetAllOrdersFiltered(ctx, fromDate, toDate)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get filtered orders: %w", err)
+	}
+	return orders, nil
+}
+
 // GetOrderByID retrieves an order by ID
 func (s *OrderService) GetOrderByID(ctx context.Context, id int, userID string) (*models.Order, error) {
 	order, err := s.orderRepo.GetOrderByID(ctx, id)

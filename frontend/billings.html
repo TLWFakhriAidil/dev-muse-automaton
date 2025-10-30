@@ -135,6 +135,64 @@
                 </div>
             </div>
 
+            <!-- Date Filter -->
+            <div class="card" style="margin-bottom: 1.5rem;">
+                <div class="card-body">
+                    <div style="display: flex; gap: 1rem; align-items: end; flex-wrap: wrap;">
+                        <div style="flex: 1; min-width: 200px;">
+                            <label style="display: block; color: var(--netflix-light-gray); margin-bottom: 0.5rem; font-size: 0.9rem;">From Date</label>
+                            <input type="date" id="fromDate" style="
+                                width: 100%;
+                                padding: 0.75rem;
+                                background: rgba(255, 255, 255, 0.05);
+                                border: 1px solid rgba(255, 255, 255, 0.1);
+                                border-radius: 6px;
+                                color: white;
+                                font-size: 0.95rem;
+                            ">
+                        </div>
+                        <div style="flex: 1; min-width: 200px;">
+                            <label style="display: block; color: var(--netflix-light-gray); margin-bottom: 0.5rem; font-size: 0.9rem;">To Date</label>
+                            <input type="date" id="toDate" style="
+                                width: 100%;
+                                padding: 0.75rem;
+                                background: rgba(255, 255, 255, 0.05);
+                                border: 1px solid rgba(255, 255, 255, 0.1);
+                                border-radius: 6px;
+                                color: white;
+                                font-size: 0.95rem;
+                            ">
+                        </div>
+                        <div style="display: flex; gap: 0.5rem;">
+                            <button onclick="applyDateFilter()" style="
+                                padding: 0.75rem 1.5rem;
+                                background: linear-gradient(135deg, #e50914 0%, #b00710 100%);
+                                border: none;
+                                border-radius: 6px;
+                                color: white;
+                                font-weight: 600;
+                                cursor: pointer;
+                                transition: all 0.3s ease;
+                            " onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform='translateY(0)'">
+                                🔍 Filter
+                            </button>
+                            <button onclick="clearDateFilter()" style="
+                                padding: 0.75rem 1.5rem;
+                                background: rgba(255, 255, 255, 0.1);
+                                border: 1px solid rgba(255, 255, 255, 0.2);
+                                border-radius: 6px;
+                                color: white;
+                                font-weight: 600;
+                                cursor: pointer;
+                                transition: all 0.3s ease;
+                            " onmouseover="this.style.background='rgba(255, 255, 255, 0.15)'" onmouseout="this.style.background='rgba(255, 255, 255, 0.1)'">
+                                🔄 Clear
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <!-- Orders Table -->
             <div id="ordersLoading" class="empty-state">
                 <div class="empty-state-icon">⏳</div>

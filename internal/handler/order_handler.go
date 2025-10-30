@@ -99,6 +99,10 @@ func (h *OrderHandler) GetUserOrders(c *fiber.Ctx) error {
 		return err
 	}
 
+	// Get date filter parameters (optional)
+	fromDate := c.Query("from_date")
+	toDate := c.Query("to_date")
+
 	// Check if user is admin
 	isAdmin, err := h.authService.IsAdmin(c.Context(), userID)
 	if err != nil {
@@ -111,11 +115,11 @@ func (h *OrderHandler) GetUserOrders(c *fiber.Ctx) error {
 
 	var orders []models.Order
 	if isAdmin {
-		// Admin sees ALL orders
-		orders, err = h.orderService.GetAllOrders(c.Context())
+		// Admin sees ALL orders with optional date filter
+		orders, err = h.orderService.GetAllOrdersFiltered(c.Context(), fromDate, toDate)
 	} else {
-		// Regular user sees only their orders
-		orders, err = h.orderService.GetUserOrders(c.Context(), userID)
+		// Regular user sees only their orders with optional date filter
+		orders, err = h.orderService.GetUserOrdersFiltered(c.Context(), userID, fromDate, toDate)
 	}
 
 	if err != nil {

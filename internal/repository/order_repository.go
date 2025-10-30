@@ -109,6 +109,40 @@ func (r *OrderRepository) GetOrdersByUserID(ctx context.Context, userID string) 
 	return orders, nil
 }
 
+// GetOrdersByUserIDFiltered retrieves orders for a user with date filtering
+func (r *OrderRepository) GetOrdersByUserIDFiltered(ctx context.Context, userID, fromDate, toDate string) ([]models.Order, error) {
+	query := map[string]string{
+		"select":  "*",
+		"user_id": fmt.Sprintf("eq.%s", userID),
+		"order":   "created_at.desc",
+	}
+
+	// Add date filters if provided
+	if fromDate != "" {
+		query["created_at"] = fmt.Sprintf("gte.%s", fromDate)
+	}
+	if toDate != "" {
+		// Add one day to toDate to include the entire day
+		query["created_at"] = fmt.Sprintf("lte.%sT23:59:59", toDate)
+	}
+	// If both dates provided, use range
+	if fromDate != "" && toDate != "" {
+		query["created_at"] = fmt.Sprintf("gte.%s&created_at=lte.%sT23:59:59", fromDate, toDate)
+	}
+
+	data, err := r.supabase.QueryAsAdmin("orders", query)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get filtered orders: %w", err)
+	}
+
+	var orders []models.Order
+	if err := json.Unmarshal(data, &orders); err != nil {
+		return nil, fmt.Errorf("failed to parse orders: %w", err)
+	}
+
+	return orders, nil
+}
+
 // UpdateOrderStatus updates an order's status
 func (r *OrderRepository) UpdateOrderStatus(ctx context.Context, id int, status string) error {
 	update := map[string]interface{}{
@@ -195,6 +229,39 @@ func (r *OrderRepository) GetAllOrders(ctx context.Context) ([]models.Order, err
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to get all orders: %w", err)
+	}
+
+	var orders []models.Order
+	if err := json.Unmarshal(data, &orders); err != nil {
+		return nil, fmt.Errorf("failed to parse orders: %w", err)
+	}
+
+	return orders, nil
+}
+
+// GetAllOrdersFiltered retrieves all orders with date filtering (admin only)
+func (r *OrderRepository) GetAllOrdersFiltered(ctx context.Context, fromDate, toDate string) ([]models.Order, error) {
+	query := map[string]string{
+		"select": "*",
+		"order":  "created_at.desc",
+	}
+
+	// Add date filters if provided
+	if fromDate != "" {
+		query["created_at"] = fmt.Sprintf("gte.%s", fromDate)
+	}
+	if toDate != "" {
+		// Add one day to toDate to include the entire day
+		query["created_at"] = fmt.Sprintf("lte.%sT23:59:59", toDate)
+	}
+	// If both dates provided, use range
+	if fromDate != "" && toDate != "" {
+		query["created_at"] = fmt.Sprintf("gte.%s&created_at=lte.%sT23:59:59", fromDate, toDate)
+	}
+
+	data, err := r.supabase.QueryAsAdmin("orders", query)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get filtered orders: %w", err)
 	}
 
 	var orders []models.Order

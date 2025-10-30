@@ -124,8 +124,8 @@ async function buyPackage() {
     }
 }
 
-// Load orders
-async function loadOrders() {
+// Load orders with optional date filtering
+async function loadOrders(fromDate = '', toDate = '') {
     const token = localStorage.getItem('auth_token');
 
     if (!token) {
@@ -140,7 +140,22 @@ async function loadOrders() {
     document.getElementById('ordersTableContainer').style.display = 'none';
 
     try {
-        const response = await fetch(`${API_BASE_URL}/billing/orders`, {
+        // Build URL with query parameters
+        let url = `${API_BASE_URL}/billing/orders`;
+        const params = new URLSearchParams();
+
+        if (fromDate) {
+            params.append('from_date', fromDate);
+        }
+        if (toDate) {
+            params.append('to_date', toDate);
+        }
+
+        if (params.toString()) {
+            url += '?' + params.toString();
+        }
+
+        const response = await fetch(url, {
             headers: {
                 'Authorization': `Bearer ${token}`
             }
@@ -171,6 +186,35 @@ async function loadOrders() {
         document.getElementById('ordersError').style.display = 'flex';
         document.getElementById('ordersErrorMessage').textContent = error.message || 'Failed to load orders';
     }
+}
+
+// Apply date filter
+function applyDateFilter() {
+    const fromDate = document.getElementById('fromDate').value;
+    const toDate = document.getElementById('toDate').value;
+
+    // Validate dates
+    if (fromDate && toDate && fromDate > toDate) {
+        Swal.fire({
+            icon: 'warning',
+            title: 'Invalid Date Range',
+            text: 'From Date cannot be later than To Date',
+            background: '#141414',
+            color: '#ffffff',
+            confirmButtonColor: '#e50914'
+        });
+        return;
+    }
+
+    // Load orders with filter
+    loadOrders(fromDate, toDate);
+}
+
+// Clear date filter
+function clearDateFilter() {
+    document.getElementById('fromDate').value = '';
+    document.getElementById('toDate').value = '';
+    loadOrders();
 }
 
 // Render orders table (matching device settings style)
