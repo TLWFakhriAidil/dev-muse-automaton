@@ -29,7 +29,7 @@ let isPanning = false;
 let panStart = { x: 0, y: 0 };
 let canvasOffset = { x: 0, y: 0 };
 
-// Load devices for dropdown
+// Load devices for dropdown (excluding devices that already have flows)
 async function loadDevices() {
     const token = localStorage.getItem('auth_token');
     if (!token) {
@@ -38,24 +38,57 @@ async function loadDevices() {
     }
 
     try {
-        const response = await fetch(`${API_BASE_URL}/devices`, {
-            headers: {
-                'Authorization': `Bearer ${token}`
-            }
-        });
+        // Fetch both devices and flows in parallel
+        const [devicesResponse, flowsResponse] = await Promise.all([
+            fetch(`${API_BASE_URL}/devices`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            }),
+            fetch(`${API_BASE_URL}/flows`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            })
+        ]);
 
-        const data = await response.json();
+        const devicesData = await devicesResponse.json();
+        const flowsData = await flowsResponse.json();
 
         const deviceSelect = document.getElementById('deviceSelect');
         deviceSelect.innerHTML = '<option value="">Select a device...</option>';
 
-        if (data.success && data.devices && data.devices.length > 0) {
-            data.devices.forEach(device => {
-                const option = document.createElement('option');
-                option.value = device.id_device || device.device_id;
-                option.textContent = `${device.id_device || device.device_id} - ${device.provider}`;
-                deviceSelect.appendChild(option);
+        if (devicesData.success && devicesData.devices && devicesData.devices.length > 0) {
+            // Create a Set of device IDs that already have flows
+            const devicesWithFlows = new Set();
+            if (flowsData.success && flowsData.flows && flowsData.flows.length > 0) {
+                flowsData.flows.forEach(flow => {
+                    // Store the flow_id (device identifier) from each flow
+                    if (flow.flow_id) {
+                        devicesWithFlows.add(flow.flow_id);
+                    }
+                });
+            }
+
+            // Only show devices that DON'T have flows yet
+            let availableDevices = 0;
+            devicesData.devices.forEach(device => {
+                const deviceId = device.id_device || device.device_id;
+
+                // Skip devices that already have flows
+                if (!devicesWithFlows.has(deviceId)) {
+                    const option = document.createElement('option');
+                    option.value = deviceId;
+                    option.textContent = `${deviceId} - ${device.provider}`;
+                    deviceSelect.appendChild(option);
+                    availableDevices++;
+                }
             });
+
+            // Show message if no devices available
+            if (availableDevices === 0) {
+                const option = document.createElement('option');
+                option.value = "";
+                option.textContent = "No devices available (all devices have flows)";
+                option.disabled = true;
+                deviceSelect.appendChild(option);
+            }
         }
     } catch (error) {
         console.error('Load devices error:', error);
