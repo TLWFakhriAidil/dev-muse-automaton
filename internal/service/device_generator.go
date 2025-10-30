@@ -133,7 +133,8 @@ func (s *DeviceService) generateWhacenterDevice(ctx context.Context, device *mod
 	}
 
 	instance := addDeviceResp.Data.Device.DeviceID
-	webhookURL := fmt.Sprintf("https://chatbot-automation-production.up.railway.app/chatgpt/%s/%s", idDevice, instance)
+	// Use same format as WAHA: /{idDevice}/{instance}
+	webhookURL := fmt.Sprintf("https://chatbot-automation-production.up.railway.app/%s/%s", idDevice, instance)
 
 	// STEP 3: Set webhook
 	setWebhookURL := fmt.Sprintf("https://api.whacenter.com/api/setWebhook?device_id=%s&webhook=%s", instance, webhookURL)
