@@ -69,7 +69,7 @@ func (r *PackageRepository) GetAllPackages(ctx context.Context) ([]models.Packag
 func (r *PackageRepository) GetPackageByID(ctx context.Context, id int) (*models.Package, error) {
 	data, err := r.supabase.QueryAsAdmin("packages", map[string]string{
 		"select": "*",
-		"id":     fmt.Sprintf("eq.%d", id),
+		"id":     fmt.Sprintf("%d", id),
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to get package: %w", err)
@@ -90,7 +90,7 @@ func (r *PackageRepository) GetPackageByID(ctx context.Context, id int) (*models
 // UpdatePackage updates an existing package
 func (r *PackageRepository) UpdatePackage(ctx context.Context, id int, pkg *models.Package) error {
 	data, err := r.supabase.UpdateAsAdmin("packages", map[string]string{
-		"id": fmt.Sprintf("eq.%d", id),
+		"id": fmt.Sprintf("%d", id),
 	}, map[string]interface{}{
 		"name":   pkg.Name,
 		"amount": pkg.Amount,
@@ -114,7 +114,7 @@ func (r *PackageRepository) UpdatePackage(ctx context.Context, id int, pkg *mode
 // DeletePackage deletes a package by ID
 func (r *PackageRepository) DeletePackage(ctx context.Context, id int) error {
 	err := r.supabase.DeleteAsAdmin("packages", map[string]string{
-		"id": fmt.Sprintf("eq.%d", id),
+		"id": fmt.Sprintf("%d", id),
 	})
 	if err != nil {
 		return fmt.Errorf("failed to delete package: %w", err)
