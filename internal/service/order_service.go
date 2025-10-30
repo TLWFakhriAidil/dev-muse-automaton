@@ -9,6 +9,8 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strconv"
+	"strings"
 	"time"
 )
 
@@ -61,8 +63,14 @@ func (s *OrderService) CreateOrder(ctx context.Context, userID string, req *mode
 		}, nil
 	}
 
-	// HARDCODED PRICE: RM 100.00
-	amount := 100.00
+	// Extract amount from product string (format: "Package Name - RM XX.XX")
+	amount := extractAmountFromProduct(req.Product)
+	if amount <= 0 {
+		return &models.OrderResponse{
+			Success: false,
+			Message: "Invalid product amount",
+		}, nil
+	}
 
 	// Create order record
 	order := &models.Order{
@@ -278,4 +286,25 @@ func (s *OrderService) GetAllOrders(ctx context.Context) ([]models.Order, error)
 		return nil, fmt.Errorf("failed to get all orders: %w", err)
 	}
 	return orders, nil
+}
+
+// extractAmountFromProduct extracts the price amount from product string
+// Expected format: "Package Name - RM XX.XX" or "Package Name - RM XXX.XX"
+func extractAmountFromProduct(product string) float64 {
+	// Split by " - RM " to get the amount part
+	parts := strings.Split(product, " - RM ")
+	if len(parts) < 2 {
+		return 0
+	}
+
+	// Get the amount string (last part)
+	amountStr := strings.TrimSpace(parts[len(parts)-1])
+
+	// Parse the amount to float64
+	amount, err := strconv.ParseFloat(amountStr, 64)
+	if err != nil {
+		return 0
+	}
+
+	return amount
 }
