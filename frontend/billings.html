@@ -91,44 +91,12 @@
             </div>
 
             <!-- Pricing Package Card -->
-            <div class="card" style="margin-bottom: 2rem;">
-                <div class="card-header">
-                    <h2 class="card-title">🎯 Pro Package - Monthly Subscription</h2>
-                </div>
-                <div class="card-body">
-                    <div style="display: flex; align-items: center; justify-content: space-between; gap: 2rem; flex-wrap: wrap;">
-                        <div style="flex: 1; min-width: 250px;">
-                            <div style="font-size: 3rem; font-weight: 900; color: var(--netflix-gold); margin-bottom: 0.5rem;">
-                                RM 100.00
-                            </div>
-                            <p style="color: var(--netflix-light-gray); margin-bottom: 1rem;">Pro package with full system access for 30 days</p>
-                            <ul style="list-style: none; padding: 0; color: var(--netflix-light-gray);">
-                                <li style="margin-bottom: 0.5rem;">✓ Full system access (30 days)</li>
-                                <li style="margin-bottom: 0.5rem;">✓ All features unlocked</li>
-                                <li style="margin-bottom: 0.5rem;">✓ Billplz secure payment</li>
-                                <li style="margin-bottom: 0.5rem;">✓ Instant activation</li>
-                            </ul>
-                        </div>
-                        <div style="text-align: center;">
-                            <button class="btn-primary" onclick="buyPackage()" style="
-                                padding: 1rem 2.5rem;
-                                font-size: 1.1rem;
-                                background: linear-gradient(135deg, #e50914 0%, #b00710 100%);
-                                border: none;
-                                border-radius: 8px;
-                                color: white;
-                                font-weight: 700;
-                                cursor: pointer;
-                                box-shadow: 0 6px 20px rgba(229, 9, 20, 0.4);
-                                transition: all 0.3s ease;
-                            " onmouseover="this.style.transform='translateY(-3px)'; this.style.boxShadow='0 8px 25px rgba(229, 9, 20, 0.5)'" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 6px 20px rgba(229, 9, 20, 0.4)'">
-                                🛒 Buy Now - RM 100.00
-                            </button>
-                            <p style="margin-top: 1rem; font-size: 0.85rem; color: var(--netflix-light-gray);">
-                                Secure payment via Billplz
-                            </p>
-                        </div>
-                    </div>
+            <div id="packagesContainer" style="margin-bottom: 2rem;">
+                <!-- Packages will be loaded dynamically here -->
+                <div class="empty-state">
+                    <div class="empty-state-icon">📦</div>
+                    <h2 class="empty-state-title">Loading Packages...</h2>
+                    <p class="empty-state-text">Please wait while we load available packages</p>
                 </div>
             </div>
 

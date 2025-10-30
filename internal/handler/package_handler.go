@@ -96,33 +96,16 @@ func (h *PackageHandler) CreatePackage(c *fiber.Ctx) error {
 	return c.Status(fiber.StatusCreated).JSON(resp)
 }
 
-// GetAllPackages retrieves all packages (admin only)
+// GetAllPackages retrieves all packages (available to all authenticated users)
 // GET /api/packages
 func (h *PackageHandler) GetAllPackages(c *fiber.Ctx) error {
-	// Get user ID from token
-	userID, err := h.getUserIDFromToken(c)
+	// Get user ID from token (just for authentication check)
+	_, err := h.getUserIDFromToken(c)
 	if err != nil {
 		return err
 	}
 
-	// Check if user is admin
-	isAdmin, err := h.authService.IsAdmin(c.Context(), userID)
-	if err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-			"success": false,
-			"message": "Failed to check admin status",
-			"error":   err.Error(),
-		})
-	}
-
-	if !isAdmin {
-		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{
-			"success": false,
-			"message": "Only admins can view packages",
-		})
-	}
-
-	// Get all packages
+	// Get all packages (no admin check - all users can view packages)
 	resp, err := h.packageService.GetAllPackages(c.Context())
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{

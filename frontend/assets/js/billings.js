@@ -12,6 +12,9 @@ document.addEventListener('DOMContentLoaded', () => {
     // Load user info
     loadUserInfo();
 
+    // Load packages
+    loadPackages();
+
     // Set default date values
     setDefaultDates();
 
@@ -57,8 +60,94 @@ async function loadUserInfo() {
     }
 }
 
+// Load packages from database
+async function loadPackages() {
+    const token = localStorage.getItem('auth_token');
+
+    try {
+        const response = await fetch(`${API_BASE_URL}/packages`, {
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        });
+
+        const data = await response.json();
+
+        if (data.success && data.packages && data.packages.length > 0) {
+            displayPackages(data.packages);
+        } else {
+            // Show empty state if no packages
+            document.getElementById('packagesContainer').innerHTML = `
+                <div class="empty-state">
+                    <div class="empty-state-icon">📦</div>
+                    <h2 class="empty-state-title">No Packages Available</h2>
+                    <p class="empty-state-text">There are no billing packages available at the moment</p>
+                </div>
+            `;
+        }
+    } catch (error) {
+        console.error('Load packages error:', error);
+        // Show error state
+        document.getElementById('packagesContainer').innerHTML = `
+            <div class="empty-state">
+                <div class="empty-state-icon">❌</div>
+                <h2 class="empty-state-title">Error Loading Packages</h2>
+                <p class="empty-state-text">Failed to load billing packages. Please refresh the page.</p>
+            </div>
+        `;
+    }
+}
+
+// Display packages dynamically
+function displayPackages(packages) {
+    const container = document.getElementById('packagesContainer');
+
+    container.innerHTML = packages.map(pkg => `
+        <div class="card" style="margin-bottom: 2rem;">
+            <div class="card-header">
+                <h2 class="card-title">🎯 ${pkg.name}</h2>
+            </div>
+            <div class="card-body">
+                <div style="display: flex; align-items: center; justify-content: space-between; gap: 2rem; flex-wrap: wrap;">
+                    <div style="flex: 1; min-width: 250px;">
+                        <div style="font-size: 3rem; font-weight: 900; color: var(--netflix-gold); margin-bottom: 0.5rem;">
+                            RM ${pkg.amount}
+                        </div>
+                        <p style="color: var(--netflix-light-gray); margin-bottom: 1rem;">${pkg.name} with full system access for 30 days</p>
+                        <ul style="list-style: none; padding: 0; color: var(--netflix-light-gray);">
+                            <li style="margin-bottom: 0.5rem;">✓ Full system access (30 days)</li>
+                            <li style="margin-bottom: 0.5rem;">✓ All features unlocked</li>
+                            <li style="margin-bottom: 0.5rem;">✓ Billplz secure payment</li>
+                            <li style="margin-bottom: 0.5rem;">✓ Instant activation</li>
+                        </ul>
+                    </div>
+                    <div style="text-align: center;">
+                        <button class="btn-primary" onclick="buyPackage('${pkg.name}', '${pkg.amount}')" style="
+                            padding: 1rem 2.5rem;
+                            font-size: 1.1rem;
+                            background: linear-gradient(135deg, #e50914 0%, #b00710 100%);
+                            border: none;
+                            border-radius: 8px;
+                            color: white;
+                            font-weight: 700;
+                            cursor: pointer;
+                            box-shadow: 0 6px 20px rgba(229, 9, 20, 0.4);
+                            transition: all 0.3s ease;
+                        " onmouseover="this.style.transform='translateY(-3px)'; this.style.boxShadow='0 8px 25px rgba(229, 9, 20, 0.5)'" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 6px 20px rgba(229, 9, 20, 0.4)'">
+                            🛒 Buy Now - RM ${pkg.amount}
+                        </button>
+                        <p style="margin-top: 1rem; font-size: 0.85rem; color: var(--netflix-light-gray);">
+                            Secure payment via Billplz
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `).join('');
+}
+
 // Buy package function - Opens payment in NEW TAB
-async function buyPackage() {
+async function buyPackage(packageName, packageAmount) {
     const token = localStorage.getItem('auth_token');
 
     if (!token) {
@@ -95,7 +184,7 @@ async function buyPackage() {
                 'Content-Type': 'application/json'
             },
             body: JSON.stringify({
-                product: 'Pro Package - RM 100.00',
+                product: `${packageName} - RM ${packageAmount}`,
                 method: 'billplz'
             })
         });
