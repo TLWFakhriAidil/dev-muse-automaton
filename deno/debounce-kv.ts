@@ -60,18 +60,34 @@ async function deleteSession(sessionKey: string): Promise<void> {
 
 // Process and send combined messages
 async function processMessages(sessionKey: string) {
-  const session = await getSession(sessionKey);
+  // Use atomic check-and-set to prevent race conditions
+  const entry = await kv.get<Session>(["session", sessionKey]);
+  const session = entry.value;
 
   if (!session || session.messages.length === 0) {
     log("warn", "No messages to process", { sessionKey });
     return;
   }
 
-  // Mark as processing
-  session.isProcessing = true;
-  await saveSession(sessionKey, session);
+  // Check if already processing
+  if (session.isProcessing) {
+    log("warn", "Already processing, skipping", { sessionKey });
+    return;
+  }
 
-  const messages = session.messages.map((m) => m.message);
+  // Atomic operation: only proceed if session hasn't changed
+  session.isProcessing = true;
+  const result = await kv.atomic()
+    .check(entry) // Only commit if session hasn't changed
+    .set(["session", sessionKey], session)
+    .commit();
+
+  if (!result.ok) {
+    log("warn", "Another isolate is processing, skipping", { sessionKey });
+    return;
+  }
+
+  const messages = session.messages.map((m: Message) => m.message);
   const firstMessage = session.messages[0];
 
   log("info", "Processing combined messages", {
