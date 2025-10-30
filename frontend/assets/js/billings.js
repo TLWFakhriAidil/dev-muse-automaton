@@ -12,9 +12,32 @@ document.addEventListener('DOMContentLoaded', () => {
     // Load user info
     loadUserInfo();
 
-    // Load orders
-    loadOrders();
+    // Set default date values
+    setDefaultDates();
+
+    // Load orders with default dates
+    const fromDate = document.getElementById('fromDate').value;
+    const toDate = document.getElementById('toDate').value;
+    loadOrders(fromDate, toDate);
 });
+
+// Set default date values (first day of current month to today)
+function setDefaultDates() {
+    const today = new Date();
+    const year = today.getFullYear();
+    const month = String(today.getMonth() + 1).padStart(2, '0'); // Month is 0-indexed
+    const day = String(today.getDate()).padStart(2, '0');
+
+    // First day of current month
+    const firstDayOfMonth = `${year}-${month}-01`;
+
+    // Today's date
+    const todayDate = `${year}-${month}-${day}`;
+
+    // Set input values
+    document.getElementById('fromDate').value = firstDayOfMonth;
+    document.getElementById('toDate').value = todayDate;
+}
 
 // Load user info
 async function loadUserInfo() {
