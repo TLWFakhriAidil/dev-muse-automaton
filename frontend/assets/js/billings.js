@@ -1,5 +1,5 @@
 // Billings JavaScript
-const API_BASE_URL = window.location.origin + '/api';
+// API_BASE_URL is declared in common.js
 
 // Check authentication on page load
 document.addEventListener('DOMContentLoaded', () => {
