@@ -1,10 +1,15 @@
 package handler
 
 import (
+	"bytes"
 	"chatbot-automation/internal/models"
 	"chatbot-automation/internal/service"
 	"context"
+	"encoding/json"
+	"fmt"
+	"io"
 	"log"
+	"net/http"
 
 	"github.com/gofiber/fiber/v2"
 )
@@ -92,47 +97,57 @@ func (h *WebhookHandler) HandleWhatsAppWebhook(c *fiber.Ctx) error {
 
 	log.Printf("✅ Processing message from %s: %s", from, body)
 
-	// Process the message through flow execution
-	result, err := h.flowExecutionService.ProcessMessage(c.Context(), from, body)
+	// Forward to Deno Deploy for debouncing instead of processing immediately
+	err := h.forwardToDeno(deviceID, from, body)
 	if err != nil {
-		log.Printf("❌ Failed to process message: %v", err)
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-			"success": false,
-			"message": "Failed to process message",
-			"error":   err.Error(),
+		log.Printf("⚠️  Failed to forward to Deno (falling back to direct processing): %v", err)
+
+		// Fallback: Process directly if Deno fails
+		result, err := h.flowExecutionService.ProcessMessage(c.Context(), from, body)
+		if err != nil {
+			log.Printf("❌ Failed to process message: %v", err)
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+				"success": false,
+				"message": "Failed to process message",
+				"error":   err.Error(),
+			})
+		}
+
+		// Send reply if needed
+		if result.ShouldReply && result.Response != "" {
+			mediaType := ""
+			mediaURL := ""
+			if result.Variables != nil {
+				if mt, ok := result.Variables["_media_type"].(string); ok {
+					mediaType = mt
+				}
+				if mu, ok := result.Variables["_media_url"].(string); ok {
+					mediaURL = mu
+				}
+			}
+
+			if err := h.whatsappService.SendMessage(c.Context(), deviceID, from, result.Response, mediaType, mediaURL); err != nil {
+				log.Printf("⚠️  Failed to send WhatsApp reply: %v", err)
+			} else {
+				log.Printf("📤 Sent reply to %s: %s", from, result.Response)
+			}
+		}
+
+		return c.JSON(fiber.Map{
+			"success":   true,
+			"message":   "Processed directly (Deno unavailable)",
+			"processed": true,
+			"result":    result,
 		})
 	}
 
-	log.Printf("✅ Message processed successfully: %+v", result)
-
-	// Send reply if needed
-	if result.ShouldReply && result.Response != "" {
-		// Check if media is included in variables
-		mediaType := ""
-		mediaURL := ""
-		if result.Variables != nil {
-			if mt, ok := result.Variables["_media_type"].(string); ok {
-				mediaType = mt
-			}
-			if mu, ok := result.Variables["_media_url"].(string); ok {
-				mediaURL = mu
-			}
-		}
-
-		// Send message via WhatsApp
-		if err := h.whatsappService.SendMessage(c.Context(), deviceID, from, result.Response, mediaType, mediaURL); err != nil {
-			log.Printf("⚠️  Failed to send WhatsApp reply: %v", err)
-			// Don't fail the webhook - just log the error
-		} else {
-			log.Printf("📤 Sent reply to %s: %s", from, result.Response)
-		}
-	}
+	log.Printf("✅ Message forwarded to Deno for debouncing")
 
 	return c.JSON(fiber.Map{
 		"success":   true,
-		"message":   "Webhook processed successfully",
-		"processed": true,
-		"result":    result,
+		"message":   "Message queued for debouncing",
+		"processed": false,
+		"debounced": true,
 	})
 }
 
@@ -469,4 +484,35 @@ func (h *WebhookHandler) ReceiveWebhook(c *fiber.Ctx) error {
 		"success": true,
 		"message": "webhook received",
 	})
+}
+
+// forwardToDeno forwards extracted message data to Deno Deploy for debouncing
+func (h *WebhookHandler) forwardToDeno(deviceID, phone, message string) error {
+	denoURL := "https://chatbot-debouncer.deno.dev/webhook"
+
+	payload := map[string]interface{}{
+		"deviceId": deviceID,
+		"phone":    phone,
+		"message":  message,
+		"name":     "", // Optional: can extract from payload if available
+	}
+
+	jsonData, err := json.Marshal(payload)
+	if err != nil {
+		return fmt.Errorf("failed to marshal payload: %w", err)
+	}
+
+	resp, err := http.Post(denoURL, "application/json", bytes.NewBuffer(jsonData))
+	if err != nil {
+		return fmt.Errorf("failed to send to Deno: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		return fmt.Errorf("Deno returned %d: %s", resp.StatusCode, string(body))
+	}
+
+	log.Printf("📮 Forwarded to Deno: device=%s, phone=%s", deviceID, phone)
+	return nil
 }
