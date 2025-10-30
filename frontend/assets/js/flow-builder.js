@@ -59,9 +59,9 @@ async function loadDevices() {
             const devicesWithFlows = new Set();
             if (flowsData.success && flowsData.flows && flowsData.flows.length > 0) {
                 flowsData.flows.forEach(flow => {
-                    // Store the flow_id (device identifier) from each flow
-                    if (flow.flow_id) {
-                        devicesWithFlows.add(flow.flow_id);
+                    // Store the id_device (device identifier) from each flow
+                    if (flow.id_device) {
+                        devicesWithFlows.add(flow.id_device);
                     }
                 });
             }
