@@ -402,48 +402,39 @@ func (h *WebhookHandler) HandleDebouncedMessages(c *fiber.Ctx) error {
 
 	log.Printf("💬 Combined message: %s", combinedMessage)
 
-	// Clean phone number
-	phone := h.cleanPhoneNumber(req.Phone)
-
-	// Process through flow execution (same as regular webhook)
-	result, err := h.flowExecutionService.ProcessMessage(c.Context(), phone, combinedMessage)
-	if err != nil {
-		log.Printf("❌ Failed to process debounced messages: %v", err)
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-			"success": false,
-			"message": "Failed to process messages",
-			"error":   err.Error(),
-		})
+	// NEW: Use FlowProcessorService to handle flow-based webhooks
+	// Reconstruct the webhook data for processing
+	webhookData := map[string]interface{}{
+		"from":         req.Phone,
+		"phone":        req.Phone,
+		"message":      combinedMessage,
+		"pushName":     req.Name,
+		"message_type": "text",
+		"is_group":     false,
 	}
 
-	log.Printf("✅ Debounced messages processed successfully")
-
-	// Send reply if needed
-	if result.ShouldReply && result.Response != "" {
-		// Check if media is included
-		mediaType := ""
-		mediaURL := ""
-		if result.Variables != nil {
-			if mt, ok := result.Variables["_media_type"].(string); ok {
-				mediaType = mt
-			}
-			if mu, ok := result.Variables["_media_url"].(string); ok {
-				mediaURL = mu
-			}
-		}
-
-		// Send message via WhatsApp
-		if err := h.whatsappService.SendMessage(c.Context(), req.DeviceID, phone, result.Response, mediaType, mediaURL); err != nil {
-			log.Printf("⚠️  Failed to send WhatsApp reply: %v", err)
+	// Process through flow processor (async to prevent timeout)
+	go func() {
+		ctx := context.Background()
+		err := h.flowProcessor.ProcessIncomingMessage(ctx, req.DeviceID, webhookData)
+		if err != nil {
+			log.Printf("❌ Failed to process debounced messages via FlowProcessor: %v", err)
 		} else {
-			log.Printf("📤 Sent debounced reply to %s: %s", phone, result.Response)
+			log.Printf("✅ Debounced messages processed successfully via FlowProcessor")
 		}
-	}
+	}()
+
+	log.Printf("✅ Debounced messages queued for processing")
 
 	return c.JSON(fiber.Map{
 		"success": true,
 		"message": "Messages processed and response sent",
-		"result":  result,
+		"result": fiber.Map{
+			"success":        true,
+			"message":        "Processing via FlowProcessor",
+			"should_reply":   true,
+			"completed_flow": false,
+		},
 	})
 }
 
