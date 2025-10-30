@@ -69,7 +69,7 @@ func (r *PackageRepository) GetAllPackages(ctx context.Context) ([]models.Packag
 func (r *PackageRepository) GetPackageByID(ctx context.Context, id int) (*models.Package, error) {
 	data, err := r.supabase.QueryAsAdmin("packages", map[string]string{
 		"select": "*",
-		"id":     fmt.Sprintf("%d", id),
+		"id":     fmt.Sprintf("eq.%d", id),
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to get package: %w", err)
