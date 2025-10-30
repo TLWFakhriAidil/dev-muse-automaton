@@ -257,6 +257,21 @@ func (s *FlowService) GetAllUserFlows(ctx context.Context, userID string) (*mode
 	}, nil
 }
 
+// GetAllFlows retrieves ALL flows (admin only)
+func (s *FlowService) GetAllFlows(ctx context.Context) (*models.FlowResponse, error) {
+	// Get all flows without filtering by user
+	flows, err := s.flowRepo.GetAllFlows(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get all flows: %w", err)
+	}
+
+	return &models.FlowResponse{
+		Success: true,
+		Message: fmt.Sprintf("Found %d flows (admin view)", len(flows)),
+		Flows:   flows,
+	}, nil
+}
+
 // UpdateFlow updates a flow by UUID or device identifier
 func (s *FlowService) UpdateFlow(ctx context.Context, userID, flowID string, req *models.UpdateFlowRequest) (*models.FlowResponse, error) {
 	// Try to get flow by UUID first

@@ -137,8 +137,25 @@ func (h *DeviceHandler) GetUserDevices(c *fiber.Ctx) error {
 		return err
 	}
 
-	// Call service
-	resp, err := h.deviceService.GetUserDevices(c.Context(), userID)
+	// Check if user is admin
+	isAdmin, err := h.authService.IsAdmin(c.Context(), userID)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"success": false,
+			"message": "Failed to check admin status",
+			"error":   err.Error(),
+		})
+	}
+
+	var resp *models.DeviceResponse
+	if isAdmin {
+		// Admin sees ALL devices
+		resp, err = h.deviceService.GetAllDevices(c.Context())
+	} else {
+		// Regular user sees only their devices
+		resp, err = h.deviceService.GetUserDevices(c.Context(), userID)
+	}
+
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 			"success": false,

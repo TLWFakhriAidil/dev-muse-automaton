@@ -91,6 +91,24 @@ func (r *DeviceRepository) GetDevicesByUserID(ctx context.Context, userID string
 	return devices, nil
 }
 
+// GetAllDevices retrieves all devices (admin only)
+func (r *DeviceRepository) GetAllDevices(ctx context.Context) ([]models.DeviceSetting, error) {
+	data, err := r.supabase.QueryAsAdmin("device_setting", map[string]string{
+		"select": "*",
+		"order":  "created_at.desc",
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to get all devices: %w", err)
+	}
+
+	var devices []models.DeviceSetting
+	if err := json.Unmarshal(data, &devices); err != nil {
+		return nil, fmt.Errorf("failed to parse devices: %w", err)
+	}
+
+	return devices, nil
+}
+
 // UpdateDevice updates a device
 func (r *DeviceRepository) UpdateDevice(ctx context.Context, deviceID string, updates map[string]interface{}) error {
 	// Add updated_at timestamp

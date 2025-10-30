@@ -134,6 +134,20 @@ func (s *DeviceService) GetUserDevices(ctx context.Context, userID string) (*mod
 	}, nil
 }
 
+// GetAllDevices retrieves all devices (admin only)
+func (s *DeviceService) GetAllDevices(ctx context.Context) (*models.DeviceResponse, error) {
+	devices, err := s.deviceRepo.GetAllDevices(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get all devices: %w", err)
+	}
+
+	return &models.DeviceResponse{
+		Success: true,
+		Message: fmt.Sprintf("Found %d devices (admin view)", len(devices)),
+		Devices: devices,
+	}, nil
+}
+
 // UpdateDevice updates a device
 func (s *DeviceService) UpdateDevice(ctx context.Context, userID, deviceID string, req *models.UpdateDeviceRequest) (*models.DeviceResponse, error) {
 	// Get device and check ownership

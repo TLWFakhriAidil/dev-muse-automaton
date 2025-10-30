@@ -121,8 +121,25 @@ func (h *StageHandler) GetAllStageValues(c *fiber.Ctx) error {
 		return err
 	}
 
-	// Call service with user filtering
-	resp, err := h.stageService.GetStageValuesByUserID(c.Context(), userID)
+	// Check if user is admin
+	isAdmin, err := h.authService.IsAdmin(c.Context(), userID)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"success": false,
+			"message": "Failed to check admin status",
+			"error":   err.Error(),
+		})
+	}
+
+	var resp *models.StageValueResponse
+	if isAdmin {
+		// Admin sees ALL stage values
+		resp, err = h.stageService.GetAllStageValues(c.Context())
+	} else {
+		// Regular user sees only their stage values
+		resp, err = h.stageService.GetStageValuesByUserID(c.Context(), userID)
+	}
+
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 			"success": false,

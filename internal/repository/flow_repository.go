@@ -110,6 +110,24 @@ func (r *FlowRepository) GetAllFlowsByUserDevices(ctx context.Context, deviceIDs
 	return allFlows, nil
 }
 
+// GetAllFlows retrieves all flows (admin only)
+func (r *FlowRepository) GetAllFlows(ctx context.Context) ([]models.ChatbotFlow, error) {
+	data, err := r.supabase.QueryAsAdmin("chatbot_flows", map[string]string{
+		"select": "*",
+		"order":  "created_at.desc",
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to get all flows: %w", err)
+	}
+
+	var flows []models.ChatbotFlow
+	if err := json.Unmarshal(data, &flows); err != nil {
+		return nil, fmt.Errorf("failed to parse flows: %w", err)
+	}
+
+	return flows, nil
+}
+
 // UpdateFlow updates a flow
 func (r *FlowRepository) UpdateFlow(ctx context.Context, flowID string, updates map[string]interface{}) error {
 	// Add updated_at timestamp

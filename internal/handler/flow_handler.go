@@ -165,8 +165,25 @@ func (h *FlowHandler) GetAllUserFlows(c *fiber.Ctx) error {
 		return err
 	}
 
-	// Get all user flows
-	resp, err := h.flowService.GetAllUserFlows(c.Context(), userID)
+	// Check if user is admin
+	isAdmin, err := h.authService.IsAdmin(c.Context(), userID)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"success": false,
+			"message": "Failed to check admin status",
+			"error":   err.Error(),
+		})
+	}
+
+	var resp *models.FlowResponse
+	if isAdmin {
+		// Admin sees ALL flows
+		resp, err = h.flowService.GetAllFlows(c.Context())
+	} else {
+		// Regular user sees only their flows
+		resp, err = h.flowService.GetAllUserFlows(c.Context(), userID)
+	}
+
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 			"success": false,

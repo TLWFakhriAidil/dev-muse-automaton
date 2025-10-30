@@ -241,3 +241,14 @@ func (s *AuthService) UpdateProfile(ctx context.Context, tokenString string, req
 		Message: "Profile updated successfully",
 	}, nil
 }
+
+// IsAdmin checks if a user is an admin based on their email
+func (s *AuthService) IsAdmin(ctx context.Context, userID string) (bool, error) {
+	user, err := s.userRepo.GetUserByID(ctx, userID)
+	if err != nil {
+		return false, fmt.Errorf("failed to get user: %w", err)
+	}
+
+	// Check if user email is Admin@gmail.com (case-insensitive)
+	return user.Email == "Admin@gmail.com" || user.Role == "admin", nil
+}
