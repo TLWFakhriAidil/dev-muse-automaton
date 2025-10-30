@@ -1,5 +1,8 @@
 // Common JavaScript functions for all pages
-const API_BASE_URL = window.location.origin + '/api';
+// Only declare API_BASE_URL if it doesn't exist already
+if (typeof API_BASE_URL === 'undefined') {
+    var API_BASE_URL = window.location.origin + '/api';
+}
 
 // Show Packages tab for admin users
 async function showPackagesTabForAdmin() {
