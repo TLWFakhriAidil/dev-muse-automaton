@@ -156,6 +156,11 @@ function closeDeviceModal() {
     document.getElementById('deviceId').value = '';
     document.getElementById('webhookId').value = '';
 
+    // Re-enable ID Device field for new device creation
+    document.getElementById('idDevice').readOnly = false;
+    document.getElementById('idDevice').style.backgroundColor = '';
+    document.getElementById('idDevice').style.cursor = '';
+
     // Reset modal title and editing state
     document.querySelector('.modal-title').textContent = 'Add New Device';
     window.editingDeviceId = null;
@@ -601,6 +606,11 @@ function editDevice(device) {
 
     const provider = document.querySelector(`input[name="provider"][value="${device.provider}"]`);
     if (provider) provider.checked = true;
+
+    // Make ID Device field read-only for editing
+    document.getElementById('idDevice').readOnly = true;
+    document.getElementById('idDevice').style.backgroundColor = 'rgba(255, 255, 255, 0.05)';
+    document.getElementById('idDevice').style.cursor = 'not-allowed';
 
     // Change modal title
     document.querySelector('.modal-title').textContent = 'Edit Device';
