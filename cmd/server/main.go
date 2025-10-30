@@ -182,6 +182,10 @@ func main() {
 	webhook.Post("/whacenter/:deviceId", webhookHandler.HandleWhacenterWebhook)
 	webhook.Post("/start-flow", webhookHandler.StartFlow)
 
+	// Debounce routes (public - receives from Deno Deploy)
+	debounce := api.Group("/debounce")
+	debounce.Post("/process", webhookHandler.HandleDebouncedMessages)
+
 	// Analytics routes (requires authentication)
 	analytics := api.Group("/analytics")
 	analytics.Get("/dashboard", analyticsHandler.GetDashboard)

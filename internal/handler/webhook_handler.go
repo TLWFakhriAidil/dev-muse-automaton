@@ -337,6 +337,91 @@ func stripSuffix(s, suffix string) string {
 	return s
 }
 
+// HandleDebouncedMessages processes debounced messages from Deno Deploy
+// POST /api/debounce/process
+func (h *WebhookHandler) HandleDebouncedMessages(c *fiber.Ctx) error {
+	// Parse request from Deno Deploy
+	var req struct {
+		DeviceID string   `json:"device_id"`
+		Phone    string   `json:"phone"`
+		Name     string   `json:"name"`
+		Messages []string `json:"messages"`
+	}
+
+	if err := c.BodyParser(&req); err != nil {
+		log.Printf("❌ Failed to parse debounced message request: %v", err)
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"success": false,
+			"message": "Invalid request body",
+			"error":   err.Error(),
+		})
+	}
+
+	log.Printf("🔄 [DEBOUNCED] Received %d messages from %s (device: %s)", len(req.Messages), req.Phone, req.DeviceID)
+
+	if len(req.Messages) == 0 {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"success": false,
+			"message": "No messages to process",
+		})
+	}
+
+	// Combine all messages with newlines
+	combinedMessage := ""
+	for i, msg := range req.Messages {
+		if i > 0 {
+			combinedMessage += "\n"
+		}
+		combinedMessage += msg
+	}
+
+	log.Printf("💬 Combined message: %s", combinedMessage)
+
+	// Clean phone number
+	phone := h.cleanPhoneNumber(req.Phone)
+
+	// Process through flow execution (same as regular webhook)
+	result, err := h.flowExecutionService.ProcessMessage(c.Context(), phone, combinedMessage)
+	if err != nil {
+		log.Printf("❌ Failed to process debounced messages: %v", err)
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"success": false,
+			"message": "Failed to process messages",
+			"error":   err.Error(),
+		})
+	}
+
+	log.Printf("✅ Debounced messages processed successfully")
+
+	// Send reply if needed
+	if result.ShouldReply && result.Response != "" {
+		// Check if media is included
+		mediaType := ""
+		mediaURL := ""
+		if result.Variables != nil {
+			if mt, ok := result.Variables["_media_type"].(string); ok {
+				mediaType = mt
+			}
+			if mu, ok := result.Variables["_media_url"].(string); ok {
+				mediaURL = mu
+			}
+		}
+
+		// Send message via WhatsApp
+		if err := h.whatsappService.SendMessage(c.Context(), req.DeviceID, phone, result.Response, mediaType, mediaURL); err != nil {
+			log.Printf("⚠️  Failed to send WhatsApp reply: %v", err)
+		} else {
+			log.Printf("📤 Sent debounced reply to %s: %s", phone, result.Response)
+		}
+	}
+
+	return c.JSON(fiber.Map{
+		"success": true,
+		"message": "Messages processed and response sent",
+		"result":  result,
+	})
+}
+
 // ReceiveWebhook handles incoming webhook messages using webhook_id
 // POST /api/webhook/:webhook_id
 func (h *WebhookHandler) ReceiveWebhook(c *fiber.Ctx) error {
